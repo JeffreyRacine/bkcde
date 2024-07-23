@@ -368,6 +368,11 @@ plot.bkcde <- function(x,
                        B = 9999, 
                        mc.cores = NULL,
                        plot = TRUE,
+                       sub = NULL,
+                       ylim = NULL,
+                       ylab = NULL,
+                       xlab = NULL,
+                       type = NULL,
                        ...) {
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
@@ -406,25 +411,30 @@ plot.bkcde <- function(x,
     ci.sim.lb <- ci.SCS[,1]
     ci.sim.ub <- ci.SCS[,2]
     if(ci.method == "Pointwise") {
-      ylim <- range(c(x$f,ci.pw.lb,ci.pw.ub))
+      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub))
     } else if(ci.method == "Bonferroni") {
-      ylim <- range(c(x$f,ci.bf.lb,ci.bf.ub))
+      if(is.null(ylim)) ylim <-  range(c(x$f,ci.bf.lb,ci.bf.ub))
     } else if(ci.method == "Simultaneous") {
-      ylim <- range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
+      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
     } else {
-      ylim <- range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
     }
   } else {
-    ylim <- range(x$f)
+    if(is.null(ylim)) ylim <-  range(x$f)
   }
   if(plot) {
+    if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],4), ", h.x = ",round(x$h[2],4),", n = ",length(x$y),")",sep="")
+    if(is.null(ylab)) ylab <- "f(y|x)"
+    if(is.null(xlab)) xlab <- "y|x"
+    if(is.null(type)) type <- "l"
     plot(x$y.eval,x$f,
-         sub=paste("(degree = ",x$degree,", h.y = ",round(x$h[1],4), ", h.x = ",round(x$h[2],4),", n = ",length(x$y),")",sep=""),
+         sub=sub,
          ylim=ylim,
-         ylab="f(y|x)",
-         xlab="y|x",
-         type="l",
-         panel.first=grid(lty=1))
+         ylab=ylab,
+         xlab=xlab,
+         type=type,
+         panel.first=grid(lty=1),
+         ...)
     if(ci & ci.method == "Pointwise") {
       lines(x$y.eval,ci.pw.lb,lty=2)
       lines(x$y.eval,ci.pw.ub,lty=2)
