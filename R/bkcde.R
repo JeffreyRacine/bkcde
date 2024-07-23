@@ -52,8 +52,7 @@ NZD <- function(a) {
 ## and matrices)
 
 EssDee <- function(y){
-  if(any(dim(as.matrix(y)) == 0))
-    return(0)
+  if(any(dim(as.matrix(y)) == 0)) return(0)
   sd.vec <- apply(as.matrix(y),2,sd)
   IQR.vec <- apply(as.matrix(y),2,IQR)/qnorm(.25,lower.tail=F)*2
   mad.vec <- apply(as.matrix(y),2,mad)
@@ -172,7 +171,6 @@ bkcde.default <- function(h=NULL,
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
   if(is.null(degree.cores)) degree.cores <- degree.max-degree.min+1
   if(is.null(nmulti.cores)) nmulti.cores <- nmulti
-  
   secs.start.total <- Sys.time()
   if(is.null(h)) {
     optim.out <- bkcde.optim(x=x,
@@ -220,10 +218,12 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))))%*%t(cbind(1,predict(X.poly,x.eval[i])))},1:length(y.eval),mc.cores=ksum.cores))
   }
+  ## Check for non-negative entries and ensure the estimate satisfies this
+  ## necessary condition for valid density estimates even if proper = FALSE
   f.yx[!is.finite(f.yx) | f.yx <= 0] <- .Machine$double.xmin
-  ## Ensure the estimate is proper - this is peculiar to this implementation
-  ## following Cattaneo et al 2023
   if(proper) {
+    ## Ensure the estimate is proper - this is peculiar to this implementation
+    ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only)
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.int)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.int)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.int)
@@ -244,11 +244,9 @@ bkcde.default <- function(h=NULL,
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
       f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.int,mc.cores=ksum.cores))
     }
-    ## Check for valid entries for log transformation (i.e., > 0)
+    ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
+    ## and integrates to 1, non-negativity of f.yx is already ensured above)
     f.seq[!is.finite(f.seq) | f.seq <= 0] <- .Machine$double.xmin
-    f.yx[!is.finite(f.yx) |  f.yx <= 0] <- .Machine$double.xmin
-    ## Compute the integral of the estimate then ensure the final result is
-    ## proper (i.e., non-negative and integrates to 1)
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   }
@@ -310,13 +308,11 @@ bkcde.optim <- function(x=x,
   if(missing(x.lb)) stop("must provide x.lb in bkcde.optim()")
   if(missing(x.ub)) stop("must provide x.ub in bkcde.optim()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
-  
   ## Get the sample size which we use to initialize the bandwidths using some
-  ## common rules of thumb
+  ## common rules of thumb, set search bounds for bandwidths
   n <- length(y)
   lower <- 0.1*c(EssDee(y),EssDee(x))*n^{-1/6}
   upper <- 1000*c(EssDee(y),EssDee(x))
-  
   ## Here we conduct optimization over all models in parallel each having
   ## degree p in [degree.min,degree.max]
   output <- mclapply(degree.min:degree.max, function(p) {
@@ -342,7 +338,7 @@ bkcde.optim <- function(x=x,
                                               lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
-                                              control = list(fnscale = -1)))
+                                              control=list(fnscale = -1)))
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return
@@ -354,7 +350,6 @@ bkcde.optim <- function(x=x,
     optim.out$secs.optim <- sapply(optim.return, function(x) x$secs.optim)
     optim.out
   },mc.cores = degree.cores)
-  
   ## Return object with largest likelihood function over all models and
   ## multistarts, padded with additional information
   output[[which.max(sapply(output, function(x) x$value))]]
@@ -362,10 +357,8 @@ bkcde.optim <- function(x=x,
 
 ## The following S3 function is used to plot the results of the boundary kernel
 ## CDE along with bootstrap confidence intervals generated as either pointwise
-## or Bonferroni corrected intervals. They are centered on the estimate so are
-## not true confidence intervals, rather "variability intervals". A handful of
-## options are available, including returning the confidence intervals and
-## estimates.
+## or Bonferroni corrected intervals. A handful of options are available,
+## including returning the confidence intervals and estimates.
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
@@ -458,7 +451,6 @@ plot.bkcde <- function(x,
                       paste(100*(1-alpha),"% Bonferroni CIs",sep="")
              ),lty=1:4,bty="n")
     }
-
   } else {
     return(list(f=x$f,
                 bias.vec=bias.vec,
@@ -503,9 +495,7 @@ summary.bkcde <- function(object, ...) {
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n")
   cat("Degree of local polynomial: ",object$degree,"\n")
   cat("Elapsed time: ",object$secs.elapsed," seconds\n")
-  cat("Integral of estimate prior to adjustment: ",object$f.yx.integral,"\n")
-  # cat("Optimization time: ",sum(object$secs.optim.vec)," seconds\n")
-  # cat("Estimation time: ",object$secs.estimate," seconds\n")
+  cat("Integral of estimate (prior to adjustment): ",object$f.yx.integral,"\n")
   cat("\n")
   invisible()
 }
