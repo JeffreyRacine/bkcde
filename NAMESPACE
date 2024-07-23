@@ -1,0 +1,8 @@
+import(stats, parallel, MCPAN)
+export("bkcde")
+
+S3method(bkcde, default)
+S3method(plot, bkcde)
+S3method(fitted, bkcde)
+S3method(predict, bkcde)
+S3method(summary, bkcde)
