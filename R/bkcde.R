@@ -346,13 +346,16 @@ bkcde.optim <- function(x=x,
     optim.out <- optim.return[[which.max(sapply(optim.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(optim.return, function(x) x$value)
     optim.out$convergence.vec <- sapply(optim.return, function(x) x$convergence)
-    optim.out$par.mat <- t(sapply(optim.return, function(x) x$par))
+    # optim.out$par.mat <- t(sapply(optim.return, function(x) x$par))
     optim.out$secs.optim <- sapply(optim.return, function(x) x$secs.optim)
     optim.out
   },mc.cores = degree.cores)
   ## Return object with largest likelihood function over all models and
   ## multistarts, padded with additional information
-  output[[which.max(sapply(output, function(x) x$value))]]
+  par.mat <- t(sapply(output, function(x) x$par))
+  output <- output[[which.max(sapply(output, function(x) x$value))]]
+  output$par.mat <- par.mat
+  output
 }
 
 ## The following S3 function is used to plot the results of the boundary kernel
@@ -423,9 +426,9 @@ plot.bkcde <- function(x,
     if(is.null(ylim)) ylim <-  range(x$f)
   }
   if(plot) {
-    if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],4), ", h.x = ",round(x$h[2],4),", n = ",length(x$y),")",sep="")
+    if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
-    if(is.null(xlab)) xlab <- "y|x"
+    if(is.null(xlab)) xlab <- paste("y|x=",x$x.eval[1],sep="")
     if(is.null(type)) type <- "l"
     plot(x$y.eval,x$f,
          sub=sub,
@@ -438,15 +441,15 @@ plot.bkcde <- function(x,
     if(ci & ci.method == "Pointwise") {
       lines(x$y.eval,ci.pw.lb,lty=2)
       lines(x$y.eval,ci.pw.ub,lty=2)
-      legend("topright",legend=c("f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
+      legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "Bonferroni") {
       lines(x$y.eval,ci.bf.lb,lty=2)
       lines(x$y.eval,ci.bf.ub,lty=2)
-      legend("topright",legend=c("f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
+      legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "Simultaneous") {
       lines(x$y.eval,ci.sim.lb,lty=2)
       lines(x$y.eval,ci.sim.ub,lty=2)
-      legend("topright",legend=c("f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
+      legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "all") {
       lines(x$y.eval,ci.pw.lb,lty=2)
       lines(x$y.eval,ci.pw.ub,lty=2)
@@ -455,7 +458,7 @@ plot.bkcde <- function(x,
       lines(x$y.eval,ci.bf.lb,lty=4)
       lines(x$y.eval,ci.bf.ub,lty=4)
       legend("topright",
-             legend=c("f(y|x)",
+             legend=c("Estimated f(y|x)",
                       paste(100*(1-alpha),"% Pointwise CIs",sep=""),
                       paste(100*(1-alpha),"% Simultaneous CIs",sep=""),
                       paste(100*(1-alpha),"% Bonferroni CIs",sep="")
