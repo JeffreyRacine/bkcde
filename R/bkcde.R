@@ -284,6 +284,7 @@ bkcde.default <- function(h=NULL,
                       degree.min=degree.min,
                       degree.max=degree.max,
                       ksum.cores=ksum.cores,
+                      degree.cores=degree.cores,
                       nmulti.cores=nmulti.cores) 
   class(return.list) <- "bkcde"
   return(return.list)
@@ -533,10 +534,12 @@ summary.bkcde <- function(object, ...) {
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n")
   cat("Number of cores used in parallel processing for degree selection: ",object$degree.cores,"\n")
   cat("Number of cores used in parallel processing for multistart optimization: ",object$nmulti.cores,"\n")
-  cat("Elapsed time (total): ",object$secs.elapsed," seconds\n")
-  cat("Optimization and estimation time (sum over all cores): ",object$secs.estimate+sum(object$secs.optim.mat)," seconds\n")
-  cat("Parallel efficiency: ",formatC(object$secs.elapsed/sum(object$secs.optim.mat),format="f",digits=2),
-      " (ideal = ",formatC(1/(object$ksum.cores*(object$degree.max-object$degree.min+1)*object$nmulti.cores),format="f",digits=2),")\n",sep="")
+  cat("Total number of cores used in parallel processing: ",object$ksum.cores*object$degree.cores*object$nmulti.cores,"\n")
+  cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n")
+  cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n")
+  cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$degree.cores*object$nmulti.cores),format="f",digits=3)," seconds/core\n")
+  cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
+      " (ideal = ",formatC(1/(object$ksum.cores*object$degree.cores*object$nmulti.cores),format="f",digits=2),")\n",sep="")
   cat("\n")
   invisible()
 }
