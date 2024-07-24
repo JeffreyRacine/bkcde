@@ -190,18 +190,26 @@ bkcde.default <- function(h=NULL,
     h <- optim.out$par
     h.mat <- optim.out$par.mat
     degree <- optim.out$degree
+    degree.mat <- optim.out$degree.mat
     value <- optim.out$value
     value.vec <- optim.out$value.vec
+    value.mat <- optim.out$value.mat
     convergence <- optim.out$convergence
     convergence.vec <- optim.out$convergence.vec
+    convergence.mat <- optim.out$convergence.mat
     secs.optim <- optim.out$secs.optim
+    secs.optim.mat <- optim.out$secs.optim.mat
   } else {
     h.mat <- NULL
+    degree.mat <- NULL
     value <- NULL
     value.vec <- NULL
+    value.mat <- NULL
     convergence <- NULL
     convergence.vec <- NULL
+    convergence.mat <- NULL
     secs.optim <- NULL
+    secs.optim.mat <- NULL
   }
   secs.start.estimate <- Sys.time()
   ## Compute the conditional density estimate
@@ -254,12 +262,15 @@ bkcde.default <- function(h=NULL,
                       h=h,
                       h.mat=h.mat,
                       degree=degree,
+                      degree.mat=degree.mat,
                       value=value,
                       value.vec=value.vec,
+                      value.mat=value.mat,
                       convergence=convergence,
                       convergence.vec=convergence.vec,
+                      convergence.mat=convergence.mat,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
-                      secs.optim.vec=as.numeric(secs.optim),
+                      secs.optim.mat=secs.optim.mat,
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
                       f.yx.integral=int.f.seq,
                       y.lb=y.lb,
@@ -269,7 +280,11 @@ bkcde.default <- function(h=NULL,
                       y=y,
                       x=x,
                       y.eval=y.eval,
-                      x.eval=x.eval) 
+                      x.eval=x.eval,
+                      degree.min=degree.min,
+                      degree.max=degree.max,
+                      ksum.cores=ksum.cores,
+                      nmulti.cores=nmulti.cores) 
   class(return.list) <- "bkcde"
   return(return.list)
 }
@@ -315,10 +330,10 @@ bkcde.optim <- function(x=x,
   upper <- 1000*c(EssDee(y),EssDee(x))
   ## Here we conduct optimization over all models in parallel each having
   ## degree p in [degree.min,degree.max]
-  output <- mclapply(degree.min:degree.max, function(p) {
+  degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over nmulti multistarts in
     ## parallel
-    optim.return <- mclapply(1:nmulti, function(i) {
+    nmulti.return <- mclapply(1:nmulti, function(i) {
       if(i==1) {
         init <- c(EssDee(y),EssDee(x))*n^{-1/6}
       } else {
@@ -343,19 +358,25 @@ bkcde.optim <- function(x=x,
       optim.return$degree <- p
       optim.return
     },mc.cores = nmulti.cores)
-    optim.out <- optim.return[[which.max(sapply(optim.return, function(x) x$value))]]
-    optim.out$value.vec <- sapply(optim.return, function(x) x$value)
-    optim.out$convergence.vec <- sapply(optim.return, function(x) x$convergence)
-    # optim.out$par.mat <- t(sapply(optim.return, function(x) x$par))
-    optim.out$secs.optim <- sapply(optim.return, function(x) x$secs.optim)
+    optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
+    optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
+    optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
+    optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
+    optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
     optim.out
   },mc.cores = degree.cores)
   ## Return object with largest likelihood function over all models and
   ## multistarts, padded with additional information
-  par.mat <- t(sapply(output, function(x) x$par))
-  output <- output[[which.max(sapply(output, function(x) x$value))]]
-  output$par.mat <- par.mat
-  output
+  output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
+  output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
+  output.return$value.vec <- sapply(degree.return, function(x) x$value)
+  output.return$value.mat <- t(sapply(degree.return, function(x) x$value.vec))
+  output.return$convergence.vec <- sapply(degree.return, function(x) x$convergence)
+  output.return$convergence.mat <- t(sapply(degree.return, function(x) x$convergence.vec))
+  output.return$degree.mat <- t(sapply(degree.return, function(x) x$degree.vec))
+  output.return$secs.optim <- sapply(degree.return, function(x) x$secs.optim)
+  output.return$secs.optim.mat <- t(sapply(degree.return, function(x) x$secs.optim.vec))
+  return(output.return)
 }
 
 ## The following S3 function is used to plot the results of the boundary kernel
@@ -369,7 +390,7 @@ plot.bkcde <- function(x,
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
                        B = 9999, 
-                       mc.cores = NULL,
+                       plot.cores = NULL,
                        plot = TRUE,
                        sub = NULL,
                        ylim = NULL,
@@ -382,12 +403,12 @@ plot.bkcde <- function(x,
   ci.method <- match.arg(ci.method)
   if(alpha < 0 | alpha > 1) stop("alpha must lie in [0,1] in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
-  if(!is.null(mc.cores)) if(mc.cores < 1) stop("mc.cores must be at least 1 in plot.bkcde()")
+  if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   secs.start <- Sys.time()
   if(ci) {
     suppressPackageStartupMessages(library(parallel))
-    if(is.null(mc.cores)) mc.cores <- detectCores()
+    if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
       bkcde(h=x$h,
@@ -400,7 +421,7 @@ plot.bkcde <- function(x,
             x.lb=x$x.lb,
             x.ub=x$x.ub,
             degree=x$degree)$f
-    },1:B,mc.cores=mc.cores))
+    },1:B,mc.cores=plot.cores))
     if(ci.bias.correct) {
       bias.vec <- colMeans(boot.mat) - x$f
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
@@ -473,7 +494,8 @@ plot.bkcde <- function(x,
                 ci.bf.ub=ci.bf.ub,
                 ci.sim.lb=ci.sim.lb,
                 ci.sim.ub=ci.sim.ub,
-                secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs"))))
+                secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
+                plot.cores=plot.cores))
   }
 }
 
@@ -507,8 +529,14 @@ summary.bkcde <- function(object, ...) {
   cat("Number of evaluation points: ",length(object$y.eval),"\n")
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n")
   cat("Degree of local polynomial: ",object$degree,"\n")
-  cat("Elapsed time: ",object$secs.elapsed," seconds\n")
   cat("Integral of estimate (prior to adjustment): ",object$f.yx.integral,"\n")
+  cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n")
+  cat("Number of cores used in parallel processing for degree selection: ",object$degree.cores,"\n")
+  cat("Number of cores used in parallel processing for multistart optimization: ",object$nmulti.cores,"\n")
+  cat("Elapsed time (total): ",object$secs.elapsed," seconds\n")
+  cat("Optimization and estimation time (sum over all cores): ",object$secs.estimate+sum(object$secs.optim.mat)," seconds\n")
+  cat("Parallel efficiency: ",formatC(object$secs.elapsed/sum(object$secs.optim.mat),format="f",digits=2),
+      " (ideal = ",formatC(1/(object$ksum.cores*(object$degree.max-object$degree.min+1)*object$nmulti.cores),format="f",digits=2),")\n",sep="")
   cat("\n")
   invisible()
 }
