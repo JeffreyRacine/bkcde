@@ -72,8 +72,8 @@ for(i in m:M) {
     
     ## The lpcde method of Catteano et al 2024 aborts on some DGPs, so we
     ## "forgive" it and draw another "friendlier" resample for this implementation
-    ## (0.1.4 as of this writing)
-    
+      ## (0.1.4 as of this writing)
+
     x.min <- -.25
     x.max <- .25
     x <- runif(n,x.min,x.max)
@@ -83,7 +83,7 @@ for(i in m:M) {
     s2 <- 1.5
     y <- rbeta(n,s1+x,s2+x)
     y.grid <- seq(quantile(y,trim),quantile(y,1-trim),length=n.grid)
-    dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)
+    dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)      
     
     f.yx.lpcde <- tryCatch(lpcde(x_data=x, 
                                  y_data=y, 
@@ -159,6 +159,32 @@ for(i in m:M) {
   write(cv.mat[i,],file="cv.out",ncolumns=3,append=TRUE)
   write(aborts,file="aborts.out")
   write(c(st.lpcde,st.bkcde),file="times.out",ncolumns=2,append=TRUE)
+  
+  ## Write fitted values and rmse values from each degree p.min,..., p.max
+  ## (these are used to construct the final bkcde() model)
+  
+  for(p in p.min:p.max) {
+    f.p <- bkcde(h=output$h.mat[p-p.min+1,],
+                 x=x,
+                 y=y,
+                 x.eval=x.eval.grid,
+                 y.eval=y.grid,
+                 degree.min=p,
+                 degree.max=p)$f
+    rmse.p <- sqrt(mean((f.p-dgp)^2))
+    write(f.p,file=paste("f_p_",p,".out",sep=""),append=TRUE, ncolumns=n.grid)
+    write(rmse.p,file=paste("rmse_p_",p,".out",sep=""),append=TRUE)
+  }
+  ## Write fitted values from the bkcde and infinite support models
+  write(output$f,file="f_bkcde.out",append=TRUE,ncolumns=n.grid)
+  write(output.hrl$f,file="f_hrl.out",append=TRUE,ncolumns=n.grid)
+  write(output.fyt$f,file="f_fyt.out",append=TRUE,ncolumns=n.grid)
+  write(f.yx.lpcde$Estimate[,"est_RBC"],file="f_lpcde.out",append=TRUE,ncolumns=n.grid)
+  ## Write data, grid, and dgp so that we can recreate the results
+  write(x,file="x.out",append=TRUE,ncolumns=n)
+  write(y,file="y.out",append=TRUE,ncolumns=n)
+  write(dgp,file="dgp.out",append=TRUE,ncolumns=n.grid)
+  write(y.grid,file="ygrid.out",append=TRUE,ncolumn=n.grid)
   
   if(plot.during) {
     if(plot.pdf) pdf()
