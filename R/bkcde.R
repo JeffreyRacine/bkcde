@@ -113,7 +113,7 @@ bkcde.loo <- function(h=NULL,
     f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
     return(sum(log(f.loo)))
   } else {
-    f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & f.loo > 0])/10
+    f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & f.loo > 0])/10^6
     return(sum(log(f.loo)))
   }
 }
