@@ -87,7 +87,7 @@ bkcde.loo <- function(h=NULL,
                       poly.raw=TRUE,
                       degree=0,
                       ksum.cores=1,
-                      penalize.neg.loo=FALSE) {
+                      penalize.neg.loo=TRUE) {
   ## Perform some argument checking
   if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
@@ -145,7 +145,7 @@ bkcde.default <- function(h=NULL,
                           n.integrate=100,
                           nmulti.cores=NULL,
                           nmulti=5,
-                          penalize.neg.loo=FALSE,
+                          penalize.neg.loo=TRUE,
                           poly.raw=TRUE,
                           proper=TRUE,
                           ...) {
