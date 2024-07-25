@@ -94,6 +94,8 @@ bkcde.loo <- function(h=NULL,
   if(is.null(x)) stop("must provide x in bkcde.loo()")
   if(is.null(y)) stop("must provide y in bkcde.loo()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
+  if(!is.logical(max.pen.neg.loo)) stop("max.pen.neg.loo must be logical in bkcde.loo()")
+  if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
     ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
@@ -110,10 +112,19 @@ bkcde.loo <- function(h=NULL,
     f.loo <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))))%*%t(X[i,,drop=FALSE])},1:length(y),mc.cores=ksum.cores))
   }
   if(max.pen.neg.loo) {
+    ## Maximize the likelihood by penalizing negative estimates via resetting to
+    ## the smallest positive value
     f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
     return(sum(log(f.loo)))
   } else {
-    f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & f.loo > 0])/10^6
+    ## Maximize the likelihood by penalizing negative estimates via resetting to
+    ## very small values but avoiding potentially flat
+    ## likelihoods/discontinuities arising from .Machine$double.xmin
+    if(any(is.finite(f.loo) & f.loo > 0)) {
+      f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & f.loo > 0])/10^4
+    } else {
+      f.loo[!is.finite(f.loo) | f.loo <= 0] <- 1/10^6
+    }
     return(sum(log(f.loo)))
   }
 }
@@ -142,10 +153,10 @@ bkcde.default <- function(h=NULL,
                           degree.min=0,
                           degree=0,
                           ksum.cores=1,
+                          max.pen.neg.loo=TRUE,
                           n.integrate=100,
                           nmulti.cores=NULL,
                           nmulti=5,
-                          max.pen.neg.loo=TRUE,
                           poly.raw=TRUE,
                           proper=TRUE,
                           ...) {
@@ -169,6 +180,7 @@ bkcde.default <- function(h=NULL,
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde()")
   if(!is.logical(proper)) stop("proper must be logical in bkcde()")
+  if(!is.logical(max.pen.neg.loo)) stop("max.pen.neg.loo must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
@@ -259,15 +271,19 @@ bkcde.default <- function(h=NULL,
     }
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
-    if(any(!is.finite(f.yx) | f.yx < 0)) warning("density estimate < 0 reset to .Machine$double.xmin via option proper=TRUE in bkcde()")
-    f.yx[!is.finite(f.yx) | f.yx < 0] <- .Machine$double.xmin
-    f.seq[!is.finite(f.seq) | f.seq < 0] <- .Machine$double.xmin
+    if(any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
+    f.yx[!is.finite(f.yx)] <- 0
+    if(any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
+    f.yx[f.yx < 0] <- 0
+    f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   } else {
-    ## Issue warning if the estimate is not proper
-    int.f.seq <- NA
-    if(any(!is.finite(f.yx) | f.yx < 0)) warning("density estimate < 0, consider option proper=TRUE in bkcde()")
+    ## Issue warning if the estimate is not finite nor proper
+    int.f.seq <- NULL
+    if(any(!is.finite(f.yx))) warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
+    f.yx[!is.finite(f.yx)] <- 0
+    if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
@@ -544,7 +560,7 @@ summary.bkcde <- function(object, ...) {
   cat("Number of evaluation points: ",length(object$y.eval),"\n",sep="")
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
-  cat("Integral of estimate (prior to adjustment): ",object$f.yx.integral,"\n",sep="")
+  if(!is.null(object$f.yx.integral)) cat("Integral of estimate (prior to adjustment): ",object$f.yx.integral,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for degree selection: ",object$degree.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for multistart optimization: ",object$nmulti.cores,"\n",sep="")
