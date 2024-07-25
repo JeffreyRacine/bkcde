@@ -2,48 +2,58 @@
 \alias{bkcde.loo}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+Delete-One Cross-Validation Objective Function for Bivariate Kernel Conditional Density Estimation
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+Calculates the delete-one cross-validation objective function for bivariate kernel conditional density estimation.
 }
 \usage{
-bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1, penalize.neg.loo = FALSE)
+bkcde.loo(h = NULL, 
+          x = NULL, 
+          y = NULL, 
+          y.lb = NULL, 
+          y.ub = NULL, 
+          x.lb = NULL, 
+          x.ub = NULL, 
+          poly.raw = TRUE, 
+          degree = 0, 
+          ksum.cores = 1, 
+          max.pen.neg.loo = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{h}{
-%%     ~~Describe \code{h} here~~
+  a vector of length 2 containing the bandwidths for the kernel density estimation of the response and the predictor, respectively.
 }
   \item{x}{
-%%     ~~Describe \code{x} here~~
+  a vector of length $n$ containing the predictor variable.
 }
   \item{y}{
-%%     ~~Describe \code{y} here~~
+  a vector of length $n$ containing the response variable.
 }
   \item{y.lb}{
-%%     ~~Describe \code{y.lb} here~~
+  the lower bound of the response variable.
 }
   \item{y.ub}{
-%%     ~~Describe \code{y.ub} here~~
+  the upper bound of the response variable.
 }
   \item{x.lb}{
-%%     ~~Describe \code{x.lb} here~~
+  the lower bound of the predictor variable.
 }
   \item{x.ub}{
-%%     ~~Describe \code{x.ub} here~~
+  the upper bound of the predictor variable.
 }
   \item{poly.raw}{
-%%     ~~Describe \code{poly.raw} here~~
+  a logical value indicating whether to use raw polynomials in the polynomial regression.
 }
   \item{degree}{
-%%     ~~Describe \code{degree} here~~
+  the degree of the polynomial regression.
 }
   \item{ksum.cores}{
-%%     ~~Describe \code{ksum.cores} here~~
+  the number of cores to use in the parallel computation.
 }
-  \item{penalize.neg.loo}{
-%%     ~~Describe \code{penalize.neg.loo} here~~
+  \item{max.pen.neg.loo}{
+  a logical value indicating whether to use a maximum penalty for negative leave-one-out estimates.
 }
 }
 \details{
@@ -79,7 +89,7 @@ bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x
 ## The function is currently defined as
 function (h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, 
     x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1, 
-    penalize.neg.loo = FALSE) 
+    max.pen.neg.loo = TRUE) 
 {
     if (y.lb >= y.ub) 
         stop("y.lb must be less than y.ub in bkcde.loo()")
@@ -91,6 +101,10 @@ function (h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL,
         stop("must provide y in bkcde.loo()")
     if (!is.logical(poly.raw)) 
         stop("poly.raw must be logical in bkcde.loo()")
+    if (!is.logical(max.pen.neg.loo)) 
+        stop("max.pen.neg.loo must be logical in bkcde.loo()")
+    if (ksum.cores < 1) 
+        stop("ksum.cores must be at least 1 in bkcde.loo()")
     if (degree < 0 | degree >= length(y)) 
         stop("degree must lie in [0,1,...,", length(y) - 1, "] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
     if (degree == 0) {
@@ -109,12 +123,19 @@ function (h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL,
                 x[-i], h[2], x.lb, x.ub)))) \%*\% t(X[i, , drop = FALSE])
         }, 1:length(y), mc.cores = ksum.cores))
     }
-    if (penalize.neg.loo) {
+    if (max.pen.neg.loo) {
         f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
         return(sum(log(f.loo)))
     }
     else {
-        return(mean(log(f.loo[is.finite(f.loo) & f.loo > 0])))
+        if (any(is.finite(f.loo) & f.loo > 0)) {
+            f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & 
+                f.loo > 0])/10^4
+        }
+        else {
+            f.loo[!is.finite(f.loo) | f.loo <= 0] <- 1/10^6
+        }
+        return(sum(log(f.loo)))
     }
   }
 }

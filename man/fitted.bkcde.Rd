@@ -2,10 +2,10 @@
 \alias{fitted.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+An S3 Method to Extract the Fitted Values from a \code{bkcde} Object
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function extracts the fitted values from a \code{bkcde} object.
 }
 \usage{
 fitted.bkcde(x)
@@ -13,24 +13,20 @@ fitted.bkcde(x)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-%%     ~~Describe \code{x} here~~
+    An object of class \code{bkcde}.
 }
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
 \value{
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
+A vector of fitted values.
 }
 \references{
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~
@@ -42,17 +38,21 @@ fitted.bkcde(x)
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or standard data sets, see data().
-
-## The function is currently defined as
-function (x) 
-{
-    if (!inherits(x, "bkcde")) 
-        stop("x must be of class bkcde in fitted.bkcde()")
-    return(x$f)
-  }
+library(bkcde)
+set.seed(42)
+n <- 100
+n.grid <- 100
+x <- rnorm(n)
+x.eval <- 0
+x.eval.grid <- rep(x.eval,n.grid)
+y <- rnorm(n,mean=x)
+y.grid <- seq(min(y),max(y),length=n.grid)
+dgp <- dnorm(y.grid,mean=x.eval)
+bkcde.out <- bkcde(x=x,y=y,
+                   x.eval=x.eval.grid,
+                   y.eval=y.grid,
+                   proper=TRUE)
+plot(y.grid,fitted(bkcde.out))
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):

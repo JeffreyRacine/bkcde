@@ -2,60 +2,74 @@
 \alias{bkcde.optim}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+Optimize the Bandwidth and Polynomial Degree of a Bivariate Kernel Conditional Density Estimator
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function optimizes the bandwidth and polynomial degree of a bivariate kernel conditional density estimator using leave-one-out likelihood cross-validation.
 }
 \usage{
-bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, degree.cores = degree.cores, nmulti.cores = nmulti.cores, penalize.neg.loo = penalize.neg.loo, ...)
+bkcde.optim(x = x, 
+            y = y, 
+            y.lb = y.lb, 
+            y.ub = y.ub, 
+            x.lb = x.lb, 
+            x.ub = x.ub, 
+            poly.raw = poly.raw, 
+            degree.min = degree.min, 
+            degree.max = degree.max, 
+            nmulti = nmulti, 
+            ksum.cores = ksum.cores, 
+            degree.cores = degree.cores, 
+            nmulti.cores = nmulti.cores, 
+            max.pen.neg.loo = max.pen.neg.loo,
+            ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-%%     ~~Describe \code{x} here~~
+  a vector of length $n$ containing the $x$-coordinates of the data points
 }
   \item{y}{
-%%     ~~Describe \code{y} here~~
+  a vector of length $n$ containing the $y$-coordinates of the data points
 }
   \item{y.lb}{
-%%     ~~Describe \code{y.lb} here~~
+  the lower bound of the $y$-variable
 }
   \item{y.ub}{
-%%     ~~Describe \code{y.ub} here~~
+  the upper bound of the $y$-variable
 }
   \item{x.lb}{
-%%     ~~Describe \code{x.lb} here~~
+  the lower bound of the $x$-variable
 }
   \item{x.ub}{
-%%     ~~Describe \code{x.ub} here~~
+  the upper bound of the $x$-variable
 }
   \item{poly.raw}{
-%%     ~~Describe \code{poly.raw} here~~
+  a logical indicating whether the raw polynomial basis should be used
 }
   \item{degree.min}{
-%%     ~~Describe \code{degree.min} here~~
+  the minimum polynomial degree to consider
 }
   \item{degree.max}{
-%%     ~~Describe \code{degree.max} here~~
+  the maximum polynomial degree to consider
 }
   \item{nmulti}{
-%%     ~~Describe \code{nmulti} here~~
+  the number of random initializations to use
 }
   \item{ksum.cores}{
-%%     ~~Describe \code{ksum.cores} here~~
+  the number of cores to use for the kernel sum
 }
   \item{degree.cores}{
-%%     ~~Describe \code{degree.cores} here~~
+  the number of cores to use for the polynomial degree optimization
 }
   \item{nmulti.cores}{
-%%     ~~Describe \code{nmulti.cores} here~~
+  the number of cores to use for the random initialization optimization
 }
-  \item{penalize.neg.loo}{
-%%     ~~Describe \code{penalize.neg.loo} here~~
+  \item{max.pen.neg.loo}{
+  a logical value that indicates whether the maximum penalty for negative leave-one-out likelihoods should be used \code{.Machine\$double.xmin}}
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  additional arguments to be passed to \code{optim}
 }
 }
 \details{
@@ -93,7 +107,7 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
     x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
     degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
     degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-    penalize.neg.loo = penalize.neg.loo, ...) 
+    max.pen.neg.loo = max.pen.neg.loo, ...) 
 {
     if (degree.min < 0 | degree.max >= length(y)) 
         stop("degree.min must lie in [0,1,...,", length(y) - 
@@ -138,7 +152,7 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
             st <- system.time(optim.return <- optim(par = init, 
                 fn = bkcde.loo, x = x, y = y, y.lb = y.lb, y.ub = y.ub, 
                 x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, 
-                degree = p, ksum.cores = ksum.cores, penalize.neg.loo = penalize.neg.loo, 
+                degree = p, ksum.cores = ksum.cores, max.pen.neg.loo = max.pen.neg.loo, 
                 lower = lower, upper = upper, method = "L-BFGS-B", 
                 control = list(fnscale = -1)))
             optim.return$secs.optim <- st["elapsed"]

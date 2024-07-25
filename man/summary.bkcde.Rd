@@ -68,8 +68,9 @@ function (object, ...)
         "\n", sep = "")
     cat("Degree of local polynomial: ", object$degree, "\n", 
         sep = "")
-    cat("Integral of estimate (prior to adjustment): ", object$f.yx.integral, 
-        "\n", sep = "")
+    if (!is.null(object$f.yx.integral)) 
+        cat("Integral of estimate (prior to adjustment): ", object$f.yx.integral, 
+            "\n", sep = "")
     cat("Number of cores used in parallel processing for kernel sum: ", 
         object$ksum.cores, "\n", sep = "")
     cat("Number of cores used in parallel processing for degree selection: ", 

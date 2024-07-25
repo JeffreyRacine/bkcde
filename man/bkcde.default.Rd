@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, n.integrate = 100, nmulti.cores = NULL, nmulti = 5, penalize.neg.loo = FALSE, poly.raw = TRUE, proper = TRUE, ...)
+bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, max.pen.neg.loo = TRUE, n.integrate = 100, nmulti.cores = NULL, nmulti = 5, poly.raw = TRUE, proper = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -54,6 +54,9 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb =
   \item{ksum.cores}{
 %%     ~~Describe \code{ksum.cores} here~~
 }
+  \item{max.pen.neg.loo}{
+%%     ~~Describe \code{max.pen.neg.loo} here~~
+}
   \item{n.integrate}{
 %%     ~~Describe \code{n.integrate} here~~
 }
@@ -62,9 +65,6 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb =
 }
   \item{nmulti}{
 %%     ~~Describe \code{nmulti} here~~
-}
-  \item{penalize.neg.loo}{
-%%     ~~Describe \code{penalize.neg.loo} here~~
 }
   \item{poly.raw}{
 %%     ~~Describe \code{poly.raw} here~~
@@ -110,8 +110,8 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb =
 function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, 
     x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, 
     degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, 
-    n.integrate = 100, nmulti.cores = NULL, nmulti = 5, penalize.neg.loo = FALSE, 
-    poly.raw = TRUE, proper = TRUE, ...) 
+    max.pen.neg.loo = TRUE, n.integrate = 100, nmulti.cores = NULL, 
+    nmulti = 5, poly.raw = TRUE, proper = TRUE, ...) 
 {
     if (is.null(x)) 
         stop("must provide x in bkcde()")
@@ -145,6 +145,8 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
         stop("poly.raw must be logical in bkcde()")
     if (!is.logical(proper)) 
         stop("proper must be logical in bkcde()")
+    if (!is.logical(max.pen.neg.loo)) 
+        stop("max.pen.neg.loo must be logical in bkcde()")
     if (nmulti < 1) 
         stop("nmulti must be at least 1 in bkcde()")
     if (n.integrate < 1) 
@@ -171,7 +173,7 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
             x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
             degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
             degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-            penalize.neg.loo = penalize.neg.loo, ...)
+            max.pen.neg.loo = max.pen.neg.loo, ...)
         h <- optim.out$par
         h.mat <- optim.out$par.mat
         degree <- optim.out$degree
@@ -216,7 +218,6 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
                 x.eval[i])))
         }, 1:length(y.eval), mc.cores = ksum.cores))
     }
-    f.yx[!is.finite(f.yx) | f.yx <= 0] <- .Machine$double.xmin
     if (proper) {
         if (is.finite(y.lb) && is.finite(y.ub)) 
             y.seq <- seq(y.lb, y.ub, length = n.integrate)
@@ -243,16 +244,30 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
                   h[1], y.lb, y.ub), w = NZD(K))) \%*\% t(X.eval)
             }, 1:n.integrate, mc.cores = ksum.cores))
         }
-        f.seq[!is.finite(f.seq) | f.seq <= 0] <- .Machine$double.xmin
+        if (any(!is.finite(f.yx))) 
+            warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
+        f.yx[!is.finite(f.yx)] <- 0
+        if (any(f.yx < 0)) 
+            warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
+        f.yx[f.yx < 0] <- 0
+        f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
         int.f.seq <- integrate.trapezoidal(y.seq, f.seq)[length(y.seq)]
         f.yx <- f.yx/int.f.seq
+    }
+    else {
+        int.f.seq <- NULL
+        if (any(!is.finite(f.yx))) 
+            warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
+        f.yx[!is.finite(f.yx)] <- 0
+        if (any(f.yx < 0)) 
+            warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
     }
     return.list <- list(convergence.mat = convergence.mat, convergence.vec = convergence.vec, 
         convergence = convergence, degree.cores = degree.cores, 
         degree.mat = degree.mat, degree.max = degree.max, degree.min = degree.min, 
         degree = degree, f.yx.integral = int.f.seq, f = f.yx, 
         h.mat = h.mat, h = h, ksum.cores = ksum.cores, nmulti.cores = nmulti.cores, 
-        penalize.neg.loo = penalize.neg.loo, secs.elapsed = as.numeric(difftime(Sys.time(), 
+        max.pen.neg.loo = max.pen.neg.loo, secs.elapsed = as.numeric(difftime(Sys.time(), 
             secs.start.total, units = "secs")), secs.estimate = as.numeric(difftime(Sys.time(), 
             secs.start.estimate, units = "secs")), secs.optim.mat = secs.optim.mat, 
         value.mat = value.mat, value.vec = value.vec, value = value, 
