@@ -266,6 +266,7 @@ bkcde.default <- function(h=NULL,
     f.yx <- f.yx/int.f.seq
   } else {
     ## Issue warning if the estimate is not proper
+    int.f.seq <- NA
     if(any(!is.finite(f.yx) | f.yx < 0)) warning("density estimate < 0, consider option proper=TRUE in bkcde()")
   }
   return.list <- list(convergence.mat=convergence.mat,
