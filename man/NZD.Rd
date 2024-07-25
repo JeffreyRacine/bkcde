@@ -2,10 +2,10 @@
 \alias{NZD}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+The No Zero Divide Function
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function is used to avoid division by zero.
 }
 \usage{
 NZD(a)
@@ -13,7 +13,7 @@ NZD(a)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{a}{
-%%     ~~Describe \code{a} here~~
+    A numeric value.
 }
 }
 \details{
@@ -30,7 +30,7 @@ NZD(a)
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

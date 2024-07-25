@@ -2,10 +2,10 @@
 \alias{summary.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+An S3 Method for Summarizing bkcde Objects
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function provides a summary of the results of a \code{bkcde} object.
 }
 \usage{
 summary.bkcde(object, ...)
@@ -13,10 +13,10 @@ summary.bkcde(object, ...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-%%     ~~Describe \code{object} here~~
+  An object of class \code{bkcde}.
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  Additional arguments to be passed to \code{summary.bkcde}.
 }
 }
 \details{
@@ -33,7 +33,7 @@ summary.bkcde(object, ...)
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

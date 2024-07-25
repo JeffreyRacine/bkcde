@@ -2,78 +2,98 @@
 \alias{bkcde.default}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+Default bkcde Function
 }
 \description{
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, max.pen.neg.loo = TRUE, n.integrate = 100, nmulti.cores = NULL, nmulti = 5, poly.raw = TRUE, proper = TRUE, ...)
+bkcde.default(h = NULL, 
+              x = NULL, 
+              y = NULL, 
+              x.eval = NULL, 
+              y.eval = NULL, 
+              x.lb = NULL, 
+              y.lb = NULL, 
+              x.ub = NULL, 
+              y.ub = NULL, 
+              degree.cores = NULL, 
+              degree.max = 5, 
+              degree.min = 0, 
+              degree = 0, 
+              ksum.cores = 1, 
+              max.pen.neg.loo = TRUE, 
+              n.integrate = 100, 
+              nmulti.cores = NULL, 
+              nmulti = 5, 
+              poly.raw = TRUE, 
+              proper = TRUE, 
+              ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{h}{
-%%     ~~Describe \code{h} here~~
+  a bandwidth vector of length 2, where \code{h[1]} is the bandwidth for the response variable and \code{h[2]} is the bandwidth for the predictor variable
 }
   \item{x}{
-%%     ~~Describe \code{x} here~~
+  a vector of predictor variable values
 }
   \item{y}{
-%%     ~~Describe \code{y} here~~
+  a vector of response variable values
 }
   \item{x.eval}{
-%%     ~~Describe \code{x.eval} here~~
+  a vector of predictor variable values at which to evaluate the density estimate
 }
   \item{y.eval}{
-%%     ~~Describe \code{y.eval} here~~
+  a vector of response variable values at which to evaluate the density estimate
 }
   \item{x.lb}{
-%%     ~~Describe \code{x.lb} here~~
+  the lower bound of the predictor variable
 }
   \item{y.lb}{
-%%     ~~Describe \code{y.lb} here~~
+  the lower bound of the response variable
 }
   \item{x.ub}{
-%%     ~~Describe \code{x.ub} here~~
+  the upper bound of the predictor variable
 }
   \item{y.ub}{
-%%     ~~Describe \code{y.ub} here~~
+  the upper bound of the response variable
 }
   \item{degree.cores}{
-%%     ~~Describe \code{degree.cores} here~~
+  the number of cores to use in parallel processing for the degree optimization
 }
   \item{degree.max}{
-%%     ~~Describe \code{degree.max} here~~
+  the maximum degree of the polynomial to use in the density estimate
 }
   \item{degree.min}{
-%%     ~~Describe \code{degree.min} here~~
+  the minimum degree of the polynomial to use in the density estimate
 }
   \item{degree}{
-%%     ~~Describe \code{degree} here~~
+  the degree of the polynomial to use in the density estimate
 }
   \item{ksum.cores}{
-%%     ~~Describe \code{ksum.cores} here~~
+  the number of cores to use in parallel processing for the kernel sum
 }
   \item{max.pen.neg.loo}{
-%%     ~~Describe \code{max.pen.neg.loo} here~~
+  a logical indicating whether to use the maximum penalty for negative leave-one-out cross-validation estimates
 }
   \item{n.integrate}{
-%%     ~~Describe \code{n.integrate} here~~
+  the number of points to use in the numerical integration of the density estimate
 }
   \item{nmulti.cores}{
-%%     ~~Describe \code{nmulti.cores} here~~
+  the number of cores to use in parallel processing for the multi-dimensional optimization
 }
   \item{nmulti}{
-%%     ~~Describe \code{nmulti} here~~
+  the number of multi-dimensional optimization runs to use in the density estimate
 }
   \item{poly.raw}{
-%%     ~~Describe \code{poly.raw} here~~
+  a logical indicating whether to use raw or orthogonal polynomials in the density estimate
 }
   \item{proper}{
-%%     ~~Describe \code{proper} here~~
+  a logical indicating whether to normalize the density estimate to integrate to 1
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  additional arguments to be passed to the optimization function
 }
 }
 \details{
@@ -90,7 +110,7 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb =
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

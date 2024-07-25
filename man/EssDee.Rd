@@ -2,10 +2,10 @@
 \alias{EssDee}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+A Robust Standard Deviation Estimator
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function estimates the standard deviation of a matrix of data using the median absolute deviation (MAD) and the interquartile range (IQR) as robust estimators. The function returns the minimum of the three estimates. If any of the three estimates is zero, a warning is issued.
 }
 \usage{
 EssDee(y)
@@ -13,7 +13,7 @@ EssDee(y)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{y}{
-%%     ~~Describe \code{y} here~~
+A matrix of data. The function will estimate the standard deviation of each column of the matrix.
 }
 }
 \details{
@@ -30,7 +30,7 @@ EssDee(y)
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

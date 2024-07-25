@@ -2,10 +2,10 @@
 \alias{predict.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+An S3 Method to Predict Values from a Bivariate Kernel Conditional Density Estimator
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function predicts values from a bivariate kernel conditional density estimator.
 }
 \usage{
 predict.bkcde(object, newdata, ...)
@@ -13,13 +13,13 @@ predict.bkcde(object, newdata, ...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-%%     ~~Describe \code{object} here~~
+  An object of class \code{bkcde}.
 }
   \item{newdata}{
-%%     ~~Describe \code{newdata} here~~
+  A data frame containing the values at which to predict the conditional density.
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  Additional arguments to be passed to the function.
 }
 }
 \details{
@@ -36,7 +36,7 @@ predict.bkcde(object, newdata, ...)
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

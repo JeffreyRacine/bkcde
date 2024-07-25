@@ -9,8 +9,7 @@
 \packageDescription{bkcde}
 }
 \details{
-%%  ~~ An overview of how to use the package, ~~
-%%  ~~ including the most important functions ~~
+This package provides a variety of functions to support estimation of bounded response polynomial adaptive conditional kernel density estimates.
 }
 \author{
 \packageAuthor{bkcde}

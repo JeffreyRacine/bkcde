@@ -66,7 +66,7 @@ bkcde.optim(x = x,
   the number of cores to use for the random initialization optimization
 }
   \item{max.pen.neg.loo}{
-  a logical value that indicates whether the maximum penalty for negative leave-one-out likelihoods should be used \code{.Machine\$double.xmin}}
+  a logical value that indicates whether the maximum penalty for negative leave-one-out likelihoods should be used \code{.Machine\$double.xmin}
 }
   \item{\dots}{
   additional arguments to be passed to \code{optim}

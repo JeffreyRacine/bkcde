@@ -2,57 +2,68 @@
 \alias{plot.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+An S3 Method for Plotting Bivariate Kernel Conditional Density Estimates
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function plots bivariate kernel conditional density estimates and optionally their confidence intervals.
 }
 \usage{
-plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simultaneous"), ci.bias.correct = TRUE, alpha = 0.05, B = 9999, plot.cores = NULL, plot = TRUE, sub = NULL, ylim = NULL, ylab = NULL, xlab = NULL, type = NULL, ...)
+plot.bkcde(x, 
+           ci = FALSE, 
+           ci.method = c("all", "Pointwise", "Bonferroni", "Simultaneous"), 
+           ci.bias.correct = TRUE, 
+           alpha = 0.05, B = 9999, 
+           plot.cores = NULL, 
+           plot = TRUE, 
+           sub = NULL, 
+           ylim = NULL, 
+           ylab = NULL, 
+           xlab = NULL, 
+           type = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-%%     ~~Describe \code{x} here~~
+  An object of class \code{bkcde}.
 }
   \item{ci}{
-%%     ~~Describe \code{ci} here~~
+  A logical indicating whether to compute and plot confidence intervals.
 }
   \item{ci.method}{
-%%     ~~Describe \code{ci.method} here~~
+  A character string indicating the method to use for computing confidence intervals.  Possible values are \code{"all"}, \code{"Pointwise"}, \code{"Bonferroni"}, and \code{"Simultaneous"}.
 }
   \item{ci.bias.correct}{
-%%     ~~Describe \code{ci.bias.correct} here~~
+  A logical indicating whether to bias correct the confidence intervals.
 }
   \item{alpha}{
-%%     ~~Describe \code{alpha} here~~
+  A numeric value indicating the significance level.
 }
   \item{B}{
-%%     ~~Describe \code{B} here~~
+  An integer indicating the number of bootstrap samples to use for computing confidence intervals.
 }
   \item{plot.cores}{
-%%     ~~Describe \code{plot.cores} here~~
+  An integer indicating the number of cores to use for parallel computation of confidence intervals.  If \code{NULL}, the number of cores is automatically detected.
 }
   \item{plot}{
-%%     ~~Describe \code{plot} here~~
+  A logical indicating whether to plot the bivariate kernel conditional density estimate or return a data list.
 }
   \item{sub}{
-%%     ~~Describe \code{sub} here~~
+  A character string to be used as a subtitle for the plot.
 }
   \item{ylim}{
-%%     ~~Describe \code{ylim} here~~
+  A numeric vector of length 2 indicating the y-axis limits.
 }
   \item{ylab}{
-%%     ~~Describe \code{ylab} here~~
+  A character string to be used as the y-axis label.
 }
   \item{xlab}{
-%%     ~~Describe \code{xlab} here~~
+  A character string to be used as the x-axis label.
 }
   \item{type}{
-%%     ~~Describe \code{type} here~~
+  A character string indicating the type of plot to use.  Possible values are \code{"l"} for lines and \code{"p"} for points.
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  Additional arguments to be passed to the \code{plot} function.
 }
 }
 \details{
@@ -69,7 +80,7 @@ plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simul
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~
