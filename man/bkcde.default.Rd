@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, degree.min = 0, degree.max = 5, proper = TRUE, nmulti = 5, n.int = 100, ksum.cores = 1, degree.cores = NULL, nmulti.cores = NULL, ...)
+bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, n.integrate = 100, nmulti.cores = NULL, nmulti = 5, penalize.neg.loo = FALSE, poly.raw = TRUE, proper = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -27,47 +27,50 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, y.lb =
   \item{y.eval}{
 %%     ~~Describe \code{y.eval} here~~
 }
-  \item{y.lb}{
-%%     ~~Describe \code{y.lb} here~~
-}
-  \item{y.ub}{
-%%     ~~Describe \code{y.ub} here~~
-}
   \item{x.lb}{
 %%     ~~Describe \code{x.lb} here~~
+}
+  \item{y.lb}{
+%%     ~~Describe \code{y.lb} here~~
 }
   \item{x.ub}{
 %%     ~~Describe \code{x.ub} here~~
 }
-  \item{poly.raw}{
-%%     ~~Describe \code{poly.raw} here~~
-}
-  \item{degree}{
-%%     ~~Describe \code{degree} here~~
-}
-  \item{degree.min}{
-%%     ~~Describe \code{degree.min} here~~
-}
-  \item{degree.max}{
-%%     ~~Describe \code{degree.max} here~~
-}
-  \item{proper}{
-%%     ~~Describe \code{proper} here~~
-}
-  \item{nmulti}{
-%%     ~~Describe \code{nmulti} here~~
-}
-  \item{n.int}{
-%%     ~~Describe \code{n.int} here~~
-}
-  \item{ksum.cores}{
-%%     ~~Describe \code{ksum.cores} here~~
+  \item{y.ub}{
+%%     ~~Describe \code{y.ub} here~~
 }
   \item{degree.cores}{
 %%     ~~Describe \code{degree.cores} here~~
 }
+  \item{degree.max}{
+%%     ~~Describe \code{degree.max} here~~
+}
+  \item{degree.min}{
+%%     ~~Describe \code{degree.min} here~~
+}
+  \item{degree}{
+%%     ~~Describe \code{degree} here~~
+}
+  \item{ksum.cores}{
+%%     ~~Describe \code{ksum.cores} here~~
+}
+  \item{n.integrate}{
+%%     ~~Describe \code{n.integrate} here~~
+}
   \item{nmulti.cores}{
 %%     ~~Describe \code{nmulti.cores} here~~
+}
+  \item{nmulti}{
+%%     ~~Describe \code{nmulti} here~~
+}
+  \item{penalize.neg.loo}{
+%%     ~~Describe \code{penalize.neg.loo} here~~
+}
+  \item{poly.raw}{
+%%     ~~Describe \code{poly.raw} here~~
+}
+  \item{proper}{
+%%     ~~Describe \code{proper} here~~
 }
   \item{\dots}{
 %%     ~~Describe \code{\dots} here~~
@@ -105,10 +108,10 @@ bkcde.default(h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, y.lb =
 
 ## The function is currently defined as
 function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, 
-    y.lb = NULL, y.ub = NULL, x.lb = NULL, x.ub = NULL, poly.raw = TRUE, 
-    degree = 0, degree.min = 0, degree.max = 5, proper = TRUE, 
-    nmulti = 5, n.int = 100, ksum.cores = 1, degree.cores = NULL, 
-    nmulti.cores = NULL, ...) 
+    x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, 
+    degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, 
+    n.integrate = 100, nmulti.cores = NULL, nmulti = 5, penalize.neg.loo = FALSE, 
+    poly.raw = TRUE, proper = TRUE, ...) 
 {
     if (is.null(x)) 
         stop("must provide x in bkcde()")
@@ -144,8 +147,8 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
         stop("proper must be logical in bkcde()")
     if (nmulti < 1) 
         stop("nmulti must be at least 1 in bkcde()")
-    if (n.int < 1) 
-        stop("n.int must be at least 1 in bkcde()")
+    if (n.integrate < 1) 
+        stop("n.integrate must be at least 1 in bkcde()")
     if (degree < 0 | degree >= length(y)) 
         stop("degree must lie in [0,1,...,", length(y) - 1, "] (i.e., [0,1,dots, n-1]) in bkcde()")
     if (degree.min < 0 | degree.min >= length(y)) 
@@ -168,23 +171,31 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
             x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
             degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
             degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-            ...)
+            penalize.neg.loo = penalize.neg.loo, ...)
         h <- optim.out$par
         h.mat <- optim.out$par.mat
         degree <- optim.out$degree
+        degree.mat <- optim.out$degree.mat
         value <- optim.out$value
         value.vec <- optim.out$value.vec
+        value.mat <- optim.out$value.mat
         convergence <- optim.out$convergence
         convergence.vec <- optim.out$convergence.vec
+        convergence.mat <- optim.out$convergence.mat
         secs.optim <- optim.out$secs.optim
+        secs.optim.mat <- optim.out$secs.optim.mat
     }
     else {
         h.mat <- NULL
+        degree.mat <- NULL
         value <- NULL
         value.vec <- NULL
+        value.mat <- NULL
         convergence <- NULL
         convergence.vec <- NULL
+        convergence.mat <- NULL
         secs.optim <- NULL
+        secs.optim.mat <- NULL
     }
     secs.start.estimate <- Sys.time()
     if (degree == 0) {
@@ -208,20 +219,20 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
     f.yx[!is.finite(f.yx) | f.yx <= 0] <- .Machine$double.xmin
     if (proper) {
         if (is.finite(y.lb) && is.finite(y.ub)) 
-            y.seq <- seq(y.lb, y.ub, length = n.int)
+            y.seq <- seq(y.lb, y.ub, length = n.integrate)
         if (is.finite(y.lb) && !is.finite(y.ub)) 
-            y.seq <- seq(y.lb, extendrange(y, f = 10)[2], length = n.int)
+            y.seq <- seq(y.lb, extendrange(y, f = 10)[2], length = n.integrate)
         if (!is.finite(y.lb) && is.finite(y.ub)) 
-            y.seq <- seq(extendrange(y, f = 10)[1], y.ub, length = n.int)
+            y.seq <- seq(extendrange(y, f = 10)[1], y.ub, length = n.integrate)
         if (!is.finite(y.lb) && !is.finite(y.ub)) 
             y.seq <- seq(extendrange(y, f = 10)[1], extendrange(y, 
-                f = 10)[2], length = n.int)
+                f = 10)[2], length = n.integrate)
         K <- kernel.bk(x.eval[1], x, h[2], x.lb, x.ub)
         if (degree == 0) {
             f.seq <- as.numeric(mcmapply(function(i) {
                 mean(kernel.bk(y.seq[i], y, h[1], y.lb, y.ub) * 
                   K)/NZD(mean(K))
-            }, 1:n.int, mc.cores = ksum.cores))
+            }, 1:n.integrate, mc.cores = ksum.cores))
         }
         else {
             X.poly <- poly(x, raw = poly.raw, degree = degree)
@@ -230,21 +241,23 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
             f.seq <- as.numeric(mcmapply(function(i) {
                 coef(lm.wfit(x = X, y = kernel.bk(y.seq[i], y, 
                   h[1], y.lb, y.ub), w = NZD(K))) \%*\% t(X.eval)
-            }, 1:n.int, mc.cores = ksum.cores))
+            }, 1:n.integrate, mc.cores = ksum.cores))
         }
         f.seq[!is.finite(f.seq) | f.seq <= 0] <- .Machine$double.xmin
-        f.yx[!is.finite(f.yx) | f.yx <= 0] <- .Machine$double.xmin
         int.f.seq <- integrate.trapezoidal(y.seq, f.seq)[length(y.seq)]
         f.yx <- f.yx/int.f.seq
     }
-    return.list <- list(f = f.yx, h = h, h.mat = h.mat, degree = degree, 
-        value = value, value.vec = value.vec, convergence = convergence, 
-        convergence.vec = convergence.vec, secs.elapsed = as.numeric(difftime(Sys.time(), 
-            secs.start.total, units = "secs")), secs.optim.vec = as.numeric(secs.optim), 
-        secs.estimate = as.numeric(difftime(Sys.time(), secs.start.estimate, 
-            units = "secs")), f.yx.integral = int.f.seq, y.lb = y.lb, 
-        y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, y = y, x = x, 
-        y.eval = y.eval, x.eval = x.eval)
+    return.list <- list(convergence.mat = convergence.mat, convergence.vec = convergence.vec, 
+        convergence = convergence, degree.cores = degree.cores, 
+        degree.mat = degree.mat, degree.max = degree.max, degree.min = degree.min, 
+        degree = degree, f.yx.integral = int.f.seq, f = f.yx, 
+        h.mat = h.mat, h = h, ksum.cores = ksum.cores, nmulti.cores = nmulti.cores, 
+        penalize.neg.loo = penalize.neg.loo, secs.elapsed = as.numeric(difftime(Sys.time(), 
+            secs.start.total, units = "secs")), secs.estimate = as.numeric(difftime(Sys.time(), 
+            secs.start.estimate, units = "secs")), secs.optim.mat = secs.optim.mat, 
+        value.mat = value.mat, value.vec = value.vec, value = value, 
+        x.eval = x.eval, x.lb = x.lb, x.ub = x.ub, x = x, y.eval = y.eval, 
+        y.lb = y.lb, y.ub = y.ub, y = y)
     class(return.list) <- "bkcde"
     return(return.list)
   }

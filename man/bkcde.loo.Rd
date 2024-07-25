@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1)
+bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1, penalize.neg.loo = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -41,6 +41,9 @@ bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x
 }
   \item{ksum.cores}{
 %%     ~~Describe \code{ksum.cores} here~~
+}
+  \item{penalize.neg.loo}{
+%%     ~~Describe \code{penalize.neg.loo} here~~
 }
 }
 \details{
@@ -75,7 +78,8 @@ bkcde.loo(h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, x.lb = NULL, x
 
 ## The function is currently defined as
 function (h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL, 
-    x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1) 
+    x.lb = NULL, x.ub = NULL, poly.raw = TRUE, degree = 0, ksum.cores = 1, 
+    penalize.neg.loo = FALSE) 
 {
     if (y.lb >= y.ub) 
         stop("y.lb must be less than y.ub in bkcde.loo()")
@@ -105,8 +109,13 @@ function (h = NULL, x = NULL, y = NULL, y.lb = NULL, y.ub = NULL,
                 x[-i], h[2], x.lb, x.ub)))) \%*\% t(X[i, , drop = FALSE])
         }, 1:length(y), mc.cores = ksum.cores))
     }
-    f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
-    return(sum(log(f.loo)))
+    if (penalize.neg.loo) {
+        f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
+        return(sum(log(f.loo)))
+    }
+    else {
+        return(mean(log(f.loo[is.finite(f.loo) & f.loo > 0])))
+    }
   }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

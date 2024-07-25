@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simultaneous"), ci.bias.correct = TRUE, alpha = 0.05, B = 9999, mc.cores = NULL, plot = TRUE, ...)
+plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simultaneous"), ci.bias.correct = TRUE, alpha = 0.05, B = 9999, plot.cores = NULL, plot = TRUE, sub = NULL, ylim = NULL, ylab = NULL, xlab = NULL, type = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -30,11 +30,26 @@ plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simul
   \item{B}{
 %%     ~~Describe \code{B} here~~
 }
-  \item{mc.cores}{
-%%     ~~Describe \code{mc.cores} here~~
+  \item{plot.cores}{
+%%     ~~Describe \code{plot.cores} here~~
 }
   \item{plot}{
 %%     ~~Describe \code{plot} here~~
+}
+  \item{sub}{
+%%     ~~Describe \code{sub} here~~
+}
+  \item{ylim}{
+%%     ~~Describe \code{ylim} here~~
+}
+  \item{ylab}{
+%%     ~~Describe \code{ylab} here~~
+}
+  \item{xlab}{
+%%     ~~Describe \code{xlab} here~~
+}
+  \item{type}{
+%%     ~~Describe \code{type} here~~
 }
   \item{\dots}{
 %%     ~~Describe \code{\dots} here~~
@@ -73,7 +88,8 @@ plot.bkcde(x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", "Simul
 ## The function is currently defined as
 function (x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni", 
     "Simultaneous"), ci.bias.correct = TRUE, alpha = 0.05, B = 9999, 
-    mc.cores = NULL, plot = TRUE, ...) 
+    plot.cores = NULL, plot = TRUE, sub = NULL, ylim = NULL, 
+    ylab = NULL, xlab = NULL, type = NULL, ...) 
 {
     if (!inherits(x, "bkcde")) 
         stop("x must be of class bkcde in plot.bkcde()")
@@ -84,21 +100,21 @@ function (x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni",
         stop("alpha must lie in [0,1] in plot.bkcde()")
     if (B < 1) 
         stop("B must be at least 1 in plot.bkcde()")
-    if (!is.null(mc.cores)) 
-        if (mc.cores < 1) 
-            stop("mc.cores must be at least 1 in plot.bkcde()")
+    if (!is.null(plot.cores)) 
+        if (plot.cores < 1) 
+            stop("plot.cores must be at least 1 in plot.bkcde()")
     ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
     secs.start <- Sys.time()
     if (ci) {
         suppressPackageStartupMessages(library(parallel))
-        if (is.null(mc.cores)) 
-            mc.cores <- detectCores()
+        if (is.null(plot.cores)) 
+            plot.cores <- detectCores()
         boot.mat <- t(mcmapply(function(b) {
             ii <- sample(1:length(x$y), replace = TRUE)
             bkcde(h = x$h, x = x$x[ii], y = x$y[ii], x.eval = x$x.eval, 
                 y.eval = x$y.eval, y.lb = x$y.lb, y.ub = x$y.ub, 
                 x.lb = x$x.lb, x.ub = x$x.ub, degree = x$degree)$f
-        }, 1:B, mc.cores = mc.cores))
+        }, 1:B, mc.cores = plot.cores))
         if (ci.bias.correct) {
             bias.vec <- colMeans(boot.mat) - x$f
             boot.mat <- sweep(boot.mat, 2, bias.vec, "-")
@@ -115,48 +131,62 @@ function (x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni",
         ci.sim.lb <- ci.SCS[, 1]
         ci.sim.ub <- ci.SCS[, 2]
         if (ci.method == "Pointwise") {
-            ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub))
+            if (is.null(ylim)) 
+                ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub))
         }
         else if (ci.method == "Bonferroni") {
-            ylim <- range(c(x$f, ci.bf.lb, ci.bf.ub))
+            if (is.null(ylim)) 
+                ylim <- range(c(x$f, ci.bf.lb, ci.bf.ub))
         }
         else if (ci.method == "Simultaneous") {
-            ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub, ci.bf.lb, 
-                ci.bf.ub))
+            if (is.null(ylim)) 
+                ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub, ci.bf.lb, 
+                  ci.bf.ub))
         }
         else {
-            ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub, ci.bf.lb, 
-                ci.bf.ub, ci.sim.lb, ci.sim.ub))
+            if (is.null(ylim)) 
+                ylim <- range(c(x$f, ci.pw.lb, ci.pw.ub, ci.bf.lb, 
+                  ci.bf.ub, ci.sim.lb, ci.sim.ub))
         }
     }
     else {
-        ylim <- range(x$f)
+        if (is.null(ylim)) 
+            ylim <- range(x$f)
     }
     if (plot) {
-        plot(x$y.eval, x$f, sub = paste("(degree = ", x$degree, 
-            ", h.y = ", round(x$h[1], 4), ", h.x = ", round(x$h[2], 
-                4), ", n = ", length(x$y), ")", sep = ""), ylim = ylim, 
-            ylab = "f(y|x)", xlab = "y|x", type = "l", panel.first = grid(lty = 1))
+        if (is.null(sub)) 
+            sub <- paste("(degree = ", x$degree, ", h.y = ", 
+                round(x$h[1], 3), ", h.x = ", round(x$h[2], 3), 
+                ", n = ", length(x$y), ")", sep = "")
+        if (is.null(ylab)) 
+            ylab <- "f(y|x)"
+        if (is.null(xlab)) 
+            xlab <- paste("y|x=", x$x.eval[1], sep = "")
+        if (is.null(type)) 
+            type <- "l"
+        plot(x$y.eval, x$f, sub = sub, ylim = ylim, ylab = ylab, 
+            xlab = xlab, type = type, panel.first = grid(lty = 1), 
+            ...)
         if (ci & ci.method == "Pointwise") {
             lines(x$y.eval, ci.pw.lb, lty = 2)
             lines(x$y.eval, ci.pw.ub, lty = 2)
-            legend("topright", legend = c("f(y|x)", paste(100 * 
-                (1 - alpha), "\% ", ci.method, " CIs", sep = "")), 
-                lty = c(1, 2), bty = "n")
+            legend("topright", legend = c("Estimated f(y|x)", 
+                paste(100 * (1 - alpha), "\% ", ci.method, " CIs", 
+                  sep = "")), lty = c(1, 2), bty = "n")
         }
         else if (ci & ci.method == "Bonferroni") {
             lines(x$y.eval, ci.bf.lb, lty = 2)
             lines(x$y.eval, ci.bf.ub, lty = 2)
-            legend("topright", legend = c("f(y|x)", paste(100 * 
-                (1 - alpha), "\% ", ci.method, " CIs", sep = "")), 
-                lty = c(1, 2), bty = "n")
+            legend("topright", legend = c("Estimated f(y|x)", 
+                paste(100 * (1 - alpha), "\% ", ci.method, " CIs", 
+                  sep = "")), lty = c(1, 2), bty = "n")
         }
         else if (ci & ci.method == "Simultaneous") {
             lines(x$y.eval, ci.sim.lb, lty = 2)
             lines(x$y.eval, ci.sim.ub, lty = 2)
-            legend("topright", legend = c("f(y|x)", paste(100 * 
-                (1 - alpha), "\% ", ci.method, " CIs", sep = "")), 
-                lty = c(1, 2), bty = "n")
+            legend("topright", legend = c("Estimated f(y|x)", 
+                paste(100 * (1 - alpha), "\% ", ci.method, " CIs", 
+                  sep = "")), lty = c(1, 2), bty = "n")
         }
         else if (ci & ci.method == "all") {
             lines(x$y.eval, ci.pw.lb, lty = 2)
@@ -165,10 +195,10 @@ function (x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni",
             lines(x$y.eval, ci.sim.ub, lty = 3)
             lines(x$y.eval, ci.bf.lb, lty = 4)
             lines(x$y.eval, ci.bf.ub, lty = 4)
-            legend("topright", legend = c("f(y|x)", paste(100 * 
-                (1 - alpha), "\% Pointwise CIs", sep = ""), paste(100 * 
-                (1 - alpha), "\% Simultaneous CIs", sep = ""), 
-                paste(100 * (1 - alpha), "\% Bonferroni CIs", 
+            legend("topright", legend = c("Estimated f(y|x)", 
+                paste(100 * (1 - alpha), "\% Pointwise CIs", sep = ""), 
+                paste(100 * (1 - alpha), "\% Simultaneous CIs", 
+                  sep = ""), paste(100 * (1 - alpha), "\% Bonferroni CIs", 
                   sep = "")), lty = 1:4, bty = "n")
         }
     }
@@ -176,7 +206,7 @@ function (x, ci = FALSE, ci.method = c("all", "Pointwise", "Bonferroni",
         return(list(f = x$f, bias.vec = bias.vec, ci.pw.lb = ci.pw.lb, 
             ci.pw.ub = ci.pw.ub, ci.bf.lb = ci.bf.lb, ci.bf.ub = ci.bf.ub, 
             ci.sim.lb = ci.sim.lb, ci.sim.ub = ci.sim.ub, secs.elapsed = as.numeric(difftime(Sys.time(), 
-                secs.start, units = "secs"))))
+                secs.start, units = "secs")), plot.cores = plot.cores))
     }
   }
 }

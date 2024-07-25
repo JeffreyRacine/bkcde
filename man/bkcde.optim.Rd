@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, degree.cores = degree.cores, nmulti.cores = nmulti.cores, ...)
+bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, degree.cores = degree.cores, nmulti.cores = nmulti.cores, penalize.neg.loo = penalize.neg.loo, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -51,6 +51,9 @@ bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, po
   \item{nmulti.cores}{
 %%     ~~Describe \code{nmulti.cores} here~~
 }
+  \item{penalize.neg.loo}{
+%%     ~~Describe \code{penalize.neg.loo} here~~
+}
   \item{\dots}{
 %%     ~~Describe \code{\dots} here~~
 }
@@ -90,7 +93,7 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
     x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
     degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
     degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-    ...) 
+    penalize.neg.loo = penalize.neg.loo, ...) 
 {
     if (degree.min < 0 | degree.max >= length(y)) 
         stop("degree.min must lie in [0,1,...,", length(y) - 
@@ -119,8 +122,8 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
         -1/6
     }
     upper <- 1000 * c(EssDee(y), EssDee(x))
-    output <- mclapply(degree.min:degree.max, function(p) {
-        optim.return <- mclapply(1:nmulti, function(i) {
+    degree.return <- mclapply(degree.min:degree.max, function(p) {
+        nmulti.return <- mclapply(1:nmulti, function(i) {
             if (i == 1) {
                 init <- c(EssDee(y), EssDee(x)) * n^{
                   -1/6
@@ -135,21 +138,33 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
             st <- system.time(optim.return <- optim(par = init, 
                 fn = bkcde.loo, x = x, y = y, y.lb = y.lb, y.ub = y.ub, 
                 x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, 
-                degree = p, ksum.cores = ksum.cores, lower = lower, 
-                upper = upper, method = "L-BFGS-B", control = list(fnscale = -1)))
+                degree = p, ksum.cores = ksum.cores, penalize.neg.loo = penalize.neg.loo, 
+                lower = lower, upper = upper, method = "L-BFGS-B", 
+                control = list(fnscale = -1)))
             optim.return$secs.optim <- st["elapsed"]
             optim.return$degree <- p
             optim.return
         }, mc.cores = nmulti.cores)
-        optim.out <- optim.return[[which.max(sapply(optim.return, 
+        optim.out <- nmulti.return[[which.max(sapply(nmulti.return, 
             function(x) x$value))]]
-        optim.out$value.vec <- sapply(optim.return, function(x) x$value)
-        optim.out$convergence.vec <- sapply(optim.return, function(x) x$convergence)
-        optim.out$par.mat <- t(sapply(optim.return, function(x) x$par))
-        optim.out$secs.optim <- sapply(optim.return, function(x) x$secs.optim)
+        optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
+        optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
+        optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
+        optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
         optim.out
     }, mc.cores = degree.cores)
-    output[[which.max(sapply(output, function(x) x$value))]]
+    output.return <- degree.return[[which.max(sapply(degree.return, 
+        function(x) x$value))]]
+    output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
+    output.return$value.vec <- sapply(degree.return, function(x) x$value)
+    output.return$value.mat <- t(sapply(degree.return, function(x) x$value.vec))
+    output.return$convergence.vec <- sapply(degree.return, function(x) x$convergence)
+    output.return$convergence.mat <- t(sapply(degree.return, 
+        function(x) x$convergence.vec))
+    output.return$degree.mat <- t(sapply(degree.return, function(x) x$degree.vec))
+    output.return$secs.optim <- sapply(degree.return, function(x) x$secs.optim)
+    output.return$secs.optim.mat <- t(sapply(degree.return, function(x) x$secs.optim.vec))
+    return(output.return)
   }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

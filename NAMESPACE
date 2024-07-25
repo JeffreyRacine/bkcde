@@ -1,6 +1,8 @@
 import(stats, parallel, MCPAN)
-export("bkcde")
-
+export("bkcde", "bkcde.default", "bkcde.loo", "bkcde.optim", "EssDee",
+       "fitted.bkcde", "integrate.trapezoidal", "kernel.bk", "NZD",
+       "plot.bkcde", "predict.bkcde", "summary.bkcde")
+#export("bkcde")
 S3method(bkcde, default)
 S3method(plot, bkcde)
 S3method(fitted, bkcde)

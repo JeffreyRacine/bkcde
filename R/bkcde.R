@@ -86,7 +86,8 @@ bkcde.loo <- function(h=NULL,
                       x.ub=NULL,
                       poly.raw=TRUE,
                       degree=0,
-                      ksum.cores=1) {
+                      ksum.cores=1,
+                      penalize.neg.loo=FALSE) {
   ## Perform some argument checking
   if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
@@ -108,8 +109,13 @@ bkcde.loo <- function(h=NULL,
     ## results for raw polynomials
     f.loo <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))))%*%t(X[i,,drop=FALSE])},1:length(y),mc.cores=ksum.cores))
   }
-  f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
-  return(sum(log(f.loo)))
+  if(penalize.neg.loo) {
+    f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
+    return(sum(log(f.loo)))
+  } else {
+    ## Potentially shorter vector when dropping entries, use mean(log(f.loo[is.finite(f.loo) & f.loo > 0]))
+    return(mean(log(f.loo[is.finite(f.loo) & f.loo > 0])))
+  }
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
@@ -127,20 +133,21 @@ bkcde.default <- function(h=NULL,
                           y=NULL,
                           x.eval=NULL,
                           y.eval=NULL,
-                          y.lb=NULL,
-                          y.ub=NULL,
                           x.lb=NULL,
+                          y.lb=NULL,
                           x.ub=NULL,
-                          poly.raw=TRUE,
-                          degree=0,
-                          degree.min=0,
-                          degree.max=5,
-                          proper=TRUE,
-                          nmulti=5,
-                          n.int=100,
-                          ksum.cores=1,
+                          y.ub=NULL,
                           degree.cores=NULL,
+                          degree.max=5,
+                          degree.min=0,
+                          degree=0,
+                          ksum.cores=1,
+                          n.integrate=100,
                           nmulti.cores=NULL,
+                          nmulti=5,
+                          penalize.neg.loo=FALSE,
+                          poly.raw=TRUE,
+                          proper=TRUE,
                           ...) {
   ## Perform some argument checking, in this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -163,7 +170,7 @@ bkcde.default <- function(h=NULL,
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde()")
   if(!is.logical(proper)) stop("proper must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
-  if(n.int < 1) stop("n.int must be at least 1 in bkcde()")
+  if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
@@ -186,6 +193,7 @@ bkcde.default <- function(h=NULL,
                              ksum.cores=ksum.cores,
                              degree.cores=degree.cores,
                              nmulti.cores=nmulti.cores,
+                             penalize.neg.loo=penalize.neg.loo,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
@@ -232,17 +240,17 @@ bkcde.default <- function(h=NULL,
   if(proper) {
     ## Ensure the estimate is proper - this is peculiar to this implementation
     ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only)
-    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.int)
-    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.int)
-    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.int)
-    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.int)
+    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
+    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
+    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
     ## Presume estimation at single X evaluation point, again peculiar to this
     ## implementation
     K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
     if(degree == 0) {
       ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
       ## compute the estimate \hat f(y|x) as efficiently as possible
-      f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.int,mc.cores=ksum.cores))
+      f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       X <- cbind(1,X.poly)
@@ -250,7 +258,7 @@ bkcde.default <- function(h=NULL,
       ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
       ## regression to estimate \hat f(y|x) rather than the intercept term from
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-      f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.int,mc.cores=ksum.cores))
+      f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.integrate,mc.cores=ksum.cores))
     }
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
@@ -258,34 +266,35 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   }
-  return.list <- list(f=f.yx,
-                      h=h,
-                      h.mat=h.mat,
-                      degree=degree,
-                      degree.mat=degree.mat,
-                      value=value,
-                      value.vec=value.vec,
-                      value.mat=value.mat,
-                      convergence=convergence,
+  return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
-                      convergence.mat=convergence.mat,
-                      secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
-                      secs.optim.mat=secs.optim.mat,
-                      secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
+                      convergence=convergence,
+                      degree.cores=degree.cores,
+                      degree.mat=degree.mat,
+                      degree.max=degree.max,
+                      degree.min=degree.min,
+                      degree=degree,
                       f.yx.integral=int.f.seq,
-                      y.lb=y.lb,
-                      y.ub=y.ub,
+                      f=f.yx,
+                      h.mat=h.mat,
+                      h=h,
+                      ksum.cores=ksum.cores,
+                      nmulti.cores=nmulti.cores,
+                      penalize.neg.loo=penalize.neg.loo,
+                      secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
+                      secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
+                      secs.optim.mat=secs.optim.mat,
+                      value.mat=value.mat,
+                      value.vec=value.vec,
+                      value=value,
+                      x.eval=x.eval,
                       x.lb=x.lb,
                       x.ub=x.ub,
-                      y=y,
                       x=x,
                       y.eval=y.eval,
-                      x.eval=x.eval,
-                      degree.min=degree.min,
-                      degree.max=degree.max,
-                      ksum.cores=ksum.cores,
-                      degree.cores=degree.cores,
-                      nmulti.cores=nmulti.cores) 
+                      y.lb=y.lb,
+                      y.ub=y.ub,
+                      y=y)
   class(return.list) <- "bkcde"
   return(return.list)
 }
@@ -308,6 +317,7 @@ bkcde.optim <- function(x=x,
                         ksum.cores=ksum.cores,
                         degree.cores=degree.cores,
                         nmulti.cores=nmulti.cores,
+                        penalize.neg.loo=penalize.neg.loo,
                         ...) {
   ## Conduct some argument checking
   if(degree.min < 0 | degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
@@ -351,6 +361,7 @@ bkcde.optim <- function(x=x,
                                               poly.raw=poly.raw,
                                               degree=p,
                                               ksum.cores=ksum.cores,
+                                              penalize.neg.loo=penalize.neg.loo,
                                               lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
