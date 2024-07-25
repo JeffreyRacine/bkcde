@@ -154,7 +154,7 @@ bkcde.default <- function(h=NULL,
                           degree=0,
                           ksum.cores=1,
                           max.pen.neg.loo=TRUE,
-                          n.integrate=100,
+                          n.integrate=1000,
                           nmulti.cores=NULL,
                           nmulti=5,
                           poly.raw=TRUE,
@@ -268,10 +268,10 @@ bkcde.default <- function(h=NULL,
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
     if(any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
-    f.yx[!is.finite(f.yx)] <- 0
-    if(any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
-    f.yx[f.yx < 0] <- 0
-    f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
+    f.yx[!is.finite(f.yx)] <- .Machine$double.xmin # 0
+    if(any(f.yx <= 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
+    f.yx[f.yx <= 0] <- .Machine$double.xmin # 0
+    f.seq[!is.finite(f.seq) | f.seq <= 0] <- .Machine$double.xmin # 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   } else {
