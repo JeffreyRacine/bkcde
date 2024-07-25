@@ -246,9 +246,11 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))))%*%t(cbind(1,predict(X.poly,x.eval[i])))},1:length(y.eval),mc.cores=ksum.cores))
   }
-  if(proper) {
+  if(proper & degree > 0) {
     ## Ensure the estimate is proper - this is peculiar to this implementation
-    ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only)
+    ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only).
+    ## Note if degree is 0 then the estimate will be proper by definition so
+    ## there is no need for an adjustment.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
@@ -256,19 +258,13 @@ bkcde.default <- function(h=NULL,
     ## Presume estimation at single X evaluation point, again peculiar to this
     ## implementation
     K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
-    if(degree == 0) {
-      ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
-      ## compute the estimate \hat f(y|x) as efficiently as possible
-      f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
-    } else {
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
-      X.eval <- cbind(1,predict(X.poly,x.eval[1]))
-      ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-      ## regression to estimate \hat f(y|x) rather than the intercept term from
-      ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-      f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.integrate,mc.cores=ksum.cores))
-    }
+    X.poly <- poly(x,raw=poly.raw,degree=degree)
+    X <- cbind(1,X.poly)
+    X.eval <- cbind(1,predict(X.poly,x.eval[1]))
+    ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+    ## regression to estimate \hat f(y|x) rather than the intercept term from
+    ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
+    f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.integrate,mc.cores=ksum.cores))
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
     if(any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
@@ -300,6 +296,7 @@ bkcde.default <- function(h=NULL,
                       ksum.cores=ksum.cores,
                       nmulti.cores=nmulti.cores,
                       max.pen.neg.loo=max.pen.neg.loo,
+                      proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
                       secs.optim.mat=secs.optim.mat,
@@ -451,6 +448,7 @@ plot.bkcde <- function(x,
             y.ub=x$y.ub,
             x.lb=x$x.lb,
             x.ub=x$x.ub,
+            proper=x$proper,
             degree=x$degree)$f
     },1:B,mc.cores=plot.cores))
     if(ci.bias.correct) {
@@ -548,6 +546,7 @@ predict.bkcde <- function(object, newdata, ...) {
                y.ub=object$y.ub,
                x.lb=object$x.lb,
                x.ub=object$x.ub,
+               proper=object$proper,
                degree=object$degree)$f)
 }
 
