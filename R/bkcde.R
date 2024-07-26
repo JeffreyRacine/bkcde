@@ -231,7 +231,7 @@ bkcde.default <- function(h=NULL,
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to estimate \hat f(y|x) rather than the intercept term from
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-    f.yx <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))))%*%t(cbind(1,predict(X.poly,x.eval[i])))},1:length(y.eval),mc.cores=ksum.cores))
+    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=ksum.cores))
   }
   if(proper & degree > 0) {
     ## Ensure the estimate is proper - this is peculiar to this implementation
@@ -251,7 +251,7 @@ bkcde.default <- function(h=NULL,
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to estimate \hat f(y|x) rather than the intercept term from
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-    f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.integrate,mc.cores=ksum.cores))
+    f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
     if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
