@@ -22,7 +22,6 @@ bkcde.default(h = NULL,
               degree.min = 0, 
               degree = 0, 
               ksum.cores = 1, 
-              max.pen.neg.loo = TRUE, 
               n.integrate = 1000, 
               nmulti.cores = NULL, 
               nmulti = 5, 
@@ -74,9 +73,6 @@ bkcde.default(h = NULL,
 }
   \item{ksum.cores}{
   the number of cores to use in parallel processing for the kernel sum
-}
-  \item{max.pen.neg.loo}{
-  a logical indicating whether to use the maximum penalty for negative leave-one-out cross-validation estimates
 }
   \item{n.integrate}{
   the number of points to use in the numerical integration of the density estimate
@@ -134,7 +130,7 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, 
     x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, 
     degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, 
-    max.pen.neg.loo = TRUE, n.integrate = 100, nmulti.cores = NULL, 
+    n.integrate = 100, nmulti.cores = NULL, 
     nmulti = 5, poly.raw = TRUE, proper = TRUE, ...) 
 {
     if (is.null(x)) 
@@ -169,8 +165,6 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
         stop("poly.raw must be logical in bkcde()")
     if (!is.logical(proper)) 
         stop("proper must be logical in bkcde()")
-    if (!is.logical(max.pen.neg.loo)) 
-        stop("max.pen.neg.loo must be logical in bkcde()")
     if (nmulti < 1) 
         stop("nmulti must be at least 1 in bkcde()")
     if (n.integrate < 1) 
@@ -197,7 +191,7 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
             x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
             degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
             degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-            max.pen.neg.loo = max.pen.neg.loo, ...)
+            ...)
         h <- optim.out$par
         h.mat <- optim.out$par.mat
         degree <- optim.out$degree
@@ -291,7 +285,7 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
         degree.mat = degree.mat, degree.max = degree.max, degree.min = degree.min, 
         degree = degree, f.yx.integral = int.f.seq, f = f.yx, 
         h.mat = h.mat, h = h, ksum.cores = ksum.cores, nmulti.cores = nmulti.cores, 
-        max.pen.neg.loo = max.pen.neg.loo, secs.elapsed = as.numeric(difftime(Sys.time(), 
+        secs.elapsed = as.numeric(difftime(Sys.time(), 
             secs.start.total, units = "secs")), secs.estimate = as.numeric(difftime(Sys.time(), 
             secs.start.estimate, units = "secs")), secs.optim.mat = secs.optim.mat, 
         value.mat = value.mat, value.vec = value.vec, value = value, 

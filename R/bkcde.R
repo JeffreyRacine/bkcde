@@ -86,15 +86,13 @@ bkcde.loo <- function(h=NULL,
                       x.ub=NULL,
                       poly.raw=TRUE,
                       degree=0,
-                      ksum.cores=1,
-                      max.pen.neg.loo=TRUE) {
+                      ksum.cores=1) {
   ## Perform some argument checking
   if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
   if(is.null(x)) stop("must provide x in bkcde.loo()")
   if(is.null(y)) stop("must provide y in bkcde.loo()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
-  if(!is.logical(max.pen.neg.loo)) stop("max.pen.neg.loo must be logical in bkcde.loo()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
@@ -111,22 +109,8 @@ bkcde.loo <- function(h=NULL,
     ## results for raw polynomials
     f.loo <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))))%*%t(X[i,,drop=FALSE])},1:length(y),mc.cores=ksum.cores))
   }
-  if(max.pen.neg.loo) {
-    ## Maximize the likelihood by penalizing negative estimates via resetting to
-    ## the smallest positive value
-    f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
-    return(sum(log(f.loo)))
-  } else {
-    ## Maximize the likelihood by penalizing negative estimates via resetting to
-    ## very small values but avoiding potentially flat
-    ## likelihoods/discontinuities arising from .Machine$double.xmin
-    if(any(is.finite(f.loo) & f.loo > 0)) {
-      f.loo[!is.finite(f.loo) | f.loo <= 0] <- min(f.loo[is.finite(f.loo) & f.loo > 0])/10^4
-    } else {
-      f.loo[!is.finite(f.loo) | f.loo <= 0] <- 1/10^6
-    }
-    return(sum(log(f.loo)))
-  }
+  f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
+  return(sum(log(f.loo)))
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
@@ -153,7 +137,6 @@ bkcde.default <- function(h=NULL,
                           degree.min=0,
                           degree=0,
                           ksum.cores=1,
-                          max.pen.neg.loo=TRUE,
                           n.integrate=1000,
                           nmulti.cores=NULL,
                           nmulti=5,
@@ -181,7 +164,6 @@ bkcde.default <- function(h=NULL,
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde()")
   if(!is.logical(proper)) stop("proper must be logical in bkcde()")
-  if(!is.logical(max.pen.neg.loo)) stop("max.pen.neg.loo must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
@@ -206,7 +188,6 @@ bkcde.default <- function(h=NULL,
                              ksum.cores=ksum.cores,
                              degree.cores=degree.cores,
                              nmulti.cores=nmulti.cores,
-                             max.pen.neg.loo=max.pen.neg.loo,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
@@ -296,7 +277,6 @@ bkcde.default <- function(h=NULL,
                       h=h,
                       ksum.cores=ksum.cores,
                       nmulti.cores=nmulti.cores,
-                      max.pen.neg.loo=max.pen.neg.loo,
                       proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
@@ -334,7 +314,6 @@ bkcde.optim <- function(x=x,
                         ksum.cores=ksum.cores,
                         degree.cores=degree.cores,
                         nmulti.cores=nmulti.cores,
-                        max.pen.neg.loo=max.pen.neg.loo,
                         ...) {
   ## Conduct some argument checking
   if(degree.min < 0 | degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
@@ -378,7 +357,6 @@ bkcde.optim <- function(x=x,
                                               poly.raw=poly.raw,
                                               degree=p,
                                               ksum.cores=ksum.cores,
-                                              max.pen.neg.loo=max.pen.neg.loo,
                                               lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
