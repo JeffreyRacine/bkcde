@@ -25,7 +25,7 @@ bkcde.default(h = NULL,
               n.integrate = 1000, 
               nmulti.cores = NULL, 
               nmulti = 5, 
-              poly.raw = TRUE, 
+              poly.raw = FALSE, 
               proper = TRUE, 
               verbose = FALSE,
               ...)
@@ -131,7 +131,7 @@ function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL,
     x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, 
     degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, 
     n.integrate = 100, nmulti.cores = NULL, 
-    nmulti = 5, poly.raw = TRUE, proper = TRUE, ...) 
+    nmulti = 5, poly.raw = FALSE, proper = TRUE, ...) 
 {
     if (is.null(x)) 
         stop("must provide x in bkcde()")

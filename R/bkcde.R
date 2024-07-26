@@ -84,7 +84,7 @@ bkcde.loo <- function(h=NULL,
                       y.ub=NULL,
                       x.lb=NULL,
                       x.ub=NULL,
-                      poly.raw=TRUE,
+                      poly.raw=FALSE,
                       degree=0,
                       ksum.cores=1) {
   ## Perform some argument checking
@@ -145,7 +145,7 @@ bkcde.default <- function(h=NULL,
                           n.integrate=1000,
                           nmulti.cores=NULL,
                           nmulti=5,
-                          poly.raw=TRUE,
+                          poly.raw=FALSE,
                           proper=TRUE,
                           verbose=TRUE,
                           ...) {
