@@ -159,6 +159,7 @@ bkcde.default <- function(h=NULL,
                           nmulti=5,
                           poly.raw=TRUE,
                           proper=TRUE,
+                          verbose=FALSE,
                           ...) {
   ## Perform some argument checking, in this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -267,19 +268,19 @@ bkcde.default <- function(h=NULL,
     f.seq <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)))%*%t(X.eval)},1:n.integrate,mc.cores=ksum.cores))
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
-    if(any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
-    f.yx[!is.finite(f.yx)] <- .Machine$double.xmin # 0
-    if(any(f.yx <= 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
-    f.yx[f.yx <= 0] <- .Machine$double.xmin # 0
-    f.seq[!is.finite(f.seq) | f.seq <= 0] <- .Machine$double.xmin # 0
+    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
+    f.yx[!is.finite(f.yx)] <- 0
+    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
+    f.yx[f.yx < 0] <- 0
+    f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   } else {
     ## Issue warning if the estimate is not finite nor proper
     int.f.seq <- NULL
-    if(any(!is.finite(f.yx))) warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
+    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
     f.yx[!is.finite(f.yx)] <- 0
-    if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
+    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,

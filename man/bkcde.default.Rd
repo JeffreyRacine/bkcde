@@ -28,6 +28,7 @@ bkcde.default(h = NULL,
               nmulti = 5, 
               poly.raw = TRUE, 
               proper = TRUE, 
+              verbose = FALSE,
               ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -91,6 +92,9 @@ bkcde.default(h = NULL,
 }
   \item{proper}{
   a logical indicating whether to normalize the density estimate to integrate to 1
+}
+  \item{verbose}{
+  a logical indicating whether to print innocuous warnings and suggestions
 }
   \item{\dots}{
   additional arguments to be passed to the optimization function

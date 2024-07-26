@@ -2,10 +2,10 @@ Package: bkcde
 Imports: parallel, stats, MCPAN
 Suggests: lpcde, progress
 Type: Package
-Title: What the Package Does (Short Line)
-Version: 1.0
+Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
+Version: 1.1
 Date: 2024-07-22
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line).
-License: What license is it under?
+Author: Jeffrey S. Racine
+Maintainer: Jeffrey S. Racine <raicnej@mcmaster.ca>
+Description: This package uses data-driven methods to jointly determine bandwidths, the polynomial order, and approximates unknown bounds freeing the user from having to select any of these in applied settings.
+License: GPL-3.0-or-later

@@ -19,7 +19,8 @@ plot.bkcde(x,
            ylim = NULL, 
            ylab = NULL, 
            xlab = NULL, 
-           type = NULL, ...)
+           type = NULL, 
+           ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

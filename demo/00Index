@@ -1,1 +1,3 @@
-mc          R code for Monte Carlo simulation
+mc               R code for Monte Carlo simulation
+patent_world     R code for patent data panel (excess zeros and "overdispersion")
+italy            R code for Italian GDP panel
