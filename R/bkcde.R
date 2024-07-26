@@ -106,10 +106,15 @@ bkcde.loo <- function(h=NULL,
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to compute the delete-one estimate \hat f_{-i}(y|x) rather
     ## than the intercept term from lm(y-I(x[i]-X)^2), which produce identical
-    ## results for raw polynomials
-    f.loo <- as.numeric(mcmapply(function(i){coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))))%*%t(X[i,,drop=FALSE])},1:length(y),mc.cores=ksum.cores))
+    ## results for raw polynomials. Note singular design matrices are permitted
+    ## but will return NA for coefficients, so we need to check for this (should
+    ## not occur with orthogonal polynomials)
+    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores))
   }
-  f.loo[!is.finite(f.loo) | f.loo <= 0] <- .Machine$double.xmin
+  ## Return values should be finite and positive, since we removed NA values
+  ## from lm.wfit() there should be no need to check for !is.finite(f.loo) |
+  ## f.loo <= 0
+  f.loo[f.loo <= 0] <- .Machine$double.xmin
   return(sum(log(f.loo)))
 }
 
@@ -142,7 +147,7 @@ bkcde.default <- function(h=NULL,
                           nmulti=5,
                           poly.raw=TRUE,
                           proper=TRUE,
-                          verbose=FALSE,
+                          verbose=TRUE,
                           ...) {
   ## Perform some argument checking, in this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
