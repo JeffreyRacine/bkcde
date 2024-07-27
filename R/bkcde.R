@@ -87,7 +87,8 @@ log.likelihood <- function(delete.one.values,
                            penalty.method=c("smooth","constant","trim"),
                            penalty.cutoff=.Machine$double.xmin,
                            verbose=FALSE,
-                           ...) {
+                           degree=degree,
+                           h=h) {
   penalty.method <- match.arg(penalty.method)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in log.likelihood()")
   likelihood.vec <- numeric(length(delete.one.values))
@@ -99,7 +100,17 @@ log.likelihood <- function(delete.one.values,
     ## values receive identical penalties)
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- log.cutoff
-    if(verbose & any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in log.likelihood() [degree = ",degree,", ",length(likelihood.vec[0 < delete.one.values & delete.one.values < cutoff.val])," elements]",immediate. = TRUE)    
+    if(verbose & any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in log.likelihood() [degree = ",
+                                                                                      degree,
+                                                                                      ", ",
+                                                                                      length(likelihood.vec[0 < delete.one.values & delete.one.values < cutoff.val]),
+                                                                                      ,
+                                                                                      " element(s), h.y = ",
+                                                                                      h[1],
+                                                                                      ", h.x = ",
+                                                                                      h[2],
+                                                                                      "]",
+                                                                                      immediate. = TRUE)
   } else if(penalty.method=="smooth") {
     ## A smooth penalty for negative delete-one values (so the log likelihood
     ## function is smooth except for an extremely narrow range at zero, and
@@ -108,7 +119,17 @@ log.likelihood <- function(delete.one.values,
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values < -cutoff.val] <- -log(abs(delete.one.values[delete.one.values < -cutoff.val]))+2*log.cutoff
     likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val] <- log.cutoff
-    if(verbose & any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in log.likelihood() [degree = ",degree,", ",length(likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val])," elements]",immediate. = TRUE)
+    if(verbose & any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in log.likelihood() [degree = ",
+                                                                                                degree,
+                                                                                                ", ",
+                                                                                                length(likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val]),
+                                                                                                ,
+                                                                                                " element(s), h.y = ",
+                                                                                                h[1],
+                                                                                                ", h.x = ",
+                                                                                                h[2],
+                                                                                                "]",
+                                                                                                immediate. = TRUE)
   } else if(penalty.method=="trim") {
     ## A trim penalty for negative delete-one values (so the log likelihood
     ## ignores negative values so can be shorter than the vector passed in)
@@ -163,7 +184,7 @@ bkcde.loo <- function(h=NULL,
     ## not occur with orthogonal polynomials)
     f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores))
   }
-  return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree)))
+  return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
@@ -310,7 +331,16 @@ bkcde.default <- function(h=NULL,
     f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
-    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",degree,", ", length(f.yx[f.yx<0]), " elements]",immediate. = TRUE)
+    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                        degree,
+                                        ", ",
+                                        length(f.yx[f.yx<0]),
+                                        " element(s), h.y = ",
+                                        h[1],
+                                        ", h.x = ",
+                                        h[2],
+                                        "]",
+                                        immediate. = TRUE)
     f.yx[f.yx < 0] <- 0
     f.seq[f.seq < 0] <- 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
@@ -318,7 +348,16 @@ bkcde.default <- function(h=NULL,
   } else {
     ## Issue warning if the estimate is not finite nor proper
     int.f.seq <- NULL
-    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",degree,", ", length(f.yx[f.yx<0]), " elements]",immediate. = TRUE)
+    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+                                        degree,
+                                        ", ", 
+                                        length(f.yx[f.yx<0]), 
+                                        " element(s), h.y = ",
+                                        h[1],
+                                        ", h.x = ",
+                                        h[2],
+                                        "]",
+                                        immediate. = TRUE)
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
