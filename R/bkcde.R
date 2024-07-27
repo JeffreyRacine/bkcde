@@ -80,7 +80,8 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
 ## There are some slightly smaller numbers possible, i.e. log(4.450148e-324) [1]
 ##  -744.4401, log(4.450148e-325) = -Inf, while log(.Machine$double.xmin) =
 ## -708.3964 (testing on Apple Silicon M2 Max), but this gives a very short
-## range around zero and otherwise provides a smooth function.
+## range around zero and otherwise provides a smooth function that, to my way of
+## thinking, seems to sensibly handles negative delete-one values.
 
 log.likelihood <- function(delete.one.values,
                            penalty.method=c("smooth","constant","trim"),
@@ -92,17 +93,27 @@ log.likelihood <- function(delete.one.values,
   cutoff.val <- penalty.cutoff
   log.cutoff <- log(cutoff.val)
   if(penalty.method=="constant") {
+    ## My "traditional" method, a constant penalty for negative delete-one
+    ## values (so the log likelihood function is non smooth, and all negative
+    ## values receive identical penalties)
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- log.cutoff
     if(verbose & any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in log.likelihood()",immediate. = TRUE)    
   } else if(penalty.method=="smooth") {
+    ## A smooth penalty for negative delete-one values (so the log likelihood
+    ## function is smooth except for an extremely narrow range at zero, and
+    ## negative values receive a penalty that increases as the value becomes
+    ## more negative)
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values < -cutoff.val] <- -log(abs(delete.one.values[delete.one.values < -cutoff.val]))+2*log.cutoff
     likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val] <- log.cutoff
     if(verbose & any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in log.likelihood()",immediate. = TRUE)
   } else if(penalty.method=="trim") {
+    ## A trim penalty for negative delete-one values (so the log likelihood
+    ## ignores negative values so can be shorter than the vector passed in)
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values>cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- NA
+    likelihood.vec <- likelihood.vec[!is.na(likelihood.vec)]
   }
   return(likelihood.vec)
 }
@@ -212,6 +223,7 @@ bkcde.default <- function(h=NULL,
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde()")
   if(!is.logical(proper)) stop("proper must be logical in bkcde()")
+  if(!is.logical(verbose)) stop("verbose must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
@@ -448,7 +460,8 @@ bkcde.optim <- function(x=x,
 ## The following S3 function is used to plot the results of the boundary kernel
 ## CDE along with bootstrap confidence intervals generated as either pointwise
 ## or Bonferroni corrected intervals. A handful of options are available,
-## including returning the confidence intervals and estimates.
+## including returning the confidence intervals (pointwise, Bonferroni and
+## simultaneous) and estimates.
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
@@ -467,7 +480,7 @@ plot.bkcde <- function(x,
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   ci.method <- match.arg(ci.method)
-  if(alpha < 0 | alpha > 1) stop("alpha must lie in [0,1] in plot.bkcde()")
+  if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
