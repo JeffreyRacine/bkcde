@@ -1,8 +1,11 @@
 import(stats, parallel, MCPAN)
+importFrom("grDevices", "extendrange")
+importFrom("graphics", "grid", "legend", "lines")
+importFrom("parallel", "mcmapply", "mclapply")
+importFrom("MCPAN", "SCSrank")
 export("bkcde", "bkcde.default", "bkcde.loo", "bkcde.optim", "EssDee",
-       "fitted.bkcde", "integrate.trapezoidal", "kernel.bk", "NZD",
-       "plot.bkcde", "predict.bkcde", "summary.bkcde")
-#export("bkcde")
+       "fitted.bkcde", "integrate.trapezoidal", "kernel.bk", "log.likelihood",
+       "NZD","plot.bkcde", "predict.bkcde", "summary.bkcde")
 S3method(bkcde, default)
 S3method(plot, bkcde)
 S3method(fitted, bkcde)
