@@ -74,11 +74,18 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
 
 ## This is a likelihood function that supports constant, smooth, and trim
 ## approaches for dealing with density estimates (delete-one) that may be
-## improper and negative in particular
+## improper and negative in particular. Note we use the smallest non-zero
+## normalized floating-point number (a power of the radix, i.e., double.base ^
+## double.min.exp, normally 2.225074e-308) as the cutoff value for the penalty.
+## There are some slightly smaller numbers possible, i.e. log(4.450148e-324) [1]
+##  -744.4401, log(4.450148e-325) = -Inf, while log(.Machine$double.xmin) =
+## -708.3964 (testing on Apple Silicon M2 Max), but this gives a very short
+## range around zero and otherwise provides a smooth function.
 
 log.likelihood <- function(delete.one.values,
-                           penalty.method=c("constant","smooth","trim"),
-                           penalty.cutoff=.Machine$double.eps) {
+                           penalty.method=c("smooth","constant","trim"),
+                           penalty.cutoff=.Machine$double.xmin,
+                           verbose=FALSE) {
   penalty.method <- match.arg(penalty.method)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in log.likelihood()")
   likelihood.vec <- numeric(length(delete.one.values))
@@ -87,10 +94,12 @@ log.likelihood <- function(delete.one.values,
   if(penalty.method=="constant") {
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- log.cutoff
+    if(verbose & any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in log.likelihood()",immediate. = TRUE)    
   } else if(penalty.method=="smooth") {
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values < -cutoff.val] <- -log(abs(delete.one.values[delete.one.values < -cutoff.val]))+2*log.cutoff
     likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val] <- log.cutoff
+    if(verbose & any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in log.likelihood()",immediate. = TRUE)
   } else if(penalty.method=="trim") {
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values>cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- NA
@@ -114,7 +123,8 @@ bkcde.loo <- function(h=NULL,
                       degree=0,
                       ksum.cores=1,
                       penalty.method=NULL,
-                      penalty.cutoff=NULL) {
+                      penalty.cutoff=NULL,
+                      verbose=FALSE) {
   ## Perform some argument checking
   if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
@@ -146,7 +156,7 @@ bkcde.loo <- function(h=NULL,
   ## f.loo <= 0
   # f.loo[f.loo <= 0] <- .Machine$double.xmin
   # return(sum(log(f.loo)))
-  return(sum(log.likelihood(f.loo,penalty.method="smooth")))
+  return(sum(log.likelihood(f.loo,penalty.method="smooth",penalty.cutoff=penalty.cutoff,verbose=verbose)))
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
@@ -177,10 +187,10 @@ bkcde.default <- function(h=NULL,
                           nmulti.cores=NULL,
                           nmulti=5,
                           penalty.method=c("smooth","constant","trim"),
-                          penalty.cutoff=.Machine$double.eps,
+                          penalty.cutoff=.Machine$double.xmin,
                           poly.raw=FALSE,
                           proper=TRUE,
-                          verbose=TRUE,
+                          verbose=FALSE,
                           ...) {
   ## Perform some argument checking, in this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -230,6 +240,7 @@ bkcde.default <- function(h=NULL,
                              nmulti.cores=nmulti.cores,
                              penalty.method=penalty.method,
                              penalty.cutoff=penalty.cutoff,
+                             verbose=verbose,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
@@ -291,9 +302,9 @@ bkcde.default <- function(h=NULL,
     f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
     ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
     ## and integrates to 1, non-negativity of f.yx is already ensured above)
-    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
+    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()",immediate. = TRUE)
     f.yx[!is.finite(f.yx)] <- 0
-    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
+    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()",immediate. = TRUE)
     f.yx[f.yx < 0] <- 0
     f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
@@ -301,9 +312,9 @@ bkcde.default <- function(h=NULL,
   } else {
     ## Issue warning if the estimate is not finite nor proper
     int.f.seq <- NULL
-    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
+    if(verbose & any(!is.finite(f.yx))) warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()",immediate. = TRUE)
     f.yx[!is.finite(f.yx)] <- 0
-    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
+    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde()",immediate. = TRUE)
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
@@ -358,6 +369,7 @@ bkcde.optim <- function(x=x,
                         nmulti.cores=nmulti.cores,
                         penalty.method=penalty.method,
                         penalty.cutoff=penalty.cutoff,
+                        verbose=verbose,
                         ...) {
   ## Conduct some argument checking
   if(degree.min < 0 | degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
@@ -403,6 +415,7 @@ bkcde.optim <- function(x=x,
                                               ksum.cores=ksum.cores,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
+                                              verbose=verbose,
                                               lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
