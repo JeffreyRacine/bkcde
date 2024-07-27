@@ -72,6 +72,32 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
 }
 
+## This is a likelihood function that supports constant, smooth, and trim
+## approaches for dealing with density estimates (delete-one) that may be
+## improper and negative in particular
+
+log.likelihood <- function(delete.one.values,
+                           penalty.method=c("constant","smooth","trim"),
+                           penalty.cutoff=.Machine$double.eps) {
+  penalty.method <- match.arg(penalty.method)
+  if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in log.likelihood()")
+  likelihood.vec <- numeric(length(delete.one.values))
+  cutoff.val <- penalty.cutoff
+  log.cutoff <- log(cutoff.val)
+  if(penalty.method=="constant") {
+    likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
+    likelihood.vec[delete.one.values <= cutoff.val] <- log.cutoff
+  } else if(penalty.method=="smooth") {
+    likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
+    likelihood.vec[delete.one.values < -cutoff.val] <- -log(abs(delete.one.values[delete.one.values < -cutoff.val]))+2*log.cutoff
+    likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val] <- log.cutoff
+  } else if(penalty.method=="trim") {
+    likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values>cutoff.val])
+    likelihood.vec[delete.one.values <= cutoff.val] <- NA
+  }
+  return(likelihood.vec)
+}
+
 ## This is the leave-one-out likelihood cross-validation function that supports
 ## local polynomial estimation of degree p (raw polynomials are the default, but
 ## orthogonal polynomials can be used as well and appear to provide identical
@@ -86,7 +112,9 @@ bkcde.loo <- function(h=NULL,
                       x.ub=NULL,
                       poly.raw=FALSE,
                       degree=0,
-                      ksum.cores=1) {
+                      ksum.cores=1,
+                      penalty.method=NULL,
+                      penalty.cutoff=NULL) {
   ## Perform some argument checking
   if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
@@ -94,6 +122,8 @@ bkcde.loo <- function(h=NULL,
   if(is.null(y)) stop("must provide y in bkcde.loo()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde.loo()")
+  if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.loo()")
+  if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
     ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
@@ -114,8 +144,9 @@ bkcde.loo <- function(h=NULL,
   ## Return values should be finite and positive, since we removed NA values
   ## from lm.wfit() there should be no need to check for !is.finite(f.loo) |
   ## f.loo <= 0
-  f.loo[f.loo <= 0] <- .Machine$double.xmin
-  return(sum(log(f.loo)))
+  # f.loo[f.loo <= 0] <- .Machine$double.xmin
+  # return(sum(log(f.loo)))
+  return(sum(log.likelihood(f.loo,penalty.method="smooth")))
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
@@ -145,6 +176,8 @@ bkcde.default <- function(h=NULL,
                           n.integrate=1000,
                           nmulti.cores=NULL,
                           nmulti=5,
+                          penalty.method=c("smooth","constant","trim"),
+                          penalty.cutoff=.Machine$double.eps,
                           poly.raw=FALSE,
                           proper=TRUE,
                           verbose=TRUE,
@@ -178,6 +211,8 @@ bkcde.default <- function(h=NULL,
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
   if(is.null(degree.cores)) degree.cores <- degree.max-degree.min+1
   if(is.null(nmulti.cores)) nmulti.cores <- nmulti
+  penalty.method <- match.arg(penalty.method)
+  if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
   if(is.null(h)) {
     optim.out <- bkcde.optim(x=x,
@@ -193,6 +228,8 @@ bkcde.default <- function(h=NULL,
                              ksum.cores=ksum.cores,
                              degree.cores=degree.cores,
                              nmulti.cores=nmulti.cores,
+                             penalty.method=penalty.method,
+                             penalty.cutoff=penalty.cutoff,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
@@ -319,6 +356,8 @@ bkcde.optim <- function(x=x,
                         ksum.cores=ksum.cores,
                         degree.cores=degree.cores,
                         nmulti.cores=nmulti.cores,
+                        penalty.method=penalty.method,
+                        penalty.cutoff=penalty.cutoff,
                         ...) {
   ## Conduct some argument checking
   if(degree.min < 0 | degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
@@ -362,6 +401,8 @@ bkcde.optim <- function(x=x,
                                               poly.raw=poly.raw,
                                               degree=p,
                                               ksum.cores=ksum.cores,
+                                              penalty.method=penalty.method,
+                                              penalty.cutoff=penalty.cutoff,
                                               lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
