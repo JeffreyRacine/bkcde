@@ -344,7 +344,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
     f.yx <- f.yx/int.f.seq
   } else {
-    ## Issue warning if the estimate is not finite nor proper
+    ## Issue warning if the estimate is improper (here, negative)
     int.f.seq <- NULL
     if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                         degree,
