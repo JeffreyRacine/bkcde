@@ -167,7 +167,7 @@ bkcde.loo <- function(h=NULL,
   ## f.loo <= 0
   # f.loo[f.loo <= 0] <- .Machine$double.xmin
   # return(sum(log(f.loo)))
-  return(sum(log.likelihood(f.loo,penalty.method="smooth",penalty.cutoff=penalty.cutoff,verbose=verbose)))
+  return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose)))
 }
 
 ## This function computes the conditional density \hat f(y|x) where, if no
