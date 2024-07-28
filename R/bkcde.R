@@ -350,9 +350,9 @@ bkcde.default <- function(h=NULL,
     f.yx <- f.yx/int.f.seq
   } else {
     ## Issue warning if the estimate is improper (here, negative)
-    int.f.seq.pre.neg <- NULL
-    int.f.seq <- NULL
-    int.f.seq.post <- NULL
+    int.f.seq.pre.neg <- NA
+    int.f.seq <- NA
+    int.f.seq.post <- NA
     if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", ", 
