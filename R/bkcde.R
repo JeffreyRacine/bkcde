@@ -10,10 +10,7 @@
 ## the number of cores used in the parallel processing is set to the value of
 ## the respective argument.  But when these are set to 1, the number of cores
 ## used in the parallel processing is set to 1, i.e., serial processing occurs
-## exactly as if lapply() and mapply() were being used. Therefore, we always
-## need to load the parallel package.
-
-suppressPackageStartupMessages(require(parallel))
+## exactly as if lapply() and mapply() were being used.
 
 ## The functions are as follows:
 
@@ -515,7 +512,6 @@ plot.bkcde <- function(x,
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   secs.start <- Sys.time()
   if(ci) {
-    suppressPackageStartupMessages(library(parallel))
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
@@ -539,7 +535,6 @@ plot.bkcde <- function(x,
     ci.pw.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / 2)
     ci.bf.lb <- apply(boot.mat, 2, quantile, probs = alpha / (2 * length(x$y.eval)))
     ci.bf.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(x$y.eval)))
-    suppressPackageStartupMessages(require(MCPAN))
     ci.SCS <- SCSrank(boot.mat, conf.level=1-alpha)$conf.int
     ci.sim.lb <- ci.SCS[,1]
     ci.sim.ub <- ci.SCS[,2]
@@ -608,9 +603,9 @@ plot.bkcde <- function(x,
   }
 }
 
-fitted.bkcde <- function(x) {
-  if(!inherits(x,"bkcde")) stop("x must be of class bkcde in fitted.bkcde()")
-  return(x$f)
+fitted.bkcde <- function(object, ...) {
+  if(!inherits(object,"bkcde")) stop("object must be of class bkcde in fitted.bkcde()")
+  return(object$f)
 }
 
 predict.bkcde <- function(object, newdata, ...) {
