@@ -336,13 +336,23 @@ bkcde.default <- function(h=NULL,
                                         round(h[2],5),
                                         "]",
                                         immediate. = TRUE)
-    f.yx[f.yx < 0] <- 0
+    ## Compute integral of f.seq including negative values
+    int.f.seq.pre.neg <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+    ## Set negative f.seq values to 0
     f.seq[f.seq < 0] <- 0
+    ## Compute integral of f.seq after setting negative values to 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+    ## Compute integral of f.seq after setting negative values to 0 and
+    ## correcting to ensure final estimate integrates to 1
+    int.f.seq.post<- integrate.trapezoidal(y.seq,f.seq/int.f.seq)[length(y.seq)]
+    # Correct the estimate to ensure it is non-negative and integrates to 1
+    f.yx[f.yx < 0] <- 0
     f.yx <- f.yx/int.f.seq
   } else {
     ## Issue warning if the estimate is improper (here, negative)
+    int.f.seq.pre.neg <- NULL
     int.f.seq <- NULL
+    int.f.seq.post <- NULL
     if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", ", 
@@ -363,6 +373,8 @@ bkcde.default <- function(h=NULL,
                       degree.min=degree.min,
                       degree=degree,
                       f.yx.integral=int.f.seq,
+                      f.yx.integral.post=int.f.seq.post,
+                      f.yx.integral.pre.neg=int.f.seq.pre.neg,
                       f=f.yx,
                       h.mat=h.mat,
                       h=h,
@@ -634,7 +646,9 @@ summary.bkcde <- function(object, ...) {
   cat("Number of evaluation points: ",length(object$y.eval),"\n",sep="")
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
-  if(!is.null(object$f.yx.integral)) cat("Integral of estimate (prior to adjustment): ",object$f.yx.integral,"\n",sep="")
+  if(!is.null(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity adjustment): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=8),"\n",sep="")
+  if(!is.null(object$f.yx.integral)) cat("Integral of estimate (prior to integration to 1 adjustment): ",formatC(object$f.yx.integral,format="f",digits=8),"\n",sep="")
+  if(!is.null(object$f.yx.integral.post)) cat("Integral of estimate (post adjustments): ",formatC(object$f.yx.integral.post,format="f",digits=8),"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for degree selection: ",object$degree.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for multistart optimization: ",object$nmulti.cores,"\n",sep="")
