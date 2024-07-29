@@ -1,8 +1,8 @@
 ## Description: This file contains the R functions used in the simulation study
 ## for implementing the boundary kernel conditional density estimator with
-## cross-validated bandwidth selection.  The functions are used in the
-## simulation study in the file mc.R, licensed under GPL-3.0-or-later; written
-## by Jeffrey Racine <racinej@mcmaster.ca>
+## cross-validated bandwidth and polynomial order selection.  The functions are
+## used in the simulation study in the file mc.R, licensed under
+## GPL-3.0-or-later; written by Jeffrey Racine <racinej@mcmaster.ca>
 
 ## mclapply() and mcmapply() from the parallel package are used throughout
 ## instead of lapply() and mapply() to allow for multi-core computing, and when
@@ -10,14 +10,20 @@
 ## the number of cores used in the parallel processing is set to the value of
 ## the respective argument.  But when these are set to 1, the number of cores
 ## used in the parallel processing is set to 1, i.e., serial processing occurs
-## exactly as if lapply() and mapply() were being used.
+## exactly as if lapply() and mapply() were being used. If verbose=TRUE is
+## enabled, it appears warnings are most likely to appear immediately running
+## things in serial mode.
 
-## The functions are as follows:
+## The functions are briefly described below.  The functions include
+## integrate.trapezoidal(), NZD(), EssDee(), kernel.bk(), log.likelihood(),
+## bkcde.loo(), bkcde(), bkcde.default(), bkcde.optim(), plot.bkcde(), and
+## SCSrank() (the last from the MCSPAN package [Multiple contrast tests and
+## simultaneous confidence intervals]).
 
-## This function will compute the cumulative integral at each sample realization
-## using the trapezoidal rule and the cumsum() function as we need to compute
-## this in a computationally efficient manner to render some estimators "proper"
-## (non-negative and integrating to 1).
+## integrate.trapezoidal() computes the cumulative integral at each sample
+## realization using the trapezoidal rule and the cumsum() function as we need
+## to compute this in a computationally efficient manner to render some
+## estimators "proper" (non-negative and integrating to 1).
 
 integrate.trapezoidal <- function(x,y) {
   n <- length(x)
@@ -38,15 +44,15 @@ integrate.trapezoidal <- function(x,y) {
   return(int.vec[rank.x]-cf)
 }
 
-## This is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
+## NZD() is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
 ## accepted coding practice for a variety of languages
 
 NZD <- function(a) {
   ifelse(a<0,pmin(-.Machine$double.eps,a),pmax(.Machine$double.eps,a))
 }
 
-## This function returns a robust measure of spread (it can accept both vectors
-## and matrices)
+## EssDee() returns a robust measure of spread (it can accept both vectors and
+## matrices)
 
 EssDee <- function(y){
   if(any(dim(as.matrix(y)) == 0)) return(0)
@@ -59,8 +65,8 @@ EssDee <- function(y){
   return(a)
 }
 
-## This is the doubly truncated Gaussian boundary kernel function from Racine et
-## al 2024
+## kernel.bk() is the doubly truncated Gaussian boundary kernel function from
+## Racine et al 2024
 
 kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## Checking for bounds involves a bit of overhead (20%), so here we presume a
@@ -69,8 +75,8 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
 }
 
-## This is a likelihood function that supports constant, smooth, and trim
-## approaches for dealing with density estimates (delete-one) that may be
+## log.likelihood() is a likelihood function that supports constant, smooth, and
+## trim approaches for dealing with density estimates (delete-one) that may be
 ## improper and negative in particular. Note we use the smallest non-zero
 ## normalized floating-point number (a power of the radix, i.e., double.base ^
 ## double.min.exp, normally 2.225074e-308) as the cutoff value for the penalty.
@@ -135,10 +141,10 @@ log.likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
-## This is the leave-one-out likelihood cross-validation function that supports
-## local polynomial estimation of degree p (raw polynomials are the default, but
-## orthogonal polynomials can be used as well and appear to provide identical
-## results for modest p.max)
+## bkcde.loo() is the leave-one-out likelihood cross-validation function that
+## supports local polynomial estimation of degree p (raw polynomials are the
+## default, but orthogonal polynomials can be used as well and appear to provide
+## identical results for modest p.max)
 
 bkcde.loo <- function(h=NULL,
                       x=NULL,
@@ -182,13 +188,14 @@ bkcde.loo <- function(h=NULL,
   return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
 }
 
-## This function computes the conditional density \hat f(y|x) where, if no
-## bandwidth is provided, then likelihood cross-validation is used to select the
-## bandwidth via numerical optimization with 5 restarts by default to maximize
-## the likelihood and (hopefully) avoid local optima. This function supports
-## local polynomial orders [0,1,...,n-1] where n is the number of sample
-## realizations (raw polynomials are the default, but orthogonal polynomials can
-## be used as well and appear to provide identical results for modest p.max)
+## bckde() and bkcde.default() compute the conditional density \hat f(y|x)
+## where, if no bandwidth is provided, then likelihood cross-validation is used
+## to select the bandwidths and polynomial order via numerical optimization with
+## 5 restarts by default to maximize the likelihood and (hopefully) avoid local
+## optima. This function supports local polynomial orders [0,1,...,n-1] where n
+## is the number of sample realizations (raw polynomials or orthogonal
+## polynomials can be used and appear to provide identical results for modest
+## p.max)
 
 bkcde <- function(...) UseMethod("bkcde")
 
@@ -399,7 +406,7 @@ bkcde.default <- function(h=NULL,
   return(return.list)
 }
 
-## This function conducts numerical optimization for bandwidth selection in
+## bkcde.optim() conducts numerical optimization for bandwidth selection in
 ## bkcde() using the optim() function with the L-BFGS-B method which allows box
 ## constraints, that is each variable can be given a lower and/or upper bound
 ## (bandwidths must be positive so this is necessary).
@@ -495,11 +502,11 @@ bkcde.optim <- function(x=x,
   return(output.return)
 }
 
-## The following S3 function is used to plot the results of the boundary kernel
-## CDE along with bootstrap confidence intervals generated as either pointwise
-## or Bonferroni corrected intervals. A handful of options are available,
-## including returning the confidence intervals (pointwise, Bonferroni and
-## simultaneous) and estimates.
+## plot.bkcde() is used to plot the results of the boundary kernel CDE along
+## with bootstrap confidence intervals generated as either pointwise or
+## Bonferroni corrected intervals. A handful of options are available, including
+## returning the confidence intervals (pointwise, Bonferroni and simultaneous)
+## and estimates.
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
@@ -615,10 +622,15 @@ plot.bkcde <- function(x,
   }
 }
 
+## fitted.bkcde() returns the estimated conditional density f(y|x) at the
+## specified evaluation points used to estimate the density
+
 fitted.bkcde <- function(object, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in fitted.bkcde()")
   return(object$f)
 }
+
+## predict.bkcde() returns the estimated conditional density f(y|x) at new evaluation points
 
 predict.bkcde <- function(object, newdata, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in predict.bkcde()")
@@ -636,6 +648,8 @@ predict.bkcde <- function(object, newdata, ...) {
                proper=object$proper,
                degree=object$degree)$f)
 }
+
+## summary.bkcde() provides a summary of the boundary kernel CDE object
 
 summary.bkcde <- function(object, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in summary.bkcde()")
