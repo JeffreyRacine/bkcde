@@ -23,7 +23,10 @@
 ## integrate.trapezoidal() computes the cumulative integral at each sample
 ## realization using the trapezoidal rule and the cumsum() function as we need
 ## to compute this in a computationally efficient manner to render some
-## estimators "proper" (non-negative and integrating to 1).
+## estimators "proper" (non-negative and integrating to 1). Vectors are paired
+## naturally but need not be ordered (the function will take care of that for
+## you).  The function also includes a correction term to ensure the integral is
+## correct at the boundary.
 
 integrate.trapezoidal <- function(x,y) {
   n <- length(x)
@@ -75,16 +78,24 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
 }
 
-## log.likelihood() is a likelihood function that supports constant, smooth, and
-## trim approaches for dealing with density estimates (delete-one) that may be
-## improper and negative in particular. Note we use the smallest non-zero
-## normalized floating-point number (a power of the radix, i.e., double.base ^
-## double.min.exp, normally 2.225074e-308) as the cutoff value for the penalty.
-## There are some slightly smaller numbers possible, i.e. log(4.450148e-324) [1]
-##  -744.4401, log(4.450148e-325) = -Inf, while log(.Machine$double.xmin) =
-## -708.3964 (testing on Apple Silicon M2 Max), but this gives a very short
-## range around zero and otherwise provides a smooth function that, to my way of
-## thinking, seems to sensibly handles negative delete-one values.
+## log.likelihood() returns a likelihood function that supports constant,
+## smooth, and trim approaches for dealing with density estimates (delete-one)
+## that may be improper and, in particular, negative. Note we use the smallest
+## non-zero normalized floating-point number (a power of the radix, i.e.,
+## double.base ^ double.min.exp, normally 2.225074e-308) as the cutoff value for
+## the penalty. There are some slightly smaller numbers possible, i.e.
+## log(4.450148e-324) = -744.4401, log(4.450148e-325) = -Inf, while
+## log(.Machine$double.xmin) = -708.3964 (testing on Apple Silicon M2 Max), but
+## this gives a very short range around zero where penalties will be constant
+## (but appropriate) and otherwise provides a smooth function that, to my way of
+## thinking, seems to sensibly handles negative delete-one values. Since
+## log(0)=-Inf and since we need to return finite values to any numerical
+## optimization function, we need to trap this case hence checking whether the
+## vector of delete-one values exceeds 0 or not (we check that it is greater
+## than .Machine$double.xmin).  You can create a vector containing negative
+## values then plot it to see how the penalty functions behave for different
+## choices (they are identical for positive values). If you don't approve of
+## this hack simply use the two-lines in the "constant" case.
 
 log.likelihood <- function(delete.one.values,
                            penalty.method=c("smooth","constant","trim"),
@@ -142,9 +153,9 @@ log.likelihood <- function(delete.one.values,
 }
 
 ## bkcde.loo() is the leave-one-out likelihood cross-validation function that
-## supports local polynomial estimation of degree p (raw polynomials are the
-## default, but orthogonal polynomials can be used as well and appear to provide
-## identical results for modest p.max)
+## supports local polynomial estimation of degree p (raw polynomials or
+## orthogonal polynomials can be used and appear to provide identical results
+## for modest p.max)
 
 bkcde.loo <- function(h=NULL,
                       x=NULL,
@@ -191,11 +202,12 @@ bkcde.loo <- function(h=NULL,
 ## bckde() and bkcde.default() compute the conditional density \hat f(y|x)
 ## where, if no bandwidth is provided, then likelihood cross-validation is used
 ## to select the bandwidths and polynomial order via numerical optimization with
-## 5 restarts by default to maximize the likelihood and (hopefully) avoid local
+## 5 restarts by default and polynomial orders 0,1,...,5 by default. Restarting
+## is used in an attempt to maximize the likelihood and (hopefully) avoid local
 ## optima. This function supports local polynomial orders [0,1,...,n-1] where n
 ## is the number of sample realizations (raw polynomials or orthogonal
 ## polynomials can be used and appear to provide identical results for modest
-## p.max)
+## degree.max)
 
 bkcde <- function(...) UseMethod("bkcde")
 
@@ -222,7 +234,7 @@ bkcde.default <- function(h=NULL,
                           proper=TRUE,
                           verbose=FALSE,
                           ...) {
-  ## Perform some argument checking, in this function parallel processing takes
+  ## Perform some argument checking. In this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
   ## requested would be equal to the number of multistarts (this is particularly
   ## useful to avoid local optima in the optimization of the bandwidths)
@@ -255,6 +267,8 @@ bkcde.default <- function(h=NULL,
   penalty.method <- match.arg(penalty.method)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
+  ## If no bandwidth is provided, then likelihood cross-validation is used to
+  ## obtain the bandwidths and polynomial order
   if(is.null(h)) {
     optim.out <- bkcde.optim(x=x,
                              y=y,
@@ -312,27 +326,32 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=ksum.cores))
   }
+  ## Ensure the estimate is proper - this is peculiar to this implementation
+  ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only).
+  ## Note if degree is 0 then the estimate should be proper by definition so
+  ## there should be no need for an adjustment.
   if(proper & degree > 0) {
-    ## Ensure the estimate is proper - this is peculiar to this implementation
-    ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only).
-    ## Note if degree is 0 then the estimate will be proper by definition so
-    ## there is no need for an adjustment.
+    ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    ## Presume estimation at single X evaluation point, again peculiar to this
-    ## implementation
     K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
     X.poly <- poly(x,raw=poly.raw,degree=degree)
     X <- cbind(1,X.poly)
+    ## Presume estimation at single X evaluation point, again peculiar to this
+    ## implementation, value taken is first element. You can do this on a grid
+    ## by calling this function repeatedly with a different x.eval vector (each
+    ## vector containing identical values per Cattaneo et al).
     X.eval <- cbind(1,predict(X.poly,x.eval[1]))
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to estimate \hat f(y|x) rather than the intercept term from
-    ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
+    ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
+    ## the integral we create a sequence of estimated values along an
+    ## appropriate grid then compute the integral of the estimate on this grid.
     f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
-    ## If proper = TRUE, ensure the final result is proper (i.e., non-negative
-    ## and integrates to 1, non-negativity of f.yx is already ensured above)
+    ## Ensure the final result is proper (i.e., non-negative and integrates to
+    ## 1, non-negativity of f.yx is already ensured above)
     if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", ",
@@ -343,20 +362,19 @@ bkcde.default <- function(h=NULL,
                                         round(h[2],5),
                                         "]",
                                         immediate. = TRUE)
-    ## Compute integral of f.seq including negative values
+    ## Compute integral of f.seq including any possible negative values
     int.f.seq.pre.neg <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-    ## Set negative f.seq values to 0
+    ## Set any possible negative f.seq values to 0
     f.seq[f.seq < 0] <- 0
-    ## Compute integral of f.seq after setting negative values to 0
+    ## Compute integral of f.seq after setting any possible negative values to 0
     int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-    ## Compute integral of f.seq after setting negative values to 0 and
-    ## correcting to ensure final estimate integrates to 1
+    ## Compute integral of f.seq after setting any possible negative values to 0
+    ## and correcting to ensure final estimate integrates to 1
     int.f.seq.post<- integrate.trapezoidal(y.seq,f.seq/int.f.seq)[length(y.seq)]
     # Correct the estimate to ensure it is non-negative and integrates to 1
     f.yx[f.yx < 0] <- 0
     f.yx <- f.yx/int.f.seq
   } else {
-    ## Issue warning if the estimate is improper (here, negative)
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
@@ -406,10 +424,10 @@ bkcde.default <- function(h=NULL,
   return(return.list)
 }
 
-## bkcde.optim() conducts numerical optimization for bandwidth selection in
-## bkcde() using the optim() function with the L-BFGS-B method which allows box
-## constraints, that is each variable can be given a lower and/or upper bound
-## (bandwidths must be positive so this is necessary).
+## bkcde.optim() conducts numerical optimization for bandwidth selection and
+## polynomial order in bkcde() using the optim() function with the L-BFGS-B
+## method which allows box constraints, that is each variable can be given a
+## lower and/or upper bound (bandwidths must be positive so this is necessary).
 
 bkcde.optim <- function(x=x,
                         y=y,
@@ -448,8 +466,8 @@ bkcde.optim <- function(x=x,
   n <- length(y)
   lower <- 0.1*c(EssDee(y),EssDee(x))*n^{-1/6}
   upper <- 1000*c(EssDee(y),EssDee(x))
-  ## Here we conduct optimization over all models in parallel each having
-  ## degree p in [degree.min,degree.max]
+  ## Here we conduct optimization over all models (i.e., polynomial orders) in
+  ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over nmulti multistarts in
     ## parallel
@@ -503,10 +521,16 @@ bkcde.optim <- function(x=x,
 }
 
 ## plot.bkcde() is used to plot the results of the boundary kernel CDE along
-## with bootstrap confidence intervals generated as either pointwise or
-## Bonferroni corrected intervals. A handful of options are available, including
-## returning the confidence intervals (pointwise, Bonferroni and simultaneous)
-## and estimates.
+## with bootstrap confidence intervals generated as either pointwise,
+## Bonferroni, or simultaneous intervals. A simple bootstrap mean correction is
+## applied (there are likely better ways of doing this outside of a bootstrap
+## procedure). A handful of options are available, including returning the
+## confidence intervals (pointwise, Bonferroni and simultaneous) and estimates.
+## Note that a large number of bootstrap replications should be used,
+## particularly if Bonferroni corrections are requested, and in such cases the
+## number of bootstrap replications should increase with the grid size (i.e., the
+## number of evaluation points). The function uses the SCSrank() function from
+## the SCS package to compute simultaneous confidence intervals.
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
@@ -623,7 +647,8 @@ plot.bkcde <- function(x,
 }
 
 ## fitted.bkcde() returns the estimated conditional density f(y|x) at the
-## specified evaluation points used to estimate the density
+## specified evaluation points used to estimate the density in the function
+## call.
 
 fitted.bkcde <- function(object, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in fitted.bkcde()")
