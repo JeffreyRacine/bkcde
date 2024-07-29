@@ -6,11 +6,11 @@ library(pglm)
 ## a data-driven fashion.
 data(PatentsRD)
 attach(PatentsRD)
-plot(year, patent, type="l", col="blue", lwd=2, xlab="Year", ylab="Number of patent")
-# barplot(table(patent), col="blue", xlab="Number of patent", ylab="Frequency")
+# plot(year, patent, type="l", col="blue", lwd=2, xlab="Year", ylab="Number of patent")
+barplot(table(patent), col="blue", xlab="Number of patent", ylab="Frequency")
 
 library(bkcde)
-n.grid <- 1000
+n.grid <- 2500
 x <- as.integer(as.character(year))
 x.eval <- np::uocquantile(x,0.5)
 x.eval.grid <- rep(x.eval,n.grid)
