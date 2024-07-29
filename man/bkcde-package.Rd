@@ -1,6 +1,5 @@
 \name{bkcde-package}
 \alias{bkcde-package}
-\alias{bkcde}
 \docType{package}
 \title{
 \packageTitle{bkcde}

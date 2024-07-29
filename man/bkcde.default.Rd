@@ -122,178 +122,67 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or standard data sets, see data().
+library(bkcde)
 
-## The function is currently defined as
-function (h = NULL, x = NULL, y = NULL, x.eval = NULL, y.eval = NULL, 
-    x.lb = NULL, y.lb = NULL, x.ub = NULL, y.ub = NULL, degree.cores = NULL, 
-    degree.max = 5, degree.min = 0, degree = 0, ksum.cores = 1, 
-    n.integrate = 100, nmulti.cores = NULL, 
-    nmulti = 5, poly.raw = FALSE, proper = TRUE, ...) 
-{
-    if (is.null(x)) 
-        stop("must provide x in bkcde()")
-    if (is.null(y)) 
-        stop("must provide y in bkcde()")
-    if (is.null(x.eval)) 
-        stop("must provide x.eval in bkcde()")
-    if (is.null(y.eval)) 
-        stop("must provide y.eval in bkcde()")
-    if (is.null(y.lb)) 
-        y.lb <- min(y)
-    if (is.null(y.ub)) 
-        y.ub <- max(y)
-    if (is.null(x.lb)) 
-        x.lb <- min(x)
-    if (is.null(x.ub)) 
-        x.ub <- max(x)
-    if (any(y < y.lb) | any(y > y.ub)) 
-        stop("y must lie in [y.lb,y.ub] in bkcde()")
-    if (any(y.eval < y.lb) | any(y.eval > y.ub)) 
-        stop("y.eval must lie in [y.lb,y.ub] in bkcde()")
-    if (any(x < x.lb) | any(x > x.ub)) 
-        stop("x must lie in [x.lb,x.ub] in bkcde()")
-    if (any(x.eval < x.lb) | any(x.eval > x.ub)) 
-        stop("x.eval must lie in [x.lb,x.ub] in bkcde()")
-    if (y.lb >= y.ub) 
-        stop("y.lb must be less than y.ub in bkcde()")
-    if (x.lb >= x.ub) 
-        stop("x.lb must be less than x.ub in bkcde()")
-    if (!is.logical(poly.raw)) 
-        stop("poly.raw must be logical in bkcde()")
-    if (!is.logical(proper)) 
-        stop("proper must be logical in bkcde()")
-    if (nmulti < 1) 
-        stop("nmulti must be at least 1 in bkcde()")
-    if (n.integrate < 1) 
-        stop("n.integrate must be at least 1 in bkcde()")
-    if (degree < 0 | degree >= length(y)) 
-        stop("degree must lie in [0,1,...,", length(y) - 1, "] (i.e., [0,1,dots, n-1]) in bkcde()")
-    if (degree.min < 0 | degree.min >= length(y)) 
-        stop("degree.min must lie in [0,1,...,", length(y) - 
-            1, "] (i.e., [0,1,dots, n-1]) in bkcde()")
-    if (degree.max < 0 | degree.max >= length(y)) 
-        stop("degree.max must lie in [0,1,...,", length(y) - 
-            1, "] (i.e., [0,1,dots, n-1]) in bkcde()")
-    if (degree.min > degree.max) 
-        stop("degree.min must be <= degree.max in bkcde()")
-    if (ksum.cores < 1) 
-        stop("ksum.cores must be at least 1 in bkcde()")
-    if (is.null(degree.cores)) 
-        degree.cores <- degree.max - degree.min + 1
-    if (is.null(nmulti.cores)) 
-        nmulti.cores <- nmulti
-    secs.start.total <- Sys.time()
-    if (is.null(h)) {
-        optim.out <- bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, 
-            x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
-            degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
-            degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-            ...)
-        h <- optim.out$par
-        h.mat <- optim.out$par.mat
-        degree <- optim.out$degree
-        degree.mat <- optim.out$degree.mat
-        value <- optim.out$value
-        value.vec <- optim.out$value.vec
-        value.mat <- optim.out$value.mat
-        convergence <- optim.out$convergence
-        convergence.vec <- optim.out$convergence.vec
-        convergence.mat <- optim.out$convergence.mat
-        secs.optim <- optim.out$secs.optim
-        secs.optim.mat <- optim.out$secs.optim.mat
-    }
-    else {
-        h.mat <- NULL
-        degree.mat <- NULL
-        value <- NULL
-        value.vec <- NULL
-        value.mat <- NULL
-        convergence <- NULL
-        convergence.vec <- NULL
-        convergence.mat <- NULL
-        secs.optim <- NULL
-        secs.optim.mat <- NULL
-    }
-    secs.start.estimate <- Sys.time()
-    if (degree == 0) {
-        f.yx <- as.numeric(mcmapply(function(i) {
-            kernel.bk.x <- kernel.bk(x.eval[i], x, h[2], x.lb, 
-                x.ub)
-            mean(kernel.bk(y.eval[i], y, h[1], y.lb, y.ub) * 
-                kernel.bk.x)/NZD(mean(kernel.bk.x))
-        }, 1:length(y.eval), mc.cores = ksum.cores))
-    }
-    else {
-        X.poly <- poly(x, raw = poly.raw, degree = degree)
-        X <- cbind(1, X.poly)
-        f.yx <- as.numeric(mcmapply(function(i) {
-            coef(lm.wfit(x = X, y = kernel.bk(y.eval[i], y, h[1], 
-                y.lb, y.ub), w = NZD(kernel.bk(x.eval[i], x, 
-                h[2], x.lb, x.ub)))) \%*\% t(cbind(1, predict(X.poly, 
-                x.eval[i])))
-        }, 1:length(y.eval), mc.cores = ksum.cores))
-    }
-    if (proper) {
-        if (is.finite(y.lb) && is.finite(y.ub)) 
-            y.seq <- seq(y.lb, y.ub, length = n.integrate)
-        if (is.finite(y.lb) && !is.finite(y.ub)) 
-            y.seq <- seq(y.lb, extendrange(y, f = 10)[2], length = n.integrate)
-        if (!is.finite(y.lb) && is.finite(y.ub)) 
-            y.seq <- seq(extendrange(y, f = 10)[1], y.ub, length = n.integrate)
-        if (!is.finite(y.lb) && !is.finite(y.ub)) 
-            y.seq <- seq(extendrange(y, f = 10)[1], extendrange(y, 
-                f = 10)[2], length = n.integrate)
-        K <- kernel.bk(x.eval[1], x, h[2], x.lb, x.ub)
-        if (degree == 0) {
-            f.seq <- as.numeric(mcmapply(function(i) {
-                mean(kernel.bk(y.seq[i], y, h[1], y.lb, y.ub) * 
-                  K)/NZD(mean(K))
-            }, 1:n.integrate, mc.cores = ksum.cores))
-        }
-        else {
-            X.poly <- poly(x, raw = poly.raw, degree = degree)
-            X <- cbind(1, X.poly)
-            X.eval <- cbind(1, predict(X.poly, x.eval[1]))
-            f.seq <- as.numeric(mcmapply(function(i) {
-                coef(lm.wfit(x = X, y = kernel.bk(y.seq[i], y, 
-                  h[1], y.lb, y.ub), w = NZD(K))) \%*\% t(X.eval)
-            }, 1:n.integrate, mc.cores = ksum.cores))
-        }
-        if (any(!is.finite(f.yx))) 
-            warning("non-finite density estimate reset to 0 via option proper=TRUE in bkcde()")
-        f.yx[!is.finite(f.yx)] <- 0
-        if (any(f.yx < 0)) 
-            warning("negative density estimate reset to 0 via option proper=TRUE in bkcde()")
-        f.yx[f.yx < 0] <- 0
-        f.seq[!is.finite(f.seq) | f.seq < 0] <- 0
-        int.f.seq <- integrate.trapezoidal(y.seq, f.seq)[length(y.seq)]
-        f.yx <- f.yx/int.f.seq
-    }
-    else {
-        int.f.seq <- NULL
-        if (any(!is.finite(f.yx))) 
-            warning("non-finite density estimate encountered with option proper=FALSE, reset to 0 in bkcde()")
-        f.yx[!is.finite(f.yx)] <- 0
-        if (any(f.yx < 0)) 
-            warning("negative density estimate encountered, consider option proper=TRUE in bkcde()")
-    }
-    return.list <- list(convergence.mat = convergence.mat, convergence.vec = convergence.vec, 
-        convergence = convergence, degree.cores = degree.cores, 
-        degree.mat = degree.mat, degree.max = degree.max, degree.min = degree.min, 
-        degree = degree, f.yx.integral = int.f.seq, f = f.yx, 
-        h.mat = h.mat, h = h, ksum.cores = ksum.cores, nmulti.cores = nmulti.cores, 
-        secs.elapsed = as.numeric(difftime(Sys.time(), 
-            secs.start.total, units = "secs")), secs.estimate = as.numeric(difftime(Sys.time(), 
-            secs.start.estimate, units = "secs")), secs.optim.mat = secs.optim.mat, 
-        value.mat = value.mat, value.vec = value.vec, value = value, 
-        x.eval = x.eval, x.lb = x.lb, x.ub = x.ub, x = x, y.eval = y.eval, 
-        y.lb = y.lb, y.ub = y.ub, y = y)
-    class(return.list) <- "bkcde"
-    return(return.list)
-  }
+set.seed(42)
+n <- 250
+n.grid <- 100
+
+x <- rnorm(n)
+x.eval <- 0
+x.eval.grid <- rep(x.eval,n.grid)
+y <- rnorm(n,mean=x)
+y.grid <- seq(min(y),max(y),length=n.grid)
+dgp <- dnorm(y.grid,mean=x.eval)
+
+par(mfrow=c(2,2))
+
+bkcde.out <- bkcde(x=x,y=y,
+                   x.eval=x.eval.grid,
+                   y.eval=y.grid,
+                   proper=TRUE)
+
+sqrt(sum((bkcde.out$f - dgp)^2))
+
+summary(bkcde.out)
+
+plot(bkcde.out,ylim=range(dgp,bkcde.out$f),main="Proper (Corrected) BKCDE")
+lines(y.grid,dgp,col=3)
+
+## Create a perspective plot, ensure estimate is proper at each unique x value
+## using predict() function which will invoke proper=TRUE since it was the
+## option used in the function call (default)
+
+x.seq <- seq(min(x),max(x),length=25)
+y.seq <- seq(min(y),max(y),length=length(x.seq))
+data.mat.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
+for(i in 1:length(x.seq)){
+  data.mat.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
+}
+persp(x=x.seq,y=y.seq,z=data.mat.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Proper (Corrected) BKCDE")
+
+bkcde.out <- bkcde(x=x,y=y,
+                   x.eval=x.eval.grid,
+                   y.eval=y.grid,
+                   proper=FALSE)
+
+sqrt(sum((bkcde.out$f - dgp)^2))
+
+summary(bkcde.out)
+
+plot(bkcde.out,ylim=range(dgp,bkcde.out$f),main="Improper (Potentially) BKCDE")
+lines(y.grid,dgp,col=3)
+
+## Create a perspective plot, but since the estimate is improper, the estimate
+## can potentially take on negative values
+
+x.seq <- seq(min(x),max(x),length=25)
+y.seq <- seq(min(y),max(y),length=length(x.seq))
+data.mat.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
+for(i in 1:length(x.seq)){
+  data.mat.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
+}
+persp(x=x.seq,y=y.seq,z=data.mat.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Improper (Potentially) BKCDE")
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
