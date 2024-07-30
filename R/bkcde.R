@@ -232,6 +232,7 @@ bkcde.default <- function(h=NULL,
                           penalty.cutoff=.Machine$double.xmin,
                           poly.raw=FALSE,
                           proper=TRUE,
+                          proper.all.x=FALSE,
                           verbose=FALSE,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
@@ -336,48 +337,101 @@ bkcde.default <- function(h=NULL,
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    ## Presume estimation at single X evaluation point, again peculiar to this
-    ## implementation, value taken is first element. You can do this on a grid
-    ## by calling this function repeatedly with a different x.eval vector (each
-    ## vector containing identical values per Cattaneo et al).
-    K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
-    if(degree == 0) {
-      f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
+    if(!proper.all.x) { 
+      ## Presume estimation at single X evaluation point, again peculiar to this
+      ## implementation, value taken is first element. You can do this on a grid
+      ## by calling this function repeatedly with a different x.eval vector (each
+      ## vector containing identical values per Cattaneo et al).
+      K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
+      if(degree == 0) {
+        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
+      } else {
+        X.poly <- poly(x,raw=poly.raw,degree=degree)
+        X <- cbind(1,X.poly)
+        X.eval <- cbind(1,predict(X.poly,x.eval[1]))
+        ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+        ## regression to estimate \hat f(y|x) rather than the intercept term from
+        ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
+        ## the integral we create a sequence of estimated values along an
+        ## appropriate grid then compute the integral of the estimate on this grid.
+        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+      }
+      ## Ensure the final result is proper (i.e., non-negative and integrates to
+      ## 1)
+      if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                          degree,
+                                          ", ",
+                                          length(f.yx[f.yx<0]),
+                                          " element(s), h.y = ",
+                                          round(h[1],5),
+                                          ", h.x = ",
+                                          round(h[2],5),
+                                          "]",
+                                          immediate. = TRUE)
+      ## Compute integral of f.seq including any possible negative values
+      int.f.seq.pre.neg <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+      ## Set any possible negative f.seq values to 0
+      f.seq[f.seq < 0] <- 0
+      ## Compute integral of f.seq after setting any possible negative values to 0
+      int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+      ## Compute integral of f.seq after setting any possible negative values to 0
+      ## and correcting to ensure final estimate integrates to 1
+      int.f.seq.post <- integrate.trapezoidal(y.seq,f.seq/int.f.seq)[length(y.seq)]
+      # Correct the estimate to ensure it is non-negative and integrates to 1
+      f.yx[f.yx < 0] <- 0
+      f.yx <- f.yx/int.f.seq
     } else {
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
-      X.eval <- cbind(1,predict(X.poly,x.eval[1]))
-      ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-      ## regression to estimate \hat f(y|x) rather than the intercept term from
-      ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
-      ## the integral we create a sequence of estimated values along an
-      ## appropriate grid then compute the integral of the estimate on this grid.
-      f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+      ## Presume estimation at single X evaluation point, again peculiar to this
+      ## implementation, value taken is first element. You can do this on a grid
+      ## by calling this function repeatedly with a different x.eval vector (each
+      ## vector containing identical values per Cattaneo et al).
+      int.f.seq.pre.neg <- numeric()
+      int.f.seq <- numeric()
+      int.f.seq.post <- numeric()
+      for(j in 1:length(x.eval)) {
+        K <- kernel.bk(x.eval[j],x,h[2],x.lb,x.ub)
+        if(degree == 0) {
+          f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
+        } else {
+          X.poly <- poly(x,raw=poly.raw,degree=degree)
+          X <- cbind(1,X.poly)
+          X.eval <- cbind(1,predict(X.poly,x.eval[j]))
+          ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+          ## regression to estimate \hat f(y|x) rather than the intercept term from
+          ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
+          ## the integral we create a sequence of estimated values along an
+          ## appropriate grid then compute the integral of the estimate on this grid.
+          f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+        }
+        ## Ensure the final result is proper (i.e., non-negative and integrates
+        ## to 1)
+        if(verbose & f.yx[j] < 0) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                            degree,
+                                            ", j = ",
+                                            j,
+                                            " element(s), h.y = ",
+                                            round(h[1],5),
+                                            ", h.x = ",
+                                            round(h[2],5),
+                                            "]",
+                                            immediate. = TRUE)
+        ## Compute integral of f.seq including any possible negative values
+        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        ## Set any possible negative f.seq values to 0
+        f.seq[f.seq < 0] <- 0
+        ## Compute integral of f.seq after setting any possible negative values to 0
+        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        ## Compute integral of f.seq after setting any possible negative values to 0
+        ## and correcting to ensure final estimate integrates to 1
+        int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
+        # Correct the estimate to ensure it is non-negative and integrates to 1
+        if(f.yx[j] < 0) f.yx[j] <- 0
+        f.yx[j] <- f.yx[j]/int.f.seq[j]      
+      }
+      int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
+      int.f.seq <- mean(int.f.seq)
+      int.f.seq.post <- mean(int.f.seq.post)
     }
-    ## Ensure the final result is proper (i.e., non-negative and integrates to
-    ## 1, non-negativity of f.yx is already ensured above)
-    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
-                                        degree,
-                                        ", ",
-                                        length(f.yx[f.yx<0]),
-                                        " element(s), h.y = ",
-                                        round(h[1],5),
-                                        ", h.x = ",
-                                        round(h[2],5),
-                                        "]",
-                                        immediate. = TRUE)
-    ## Compute integral of f.seq including any possible negative values
-    int.f.seq.pre.neg <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-    ## Set any possible negative f.seq values to 0
-    f.seq[f.seq < 0] <- 0
-    ## Compute integral of f.seq after setting any possible negative values to 0
-    int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-    ## Compute integral of f.seq after setting any possible negative values to 0
-    ## and correcting to ensure final estimate integrates to 1
-    int.f.seq.post<- integrate.trapezoidal(y.seq,f.seq/int.f.seq)[length(y.seq)]
-    # Correct the estimate to ensure it is non-negative and integrates to 1
-    f.yx[f.yx < 0] <- 0
-    f.yx <- f.yx/int.f.seq
   } else {
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
@@ -410,6 +464,7 @@ bkcde.default <- function(h=NULL,
                       ksum.cores=ksum.cores,
                       nmulti.cores=nmulti.cores,
                       proper=proper,
+                      proper.all.x=proper.all.x,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
                       secs.optim.mat=secs.optim.mat,
