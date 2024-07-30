@@ -630,8 +630,8 @@ plot.bkcde <- function(x,
       warning("Confidence intervals not available with perspective plotting in plot.bkcde()",immediate. = TRUE)
       ci <- FALSE
     }
-    x.grid <- seq(min(x$x),max(x$x),length=plot.grid)
-    y.grid <- seq(min(x$y),max(x$y),length=plot.grid)
+    x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.grid)
+    y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.grid)
     data.grid <- expand.grid(x.grid,y.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
