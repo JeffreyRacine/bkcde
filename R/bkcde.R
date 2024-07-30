@@ -242,6 +242,7 @@ bkcde.default <- function(h=NULL,
   if(is.null(y)) stop("must provide y in bkcde()")
   if(!is.null(x.eval) & is.null(y.eval) & length(x.eval) != length(y)) stop("length of x.eval must be equal to length of y in bkcde() when y.eval is NULL")
   if(!is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in bkcde() when x.eval and y.eval are not NULL")
+  if(!is.null(y.eval) & is.null(x.eval)) stop("must provide x.eval in bkcde() when y.eval is not NULL")
   if(is.null(x.eval)) x.eval <- x
   if(is.null(y.eval)) y.eval <- y
   if(is.null(y.lb)) y.lb <- min(y)
@@ -599,6 +600,7 @@ plot.bkcde <- function(x,
                        B = 9999, 
                        plot.grid = 20,
                        plot.persp = FALSE,
+                       proper = NULL,
                        x.eval = NULL,
                        phi = NULL,
                        plot.cores = NULL,
@@ -619,6 +621,9 @@ plot.bkcde <- function(x,
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
+  if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
+  #if(!is.null(proper) & x$proper != proper) warning("proper argument in plot.bkcde() will override proper argument in bkcde() [",x$proper,"]",immediate. = TRUE)
+  if(is.null(proper)) proper <- x$proper
   secs.start <- Sys.time()
   if(plot.persp) {
     if(ci) {
@@ -633,7 +638,7 @@ plot.bkcde <- function(x,
     if(is.null(xlab)) xlab <- "x"
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
-    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2)),plot.grid,plot.grid)
+    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2),proper=proper),plot.grid,plot.grid)
     if(plot) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
   } else {
     predict.mat <- NULL
@@ -647,7 +652,7 @@ plot.bkcde <- function(x,
                     y.ub=x$y.ub,
                     x.lb=x$x.lb,
                     x.ub=x$x.ub,
-                    proper=x$proper,
+                    proper=proper,
                     degree=x$degree)$f
   if(ci) {
     if(is.null(plot.cores)) plot.cores <- detectCores()
@@ -662,7 +667,7 @@ plot.bkcde <- function(x,
             y.ub=x$y.ub,
             x.lb=x$x.lb,
             x.ub=x$x.ub,
-            proper=x$proper,
+            proper=proper,
             degree=x$degree)$f
     },1:B,mc.cores=plot.cores))
     if(ci.bias.correct) {
@@ -753,10 +758,12 @@ fitted.bkcde <- function(object, ...) {
 
 ## predict.bkcde() returns the estimated conditional density f(y|x) at new evaluation points
 
-predict.bkcde <- function(object, newdata, ...) {
+predict.bkcde <- function(object, newdata, proper = NULL, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in predict.bkcde()")
   if(!is.data.frame(newdata)) stop("newdata must be a data frame in predict.bkcde()")
   if(!all(names(newdata) %in% c("x","y"))) stop("newdata must contain columns x and y in predict.bkcde()")
+  if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in predict.bkcde()")
+  if(is.null(proper)) proper <- object$proper
   return(bkcde(h=object$h,
                x=object$x,
                y=object$y,
@@ -766,7 +773,7 @@ predict.bkcde <- function(object, newdata, ...) {
                y.ub=object$y.ub,
                x.lb=object$x.lb,
                x.ub=object$x.ub,
-               proper=object$proper,
+               proper=proper,
                degree=object$degree)$f)
 }
 
