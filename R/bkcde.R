@@ -617,6 +617,10 @@ plot.bkcde <- function(x,
   secs.start <- Sys.time()
   if(length(unique(x$x.eval)) > 1) {
     plot.persp <- TRUE
+    if(ci) {
+      warning("Confidence intervals not available with perspective plotting in plot.bkcde()",immediate. = TRUE)
+      ci <- FALSE
+    }
     x.grid <- seq(min(x$x),max(x$x),length=persp.grid)
     y.grid <- seq(min(x$y),max(x$y),length=persp.grid)
     data.grid <- expand.grid(x.grid,y.grid)
@@ -626,11 +630,7 @@ plot.bkcde <- function(x,
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
     predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2)),persp.grid,persp.grid)
-    persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
-    if(ci) {
-      warning("Confidence intervals not available for grid evaluations in plot.bkcde()")
-      ci <- FALSE
-    }
+    if(plot) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
   } else {
     plot.persp <- FALSE
     predict.mat <- NULL
