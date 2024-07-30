@@ -155,11 +155,11 @@ lines(y.grid,dgp,col=3)
 
 x.seq <- seq(min(x),max(x),length=25)
 y.seq <- seq(min(y),max(y),length=length(x.seq))
-data.mat.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
+persp.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
 for(i in 1:length(x.seq)){
-  data.mat.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
+  persp.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
 }
-persp(x=x.seq,y=y.seq,z=data.mat.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Proper (Corrected) BKCDE")
+persp(x=x.seq,y=y.seq,z=persp.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Proper (Corrected) BKCDE")
 
 bkcde.out <- bkcde(h=bkcde.out$h,
                    x=x,y=y,
@@ -180,11 +180,11 @@ lines(y.grid,dgp,col=3)
 
 x.seq <- seq(min(x),max(x),length=25)
 y.seq <- seq(min(y),max(y),length=length(x.seq))
-data.mat.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
+persp.mat <- matrix(NA,nrow=length(x.seq),ncol=length(x.seq))
 for(i in 1:length(x.seq)){
-  data.mat.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
+  persp.mat[i,] <- predict(bkcde.out, newdata=data.frame(y=y.seq,x=rep(x.seq[i],length(x.seq))))
 }
-persp(x=x.seq,y=y.seq,z=data.mat.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Improper (Potentially) BKCDE")
+persp(x=x.seq,y=y.seq,z=persp.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Improper (Potentially) BKCDE")
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
