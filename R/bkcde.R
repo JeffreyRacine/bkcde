@@ -590,7 +590,7 @@ bkcde.optim <- function(x=x,
 ## particularly if Bonferroni corrections are requested, and in such cases the
 ## number of bootstrap replications should increase with the grid size (i.e., the
 ## number of evaluation points). The function uses the SCSrank() function from
-## the SCS package to compute simultaneous confidence intervals.
+## the MCPAN package to compute simultaneous confidence intervals.
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
