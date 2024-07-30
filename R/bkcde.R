@@ -595,15 +595,18 @@ plot.bkcde <- function(x,
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
                        B = 9999, 
+                       persp.grid = 25,
+                       phi = NULL,
                        plot.cores = NULL,
                        plot = TRUE,
                        sub = NULL,
+                       theta = NULL,
                        ylim = NULL,
                        ylab = NULL,
                        xlab = NULL,
+                       zlab = NULL,
                        type = NULL,
                        ...) {
-  if(length(unique(x$x.eval)) > 1) stop("plot.bkcde() only supports a single unique x.eval value (i.e., it plots the density estimate at a single x.eval value repeated in the x.eval vector)")
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   ci.method <- match.arg(ci.method)
@@ -612,6 +615,26 @@ plot.bkcde <- function(x,
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   secs.start <- Sys.time()
+  if(length(unique(x$x.eval)) > 1) {
+    plot.persp <- TRUE
+    x.grid <- seq(min(x$x),max(x$x),length=persp.grid)
+    y.grid <- seq(min(x$y),max(x$y),length=persp.grid)
+    data.grid <- expand.grid(x.grid,y.grid)
+    if(is.null(theta)) theta <- 120
+    if(is.null(phi)) phi <- 45
+    if(is.null(xlab)) xlab <- "x"
+    if(is.null(ylab)) ylab <- "y"
+    if(is.null(zlab)) zlab <- "f(y|x)"
+    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2)),persp.grid,persp.grid)
+    persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
+    if(ci) {
+      warning("Confidence intervals not available for grid evaluations in plot.bkcde()")
+      ci <- FALSE
+    }
+  } else {
+    plot.persp <- FALSE
+    predict.mat <- NULL
+  }
   if(ci) {
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
@@ -651,7 +674,7 @@ plot.bkcde <- function(x,
   } else {
     if(is.null(ylim)) ylim <-  range(x$f)
   }
-  if(plot) {
+  if(plot & !plot.persp) {
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
     if(is.null(xlab)) xlab <- paste("y|x=",x$x.eval[1],sep="")
@@ -690,8 +713,9 @@ plot.bkcde <- function(x,
                       paste(100*(1-alpha),"% Bonferroni CIs",sep="")
              ),lty=1:4,bty="n")
     }
-  } else {
+  } else if(!plot) {
     return(list(f=x$f,
+                f.mat=predict.mat,
                 bias.vec=bias.vec,
                 ci.pw.lb=ci.pw.lb,
                 ci.pw.ub=ci.pw.ub,
