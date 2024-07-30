@@ -240,6 +240,8 @@ bkcde.default <- function(h=NULL,
   ## useful to avoid local optima in the optimization of the bandwidths)
   if(is.null(x)) stop("must provide x in bkcde()")
   if(is.null(y)) stop("must provide y in bkcde()")
+  if(!is.null(x.eval) & is.null(y.eval) & length(x.eval) != length(y)) stop("length of x.eval must be equal to length of y in bkcde() when y.eval is NULL")
+  if(!is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in bkcde() when x.eval and y.eval are not NULL")
   if(is.null(x.eval)) x.eval <- x
   if(is.null(y.eval)) y.eval <- y
   if(is.null(y.lb)) y.lb <- min(y)
@@ -595,7 +597,9 @@ plot.bkcde <- function(x,
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
                        B = 9999, 
-                       persp.grid = 25,
+                       plot.grid = 20,
+                       plot.persp = FALSE,
+                       x.eval = NULL,
                        phi = NULL,
                        plot.cores = NULL,
                        plot = TRUE,
@@ -614,27 +618,37 @@ plot.bkcde <- function(x,
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
+  if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
   secs.start <- Sys.time()
-  if(length(unique(x$x.eval)) > 1) {
-    plot.persp <- TRUE
+  if(plot.persp) {
     if(ci) {
       warning("Confidence intervals not available with perspective plotting in plot.bkcde()",immediate. = TRUE)
       ci <- FALSE
     }
-    x.grid <- seq(min(x$x),max(x$x),length=persp.grid)
-    y.grid <- seq(min(x$y),max(x$y),length=persp.grid)
+    x.grid <- seq(min(x$x),max(x$x),length=plot.grid)
+    y.grid <- seq(min(x$y),max(x$y),length=plot.grid)
     data.grid <- expand.grid(x.grid,y.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
     if(is.null(xlab)) xlab <- "x"
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
-    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2)),persp.grid,persp.grid)
+    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2)),plot.grid,plot.grid)
     if(plot) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
   } else {
-    plot.persp <- FALSE
     predict.mat <- NULL
   }
+  x.fitted <- bkcde(h=x$h,
+                    x=x$x,
+                    y=x$y,
+                    x.eval=rep(x.eval,length(x$y.eval)),
+                    y.eval=x$y.eval,
+                    y.lb=x$y.lb,
+                    y.ub=x$y.ub,
+                    x.lb=x$x.lb,
+                    x.ub=x$x.ub,
+                    proper=x$proper,
+                    degree=x$degree)$f
   if(ci) {
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
@@ -642,7 +656,7 @@ plot.bkcde <- function(x,
       bkcde(h=x$h,
             x=x$x[ii],
             y=x$y[ii],
-            x.eval=x$x.eval,
+            x.eval=rep(x.eval,length(x$y.eval)),
             y.eval=x$y.eval,
             y.lb=x$y.lb,
             y.ub=x$y.ub,
@@ -652,7 +666,7 @@ plot.bkcde <- function(x,
             degree=x$degree)$f
     },1:B,mc.cores=plot.cores))
     if(ci.bias.correct) {
-      bias.vec <- colMeans(boot.mat) - x$f
+      bias.vec <- colMeans(boot.mat) - x.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
     }
     ci.pw.lb <- apply(boot.mat, 2, quantile, probs = alpha / 2)
@@ -663,23 +677,23 @@ plot.bkcde <- function(x,
     ci.sim.lb <- ci.SCS[,1]
     ci.sim.ub <- ci.SCS[,2]
     if(ci.method == "Pointwise") {
-      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub))
+      if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
     } else if(ci.method == "Bonferroni") {
-      if(is.null(ylim)) ylim <-  range(c(x$f,ci.bf.lb,ci.bf.ub))
+      if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
     } else if(ci.method == "Simultaneous") {
-      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
+      if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
     } else {
-      if(is.null(ylim)) ylim <-  range(c(x$f,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+      if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
     }
   } else {
-    if(is.null(ylim)) ylim <-  range(x$f)
+    if(is.null(ylim)) ylim <-  range(x.fitted)
   }
   if(plot & !plot.persp) {
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
-    if(is.null(xlab)) xlab <- paste("y|x=",x$x.eval[1],sep="")
+    if(is.null(xlab)) xlab <- paste("y|x=",x.eval,sep="")
     if(is.null(type)) type <- "l"
-    plot(x$y.eval,x$f,
+    plot(x$y.eval[order(x$y.eval)],x.fitted[order(x$y.eval)],
          sub=sub,
          ylim=ylim,
          ylab=ylab,
@@ -688,24 +702,24 @@ plot.bkcde <- function(x,
          panel.first=grid(lty=1),
          ...)
     if(ci & ci.method == "Pointwise") {
-      lines(x$y.eval,ci.pw.lb,lty=2)
-      lines(x$y.eval,ci.pw.ub,lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.pw.lb[order(x$y.eval)],lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.pw.ub[order(x$y.eval)],lty=2)
       legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "Bonferroni") {
-      lines(x$y.eval,ci.bf.lb,lty=2)
-      lines(x$y.eval,ci.bf.ub,lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.bf.lb[order(x$y.eval)],lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.bf.ub[order(x$y.eval)],lty=2)
       legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "Simultaneous") {
-      lines(x$y.eval,ci.sim.lb,lty=2)
-      lines(x$y.eval,ci.sim.ub,lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.sim.lb[order(x$y.eval)],lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.sim.ub[order(x$y.eval)],lty=2)
       legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
     } else if(ci & ci.method == "all") {
-      lines(x$y.eval,ci.pw.lb,lty=2)
-      lines(x$y.eval,ci.pw.ub,lty=2)
-      lines(x$y.eval,ci.sim.lb,lty=3)
-      lines(x$y.eval,ci.sim.ub,lty=3)
-      lines(x$y.eval,ci.bf.lb,lty=4)
-      lines(x$y.eval,ci.bf.ub,lty=4)
+      lines(x$y.eval[order(x$y.eval)],ci.pw.lb[order(x$y.eval)],lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.pw.ub[order(x$y.eval)],lty=2)
+      lines(x$y.eval[order(x$y.eval)],ci.sim.lb[order(x$y.eval)],lty=3)
+      lines(x$y.eval[order(x$y.eval)],ci.sim.ub[order(x$y.eval)],lty=3)
+      lines(x$y.eval[order(x$y.eval)],ci.bf.lb[order(x$y.eval)],lty=4)
+      lines(x$y.eval[order(x$y.eval)],ci.bf.ub[order(x$y.eval)],lty=4)
       legend("topright",
              legend=c("Estimated f(y|x)",
                       paste(100*(1-alpha),"% Pointwise CIs",sep=""),
