@@ -232,7 +232,6 @@ bkcde.default <- function(h=NULL,
                           penalty.cutoff=.Machine$double.xmin,
                           poly.raw=FALSE,
                           proper=TRUE,
-                          proper.all.x=FALSE,
                           verbose=FALSE,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
@@ -337,7 +336,7 @@ bkcde.default <- function(h=NULL,
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    if(!proper.all.x) { 
+    if(length(unique(x.eval))==1) { 
       ## Presume estimation at single X evaluation point, again peculiar to this
       ## implementation, value taken is first element. You can do this on a grid
       ## by calling this function repeatedly with a different x.eval vector (each
@@ -464,7 +463,6 @@ bkcde.default <- function(h=NULL,
                       ksum.cores=ksum.cores,
                       nmulti.cores=nmulti.cores,
                       proper=proper,
-                      proper.all.x=proper.all.x,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
                       secs.optim.mat=secs.optim.mat,
