@@ -66,7 +66,7 @@ sqrt(sum((bkcde.out$f - dgp)^2))
 
 summary(bkcde.out)
 
-plot(bkcde.out,ylim=range(dgp,bkcde.out$f),main="Proper (Corrected) BKCDE")
+plot(bkcde.out,x.eval=x.eval,ylim=range(dgp,bkcde.out$f),main="Proper (Corrected) BKCDE")
 lines(y.grid,dgp,col=3)
 
 ## Create a perspective plot, ensure estimate is proper at each unique x value
@@ -92,7 +92,7 @@ sqrt(sum((bkcde.out$f - dgp)^2))
 
 summary(bkcde.out)
 
-plot(bkcde.out,ylim=range(dgp,bkcde.out$f),main="Improper (Potentially) BKCDE")
+plot(bkcde.out,x.eval=x.eval,ylim=range(dgp,bkcde.out$f),main="Improper (Potentially) BKCDE")
 lines(y.grid,dgp,col=3)
 
 ## Create a perspective plot, but since the estimate is improper, the estimate
