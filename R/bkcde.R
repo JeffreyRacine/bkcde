@@ -330,26 +330,30 @@ bkcde.default <- function(h=NULL,
   ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only).
   ## Note if degree is 0 then the estimate should be proper by definition so
   ## there should be no need for an adjustment.
-  if(proper & degree > 0) {
+  if(proper) {
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
-    X.poly <- poly(x,raw=poly.raw,degree=degree)
-    X <- cbind(1,X.poly)
     ## Presume estimation at single X evaluation point, again peculiar to this
     ## implementation, value taken is first element. You can do this on a grid
     ## by calling this function repeatedly with a different x.eval vector (each
     ## vector containing identical values per Cattaneo et al).
-    X.eval <- cbind(1,predict(X.poly,x.eval[1]))
-    ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-    ## regression to estimate \hat f(y|x) rather than the intercept term from
-    ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
-    ## the integral we create a sequence of estimated values along an
-    ## appropriate grid then compute the integral of the estimate on this grid.
-    f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+    K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
+    if(degree == 0) {
+      f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
+    } else {
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      X.eval <- cbind(1,predict(X.poly,x.eval[1]))
+      ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+      ## regression to estimate \hat f(y|x) rather than the intercept term from
+      ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
+      ## the integral we create a sequence of estimated values along an
+      ## appropriate grid then compute the integral of the estimate on this grid.
+      f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+    }
     ## Ensure the final result is proper (i.e., non-negative and integrates to
     ## 1, non-negativity of f.yx is already ensured above)
     if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",

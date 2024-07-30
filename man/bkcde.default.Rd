@@ -161,9 +161,11 @@ for(i in 1:length(x.seq)){
 }
 persp(x=x.seq,y=y.seq,z=data.mat.mat,xlab="x",ylab="y",zlab="f(y|x)",theta=120,phi=25,ticktype="detailed",main="Proper (Corrected) BKCDE")
 
-bkcde.out <- bkcde(x=x,y=y,
+bkcde.out <- bkcde(h=bkcde.out$h,
+                   x=x,y=y,
                    x.eval=x.eval.grid,
                    y.eval=y.grid,
+                   degree=bkcde.out$degree,
                    proper=FALSE)
 
 sqrt(sum((bkcde.out$f - dgp)^2))
