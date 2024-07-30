@@ -240,8 +240,8 @@ bkcde.default <- function(h=NULL,
   ## useful to avoid local optima in the optimization of the bandwidths)
   if(is.null(x)) stop("must provide x in bkcde()")
   if(is.null(y)) stop("must provide y in bkcde()")
-  if(is.null(x.eval)) stop("must provide x.eval in bkcde()")
-  if(is.null(y.eval)) stop("must provide y.eval in bkcde()")
+  if(is.null(x.eval)) x.eval <- x
+  if(is.null(y.eval)) y.eval <- y
   if(is.null(y.lb)) y.lb <- min(y)
   if(is.null(y.ub)) y.ub <- max(y)
   if(is.null(x.lb)) x.lb <- min(x)
