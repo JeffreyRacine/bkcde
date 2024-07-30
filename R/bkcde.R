@@ -622,7 +622,7 @@ plot.bkcde <- function(x,
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
-  #if(!is.null(proper) & x$proper != proper) warning("proper argument in plot.bkcde() will override proper argument in bkcde() [",x$proper,"]",immediate. = TRUE)
+  if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
   if(is.null(proper)) proper <- x$proper
   secs.start <- Sys.time()
   if(plot.persp) {
@@ -642,18 +642,18 @@ plot.bkcde <- function(x,
     if(plot) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
   } else {
     predict.mat <- NULL
+    x.fitted <- bkcde(h=x$h,
+                      x=x$x,
+                      y=x$y,
+                      x.eval=rep(x.eval,length(x$y.eval)),
+                      y.eval=x$y.eval,
+                      y.lb=x$y.lb,
+                      y.ub=x$y.ub,
+                      x.lb=x$x.lb,
+                      x.ub=x$x.ub,
+                      proper=proper,
+                      degree=x$degree)$f
   }
-  x.fitted <- bkcde(h=x$h,
-                    x=x$x,
-                    y=x$y,
-                    x.eval=rep(x.eval,length(x$y.eval)),
-                    y.eval=x$y.eval,
-                    y.lb=x$y.lb,
-                    y.ub=x$y.ub,
-                    x.lb=x$x.lb,
-                    x.ub=x$x.ub,
-                    proper=proper,
-                    degree=x$degree)$f
   if(ci) {
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
@@ -691,7 +691,7 @@ plot.bkcde <- function(x,
       if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
     }
   } else {
-    if(is.null(ylim)) ylim <-  range(x.fitted)
+    if(is.null(ylim)) ylim <- NULL
   }
   if(plot & !plot.persp) {
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
