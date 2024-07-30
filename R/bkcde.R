@@ -603,6 +603,7 @@ plot.bkcde <- function(x,
                        xlab = NULL,
                        type = NULL,
                        ...) {
+  if(length(unique(x$x.eval)) > 1) stop("plot.bkcde() only supports a single unique x.eval value (i.e., it plots the density estimate at a single x.eval value repeated in the x.eval vector)")
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   ci.method <- match.arg(ci.method)
