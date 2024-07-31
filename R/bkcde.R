@@ -212,7 +212,7 @@ bkcde.default <- function(h=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
                           degree.cores=NULL,
-                          degree.max=5,
+                          degree.max=3,
                           degree.min=0,
                           degree=0,
                           ksum.cores=1,
@@ -320,20 +320,22 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=ksum.cores))
   }
-  ## Ensure the estimate is proper.
+  ## Ensure the estimate is proper
   if(proper) {
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    
-    ## Note that we have a conditional density f(y|x) with non-unique x
-    ## values, so for each x in x.eval we ensure f(y|x) is proper.
+    ## Note that we have a conditional density f(y|x) with potentially repeated
+    ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
+    ## (avoid unnecessary computation, particularly when x.eval contains a
+    ## constant or x.eval is taken from expand.grid() and contains a repeated
+    ## sequence of constant values)
     int.f.seq.pre.neg <- numeric()
     int.f.seq <- numeric()
     int.f.seq.post <- numeric()
-    ## Here we try to be cute as well, and test for unique values 
+    ## Here we test for unique values of x.eval to reduce potential computation
     x.eval.unique <- unique(x.eval)
     for(j in 1:length(x.eval.unique)) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
