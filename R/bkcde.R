@@ -331,7 +331,7 @@ bkcde.default <- function(h=NULL,
     ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
     ## (avoid unnecessary computation, particularly when x.eval contains a
     ## constant or x.eval is taken from expand.grid() and contains a repeated
-    ## sequence of constant values)
+    ## sequence of identical values)
     int.f.seq.pre.neg <- numeric()
     int.f.seq <- numeric()
     int.f.seq.post <- numeric()
@@ -374,8 +374,8 @@ bkcde.default <- function(h=NULL,
       foo <- foo/int.f.seq[j]     
       f.yx[x.eval==x.eval.unique[j]] <- foo
     }
-    ## As a summary measure report the mean of the integrals (if x.eval
-    ## contains a constant, then the mean will be a scalar for that constant)
+    ## As a summary measure report the mean of the integrals (if x.eval contains
+    ## a constant, then the mean will be a scalar equal to that constant)
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
     int.f.seq <- mean(int.f.seq)
     int.f.seq.post <- mean(int.f.seq.post)
@@ -383,17 +383,17 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
+    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+                                        degree,
+                                        ", ", 
+                                        length(f.yx[f.yx<0]), 
+                                        " element(s), h.y = ",
+                                        round(h[1],5),
+                                        ", h.x = ",
+                                        round(h[2],5),
+                                        "]",
+                                        immediate. = TRUE)
   }
-  if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
-                                      degree,
-                                      ", ", 
-                                      length(f.yx[f.yx<0]), 
-                                      " element(s), h.y = ",
-                                      round(h[1],5),
-                                      ", h.x = ",
-                                      round(h[2],5),
-                                      "]",
-                                      immediate. = TRUE)
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
