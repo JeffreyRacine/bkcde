@@ -600,6 +600,8 @@ plot.bkcde <- function(x,
                        B = 9999, 
                        plot.grid = 20,
                        plot.persp = FALSE,
+                       plot.persp.x.grid = NULL,
+                       plot.persp.y.grid = NULL,
                        proper = NULL,
                        x.eval = NULL,
                        phi = NULL,
@@ -620,9 +622,14 @@ plot.bkcde <- function(x,
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
-  if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
+  if(!plot.persp & is.null(x.eval) & length(unique(x$x.eval)) > 1) {
+    stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
+  } else {
+    x.eval <- x$x.eval[1]
+  }
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
+  if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   secs.start <- Sys.time()
   if(plot.persp) {
@@ -630,8 +637,20 @@ plot.bkcde <- function(x,
       warning("Confidence intervals not available with perspective plotting in plot.bkcde()",immediate. = TRUE)
       ci <- FALSE
     }
-    x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.grid)
-    y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.grid)
+    if(is.null(plot.persp.x.grid)) {
+      x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.grid)
+    } else {
+      x.grid <- plot.persp.x.grid
+      plot.grid <- length(x.grid)
+    }
+    if(is.null(plot.persp.y.grid)) {
+      y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.grid)
+    } else {
+      y.grid <- plot.persp.y.grid
+      plot.grid <- length(y.grid)
+    }
+    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval?)")
+    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval?)")
     data.grid <- expand.grid(x.grid,y.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
@@ -639,7 +658,9 @@ plot.bkcde <- function(x,
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
     predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2),proper=proper),plot.grid,plot.grid)
-    if(plot) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
+    ## Unlike plot() persp() does accept a null ylim argument so we need to check...
+    if(plot & is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
+    if(plot & !is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
   } else {
     predict.mat <- NULL
     x.fitted <- bkcde(h=x$h,
