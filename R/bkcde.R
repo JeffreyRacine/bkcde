@@ -571,11 +571,7 @@ plot.bkcde <- function(x,
   if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
   if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
-  if(!plot.persp & is.null(x.eval) & length(unique(x$x.eval)) > 1) {
-    stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
-  } else {
-    x.eval <- x$x.eval[1]
-  }
+  if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
   secs.start <- Sys.time()
   if(plot.persp) {
     if(ci) {
