@@ -181,19 +181,10 @@ bkcde.loo <- function(h=NULL,
   if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
-    ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
-    ## compute the delete-one estimate \hat f_{-i}(y|x) as efficiently as
-    ## possible
     f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=ksum.cores))
   } else {
     X.poly <- poly(x,raw=poly.raw,degree=degree)
     X <- cbind(1,X.poly)
-    ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-    ## regression to compute the delete-one estimate \hat f_{-i}(y|x) rather
-    ## than the intercept term from lm(y-I(x[i]-X)^2), which produce identical
-    ## results for raw polynomials. Note singular design matrices are permitted
-    ## but will return NA for coefficients, so we need to check for this (should
-    ## not occur with orthogonal polynomials)
     f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores))
   }
   return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
@@ -329,21 +320,17 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=ksum.cores))
   }
-  ## Ensure the estimate is proper - this is peculiar to this implementation
-  ## following Cattaneo et al 2023 (i.e., at a scalar evaluation point only).
-  ## Note if degree is 0 then the estimate should be proper by definition so
-  ## there should be no need for an adjustment.
+  ## Ensure the estimate is proper.
   if(proper) {
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
+    ## We first check whether the x values are unique or not
     if(length(unique(x.eval))==1) { 
-      ## Presume estimation at single X evaluation point, again peculiar to this
-      ## implementation, value taken is first element. You can do this on a grid
-      ## by calling this function repeatedly with a different x.eval vector (each
-      ## vector containing identical values per Cattaneo et al).
+      ## Since all x evaluation points are identical we exploit this feature to
+      ## avoid recomputing the kernel matrix K and unnecessary overhead
       K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
       if(degree == 0) {
         f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
@@ -351,11 +338,6 @@ bkcde.default <- function(h=NULL,
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
         X.eval <- cbind(1,predict(X.poly,x.eval[1]))
-        ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-        ## regression to estimate \hat f(y|x) rather than the intercept term from
-        ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
-        ## the integral we create a sequence of estimated values along an
-        ## appropriate grid then compute the integral of the estimate on this grid.
         f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
       }
       ## Ensure the final result is proper (i.e., non-negative and integrates to
@@ -383,10 +365,8 @@ bkcde.default <- function(h=NULL,
       f.yx[f.yx < 0] <- 0
       f.yx <- f.yx/int.f.seq
     } else {
-      ## Presume estimation at single X evaluation point, again peculiar to this
-      ## implementation, value taken is first element. You can do this on a grid
-      ## by calling this function repeatedly with a different x.eval vector (each
-      ## vector containing identical values per Cattaneo et al).
+      ## Note that we have a conditional density f(y|x) with non-unique x
+      ## values, so for each x in x.eval we ensure f(y|x) is proper.
       int.f.seq.pre.neg <- numeric()
       int.f.seq <- numeric()
       int.f.seq.post <- numeric()
@@ -398,11 +378,6 @@ bkcde.default <- function(h=NULL,
           X.poly <- poly(x,raw=poly.raw,degree=degree)
           X <- cbind(1,X.poly)
           X.eval <- cbind(1,predict(X.poly,x.eval[j]))
-          ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-          ## regression to estimate \hat f(y|x) rather than the intercept term from
-          ## lm(y-I(x[i]-X)^2), which seem to produce identical results. To compute
-          ## the integral we create a sequence of estimated values along an
-          ## appropriate grid then compute the integral of the estimate on this grid.
           f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
         }
         ## Ensure the final result is proper (i.e., non-negative and integrates
@@ -430,6 +405,7 @@ bkcde.default <- function(h=NULL,
         if(f.yx[j] < 0) f.yx[j] <- 0
         f.yx[j] <- f.yx[j]/int.f.seq[j]      
       }
+      ## As a summary measure report the mean of the integrals
       int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
       int.f.seq <- mean(int.f.seq)
       int.f.seq.post <- mean(int.f.seq.post)
@@ -622,15 +598,15 @@ plot.bkcde <- function(x,
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
+  if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
+  if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
+  if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
+  if(is.null(proper)) proper <- x$proper
   if(!plot.persp & is.null(x.eval) & length(unique(x$x.eval)) > 1) {
     stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
   } else {
     x.eval <- x$x.eval[1]
   }
-  if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
-  if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
-  if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
-  if(is.null(proper)) proper <- x$proper
   secs.start <- Sys.time()
   if(plot.persp) {
     if(ci) {
@@ -649,8 +625,8 @@ plot.bkcde <- function(x,
       y.grid <- plot.persp.y.grid
       plot.grid <- length(y.grid)
     }
-    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval?)")
-    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval?)")
+    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.persp.x.grid?)")
+    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.persp.y.grid?)")
     data.grid <- expand.grid(x.grid,y.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
