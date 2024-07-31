@@ -373,12 +373,12 @@ bkcde.default <- function(h=NULL,
       foo[foo<0] <- 0
       foo <- foo/int.f.seq[j]     
       f.yx[x.eval==x.eval.unique[j]] <- foo
-      ## As a summary measure report the mean of the integrals (if x.eval
-      ## contains a constant, then the mean will be a scalar for that constant)
-      int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
-      int.f.seq <- mean(int.f.seq)
-      int.f.seq.post <- mean(int.f.seq.post)
     }
+    ## As a summary measure report the mean of the integrals (if x.eval
+    ## contains a constant, then the mean will be a scalar for that constant)
+    int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
+    int.f.seq <- mean(int.f.seq)
+    int.f.seq.post <- mean(int.f.seq.post)
   } else {
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
