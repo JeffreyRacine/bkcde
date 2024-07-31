@@ -327,89 +327,52 @@ bkcde.default <- function(h=NULL,
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    ## We first check whether the x values are unique or not
-    if(length(unique(x.eval))==1) { 
-      ## Since all x evaluation points are identical we exploit this feature to
-      ## avoid recomputing the kernel matrix K and unnecessary overhead
-      K <- kernel.bk(x.eval[1],x,h[2],x.lb,x.ub)
+    
+    ## Note that we have a conditional density f(y|x) with non-unique x
+    ## values, so for each x in x.eval we ensure f(y|x) is proper.
+    int.f.seq.pre.neg <- numeric()
+    int.f.seq <- numeric()
+    int.f.seq.post <- numeric()
+    ## Here we try to be cute as well, and test for unique values 
+    x.eval.unique <- unique(x.eval)
+    for(j in 1:length(x.eval.unique)) {
+      K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
         f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
       } else {
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
-        X.eval <- cbind(1,predict(X.poly,x.eval[1]))
+        X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
         f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
       }
-      ## Ensure the final result is proper (i.e., non-negative and integrates to
-      ## 1)
-      if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
-                                          degree,
-                                          ", ",
-                                          length(f.yx[f.yx<0]),
-                                          " element(s), h.y = ",
-                                          round(h[1],5),
-                                          ", h.x = ",
-                                          round(h[2],5),
-                                          "]",
-                                          immediate. = TRUE)
+      ## Ensure the final result is proper (i.e., non-negative and integrates
+      ## to 1)
+      if(verbose & any(f.yx[x.eval==x.eval.unique[j]] < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                                                    degree,
+                                                                    ", j = ",
+                                                                    length(x.eval==x.eval.unique[j]),
+                                                                    " element(s), h.y = ",
+                                                                    round(h[1],5),
+                                                                    ", h.x = ",
+                                                                    round(h[2],5),
+                                                                    "]",
+                                                                    immediate. = TRUE)
       ## Compute integral of f.seq including any possible negative values
-      int.f.seq.pre.neg <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+      int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
       ## Set any possible negative f.seq values to 0
       f.seq[f.seq < 0] <- 0
       ## Compute integral of f.seq after setting any possible negative values to 0
-      int.f.seq <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+      int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
       ## Compute integral of f.seq after setting any possible negative values to 0
       ## and correcting to ensure final estimate integrates to 1
-      int.f.seq.post <- integrate.trapezoidal(y.seq,f.seq/int.f.seq)[length(y.seq)]
+      int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
       # Correct the estimate to ensure it is non-negative and integrates to 1
-      f.yx[f.yx < 0] <- 0
-      f.yx <- f.yx/int.f.seq
-    } else {
-      ## Note that we have a conditional density f(y|x) with non-unique x
-      ## values, so for each x in x.eval we ensure f(y|x) is proper.
-      int.f.seq.pre.neg <- numeric()
-      int.f.seq <- numeric()
-      int.f.seq.post <- numeric()
-      ## Here we try to be cute as well, and test for unique values 
-      x.eval.unique <- unique(x.eval)
-      for(j in 1:length(x.eval.unique)) {
-        K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
-        if(degree == 0) {
-          f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
-        } else {
-          X.poly <- poly(x,raw=poly.raw,degree=degree)
-          X <- cbind(1,X.poly)
-          X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-          f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
-        }
-        ## Ensure the final result is proper (i.e., non-negative and integrates
-        ## to 1)
-        if(verbose & any(f.yx[x.eval==x.eval.unique[j]] < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
-                                                                      degree,
-                                                                      ", j = ",
-                                                                      length(x.eval==x.eval.unique[j]),
-                                                                      " element(s), h.y = ",
-                                                                      round(h[1],5),
-                                                                      ", h.x = ",
-                                                                      round(h[2],5),
-                                                                      "]",
-                                                                      immediate. = TRUE)
-        ## Compute integral of f.seq including any possible negative values
-        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-        ## Set any possible negative f.seq values to 0
-        f.seq[f.seq < 0] <- 0
-        ## Compute integral of f.seq after setting any possible negative values to 0
-        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-        ## Compute integral of f.seq after setting any possible negative values to 0
-        ## and correcting to ensure final estimate integrates to 1
-        int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
-        # Correct the estimate to ensure it is non-negative and integrates to 1
-        foo <- f.yx[x.eval==x.eval.unique[j]]
-        foo[foo<0] <- 0
-        foo <- foo/int.f.seq[j]     
-        f.yx[x.eval==x.eval.unique[j]] <- foo
-      }
-      ## As a summary measure report the mean of the integrals
+      foo <- f.yx[x.eval==x.eval.unique[j]]
+      foo[foo<0] <- 0
+      foo <- foo/int.f.seq[j]     
+      f.yx[x.eval==x.eval.unique[j]] <- foo
+      ## As a summary measure report the mean of the integrals (if x.eval
+      ## contains a constant, then the mean will be a scalar for that constant)
       int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
       int.f.seq <- mean(int.f.seq)
       int.f.seq.post <- mean(int.f.seq.post)
@@ -578,7 +541,7 @@ plot.bkcde <- function(x,
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
                        B = 9999, 
-                       plot.grid = 20,
+                       plot.n.grid = 20,
                        plot.persp = FALSE,
                        plot.persp.x.grid = NULL,
                        plot.persp.y.grid = NULL,
@@ -618,16 +581,16 @@ plot.bkcde <- function(x,
       ci <- FALSE
     }
     if(is.null(plot.persp.x.grid)) {
-      x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.grid)
+      x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.n.grid)
     } else {
       x.grid <- plot.persp.x.grid
-      plot.grid <- length(x.grid)
+      plot.n.grid <- length(x.grid)
     }
     if(is.null(plot.persp.y.grid)) {
-      y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.grid)
+      y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.n.grid)
     } else {
       y.grid <- plot.persp.y.grid
-      plot.grid <- length(y.grid)
+      plot.n.grid <- length(y.grid)
     }
     if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.persp.x.grid?)")
     if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.persp.y.grid?)")
@@ -637,7 +600,12 @@ plot.bkcde <- function(x,
     if(is.null(xlab)) xlab <- "x"
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
-    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2),proper=proper),plot.grid,plot.grid)
+    if(is.null(plot.cores)) {
+      ksum.cores <- x$ksum.cores
+    } else {
+      ksum.cores <- plot.cores
+    }
+    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2),proper=proper,ksum.cores=ksum.cores,...),plot.n.grid,plot.n.grid)
     ## Unlike plot() persp() does accept a null ylim argument so we need to check...
     if(plot & is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
     if(plot & !is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
@@ -653,7 +621,8 @@ plot.bkcde <- function(x,
                       x.lb=x$x.lb,
                       x.ub=x$x.ub,
                       proper=proper,
-                      degree=x$degree)$f
+                      degree=x$degree,
+                      ...)$f
   }
   if(ci) {
     if(is.null(plot.cores)) plot.cores <- detectCores()
@@ -775,7 +744,8 @@ predict.bkcde <- function(object, newdata, proper = NULL, ...) {
                x.lb=object$x.lb,
                x.ub=object$x.ub,
                proper=proper,
-               degree=object$degree)$f)
+               degree=object$degree,
+               ...)$f)
 }
 
 ## summary.bkcde() provides a summary of the boundary kernel CDE object
