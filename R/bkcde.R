@@ -383,17 +383,17 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
-    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
-                                        degree,
-                                        ", ", 
-                                        length(f.yx[f.yx<0]), 
-                                        " element(s), h.y = ",
-                                        round(h[1],5),
-                                        ", h.x = ",
-                                        round(h[2],5),
-                                        "]",
-                                        immediate. = TRUE)
   }
+  if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+                                      degree,
+                                      ", ", 
+                                      length(f.yx[f.yx<0]), 
+                                      " element(s), h.y = ",
+                                      round(h[1],5),
+                                      ", h.x = ",
+                                      round(h[2],5),
+                                      "]",
+                                      immediate. = TRUE)
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
