@@ -573,11 +573,9 @@ plot.bkcde <- function(x,
   if(is.null(proper)) proper <- x$proper
   if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
   secs.start <- Sys.time()
+  ## For the user, whether ci=TRUE or not get the estimate plotted asap
+  ## otherwise they are faced with a blank screen
   if(plot.persp) {
-    if(ci) {
-      warning("Confidence intervals not available with perspective plotting in plot.bkcde()",immediate. = TRUE)
-      ci <- FALSE
-    }
     if(is.null(plot.persp.x.grid)) {
       x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.n.grid)
     } else {
@@ -593,27 +591,33 @@ plot.bkcde <- function(x,
     if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.persp.x.grid?)")
     if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.persp.y.grid?)")
     data.grid <- expand.grid(x.grid,y.grid)
-    if(is.null(theta)) theta <- 120
-    if(is.null(phi)) phi <- 45
-    if(is.null(xlab)) xlab <- "x"
-    if(is.null(ylab)) ylab <- "y"
-    if(is.null(zlab)) zlab <- "f(y|x)"
+    x.plot.eval <- data.grid$Var1
+    y.plot.eval <- data.grid$Var2
     if(is.null(plot.cores)) {
       ksum.cores <- x$ksum.cores
     } else {
       ksum.cores <- plot.cores
     }
-    predict.mat <- matrix(predict(x,newdata=data.frame(x=data.grid$Var1,y=data.grid$Var2),proper=proper,ksum.cores=ksum.cores,...),plot.n.grid,plot.n.grid)
-    ## Unlike plot() persp() does accept a null ylim argument so we need to check...
-    if(plot & is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
-    if(plot & !is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
-  } else {
+    predict.mat <- matrix(predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...),plot.n.grid,plot.n.grid)
+    if(plot) {
+      if(is.null(theta)) theta <- 120
+      if(is.null(phi)) phi <- 45
+      if(is.null(xlab)) xlab <- "x"
+      if(is.null(ylab)) ylab <- "y"
+      if(is.null(zlab)) zlab <- "f(y|x)"
+      ## Unlike plot() persp() does accept a null ylim argument so we need to check...
+      if(is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
+      if(!is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
+    }
+  } else if(!plot.persp){
     predict.mat <- NULL
+    x.plot.eval <- x.grid <- rep(x.eval,length(x$y.eval))
+    y.plot.eval <- y.grid <- x$y.eval
     x.fitted <- bkcde(h=x$h,
                       x=x$x,
                       y=x$y,
-                      x.eval=rep(x.eval,length(x$y.eval)),
-                      y.eval=x$y.eval,
+                      x.eval=x.plot.eval,
+                      y.eval=y.plot.eval,
                       y.lb=x$y.lb,
                       y.ub=x$y.ub,
                       x.lb=x$x.lb,
@@ -621,8 +625,23 @@ plot.bkcde <- function(x,
                       proper=proper,
                       degree=x$degree,
                       ...)$f
+    if(plot) {
+      if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
+      if(is.null(ylab)) ylab <- "f(y|x)"
+      if(is.null(xlab)) xlab <- paste("y|x=",x.eval,sep="")
+      if(is.null(type)) type <- "l"
+      plot(x$y.eval[order(x$y.eval)],x.fitted[order(x$y.eval)],
+           sub=sub,
+           ylim=ylim,
+           ylab=ylab,
+           xlab=xlab,
+           type=type,
+           panel.first=grid(lty=1),
+           ...)
+    }
   }
-  if(ci) {
+  if(!plot.persp & ci) {
+    cat("Computing bootstrap confidence intervals (will replot with ci & legend when complete)...")
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
@@ -658,14 +677,12 @@ plot.bkcde <- function(x,
     } else {
       if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
     }
+    cat("\r                                                                                             ")
   } else {
     if(is.null(ylim)) ylim <- NULL
   }
   if(plot & !plot.persp) {
-    if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
-    if(is.null(ylab)) ylab <- "f(y|x)"
-    if(is.null(xlab)) xlab <- paste("y|x=",x.eval,sep="")
-    if(is.null(type)) type <- "l"
+    ## Plot again with ylim set for the confidence intervals
     plot(x$y.eval[order(x$y.eval)],x.fitted[order(x$y.eval)],
          sub=sub,
          ylim=ylim,
