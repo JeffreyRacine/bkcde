@@ -572,6 +572,11 @@ plot.bkcde <- function(x,
   if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
+  if(is.null(plot.cores)) {
+    ksum.cores <- x$ksum.cores
+  } else {
+    ksum.cores <- plot.cores
+  }
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
@@ -593,12 +598,8 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    if(is.null(plot.cores)) {
-      ksum.cores <- x$ksum.cores
-    } else {
-      ksum.cores <- plot.cores
-    }
-    predict.mat <- matrix(predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...),plot.n.grid,plot.n.grid)
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
+    predict.mat <- matrix(x.fitted,plot.n.grid,plot.n.grid)
     if(plot) {
       if(is.null(theta)) theta <- 120
       if(is.null(phi)) phi <- 45
@@ -613,18 +614,7 @@ plot.bkcde <- function(x,
     predict.mat <- NULL
     y.plot.eval <- y.grid <- x$y.eval
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
-    x.fitted <- bkcde(h=x$h,
-                      x=x$x,
-                      y=x$y,
-                      x.eval=x.plot.eval,
-                      y.eval=y.plot.eval,
-                      y.lb=x$y.lb,
-                      y.ub=x$y.ub,
-                      x.lb=x$x.lb,
-                      x.ub=x$x.ub,
-                      proper=proper,
-                      degree=x$degree,
-                      ...)$f
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
     if(plot) {
       if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
       if(is.null(ylab)) ylab <- "f(y|x)"
@@ -640,7 +630,7 @@ plot.bkcde <- function(x,
            ...)
     }
   }
-  if(!plot.persp & ci) {
+  if(ci) {
     cat("Computing bootstrap confidence intervals (will replot with ci & legend when complete)...")
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
