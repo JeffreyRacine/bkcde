@@ -571,6 +571,7 @@ plot.bkcde <- function(x,
                        x.eval = NULL,
                        phi = NULL,
                        ci.cores = NULL,
+                       ksum.cores = NULL,
                        proper.cores = NULL,
                        plot.behavior = c("plot","plot-data","data"),
                        sub = NULL,
@@ -604,10 +605,10 @@ plot.bkcde <- function(x,
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
-  if(is.null(ci.cores)) {
+  if(is.null(ksum.cores)) {
     ksum.cores <- x$ksum.cores
   } else {
-    ksum.cores <- ci.cores
+    ksum.cores <- ksum.cores
   }
   if(is.null(proper.cores)) {
     proper.cores <- 1
@@ -691,6 +692,7 @@ plot.bkcde <- function(x,
             x.ub=x$x.ub,
             proper=proper,
             proper.cores=proper.cores,
+            ksum.cores=ksum.cores,
             degree=x$degree)$f
     },1:B,mc.cores=ci.cores))
     if(ci.bias.correct) {
@@ -811,7 +813,7 @@ plot.bkcde <- function(x,
                 ci.sim.lb=ci.sim.lb,
                 ci.sim.ub=ci.sim.ub,
                 secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
-                ci.cores=plot.cores,
+                ci.cores=ci.cores,
                 proper.cores=proper.cores))
   }
 }
