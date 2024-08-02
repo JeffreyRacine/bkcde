@@ -234,9 +234,11 @@ set.seed(42)
 n <- 250
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y)
+f.yx <- bkcde(x=x, y=y, proper=FALSE)
 summary(f.yx)
-plot(f.yx,plot.3D=TRUE)
+par(mfrow=c(2,2))
+plot(f.yx,ci=TRUE)
+plot(f.yx,plot.3D=TRUE,ci=TRUE)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):

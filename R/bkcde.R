@@ -720,7 +720,7 @@ plot.bkcde <- function(x,
     if(is.null(ylim)) ylim <- NULL
   }
   if(plot.behavior != "data") {
-    if(plot.3D) {
+    if(plot.3D & ci) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
         if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
@@ -732,7 +732,7 @@ plot.bkcde <- function(x,
         if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
-      if(ci & ci.method == "Pointwise") {
+      if(ci.method == "Pointwise") {
         ## First lower, then plot, then upper (surfaces)
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
@@ -740,14 +740,14 @@ plot.bkcde <- function(x,
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
-      } else if(ci & ci.method == "Bonferroni") {
+      } else if(ci.method == "Bonferroni") {
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
-      } else if(ci & ci.method == "Simultaneous") {
+      } else if(ci.method == "Simultaneous") {
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
@@ -757,7 +757,7 @@ plot.bkcde <- function(x,
       } else if(ci & ci.method == "all") {
         warning("plotting all confidence intervals in plot.bkcde() may be visually overwhelming, ignored (but you can retrieve the ci data via plot=FALSE)",immediate. = TRUE)
       }
-    } else {
+    } else if(ci) {
       ## Plot 2D again with ylim set for the confidence intervals
       if(ci.method == "Pointwise") {
         if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
@@ -777,11 +777,11 @@ plot.bkcde <- function(x,
            type=type,
            panel.first=grid(lty=1),
            ...)
-      if(ci & ci.method == "Pointwise") {
+      if(ci.method == "Pointwise") {
         lines(y.plot.eval[order(y.plot.eval)],ci.pw.lb[order(y.plot.eval)],lty=2)
         lines(y.plot.eval[order(y.plot.eval)],ci.pw.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
-      } else if(ci & ci.method == "Bonferroni") {
+      } else if(ci.method == "Bonferroni") {
         lines(y.plot.eval[order(y.plot.eval)],ci.bf.lb[order(y.plot.eval)],lty=2)
         lines(y.plot.eval[order(y.plot.eval)],ci.bf.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
@@ -789,7 +789,7 @@ plot.bkcde <- function(x,
         lines(y.plot.eval[order(y.plot.eval)],ci.sim.lb[order(y.plot.eval)],lty=2)
         lines(y.plot.eval[order(y.plot.eval)],ci.sim.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
-      } else if(ci & ci.method == "all") {
+      } else if(ci.method == "all") {
         lines(y.plot.eval[order(y.plot.eval)],ci.pw.lb[order(y.plot.eval)],lty=2)
         lines(y.plot.eval[order(y.plot.eval)],ci.pw.ub[order(y.plot.eval)],lty=2)
         lines(y.plot.eval[order(y.plot.eval)],ci.sim.lb[order(y.plot.eval)],lty=3)
