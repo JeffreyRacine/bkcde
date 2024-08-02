@@ -542,8 +542,9 @@ plot.bkcde <- function(x,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"), 
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
-                       B = 1000, 
-                       plot.n.grid = 20,
+                       B = 1999, 
+                       plot.n.grid = 10,
+                       plot.y.grid = NULL,
                        plot.persp = FALSE,
                        plot.persp.x.grid = NULL,
                        plot.persp.y.grid = NULL,
@@ -562,6 +563,12 @@ plot.bkcde <- function(x,
                        ...) {
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
+  ## Note that the Bonferroni method places a restriction on the smallest number
+  ## of bootstrap replications such that (alpha/(plot.n.grid^2))*(B+1) is a
+  ## positive integer - this is on the user to ensure. The simultaneous method
+  ## will almost certainly require fewer bootstrap replications than the
+  ## Bonferroni method. The pointwise method requires the fewest, alpha*(B+1)
+  ## must be a positive integer.
   ci.method <- match.arg(ci.method)
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
@@ -618,9 +625,12 @@ plot.bkcde <- function(x,
   } else if(!plot.persp) {
     ## Plot 2D
     predict.mat <- NULL
-    x.grid <- NULL
-    y.grid <- NULL
-    y.plot.eval <- y.grid <- x$y.eval
+    if(is.null(plot.y.grid)) {
+      y.plot.eval <- y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.n.grid)
+    } else {
+      y.plot.eval <- y.grid <- plot.y.grid
+      plot.n.grid <- length(y.grid)
+    }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
     if(plot.behavior != "data") {
