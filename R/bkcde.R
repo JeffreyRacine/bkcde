@@ -212,17 +212,18 @@ bkcde.default <- function(h=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
                           degree.cores=NULL,
-                          degree.max=5,
+                          degree.max=3,
                           degree.min=0,
                           degree=0,
                           ksum.cores=1,
                           n.integrate=1000,
                           nmulti.cores=NULL,
-                          nmulti=5,
+                          nmulti=3,
                           penalty.method=c("smooth","constant","trim"),
                           penalty.cutoff=.Machine$double.xmin,
                           poly.raw=FALSE,
                           proper=TRUE,
+                          proper.cores=12,
                           verbose=FALSE,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
@@ -256,6 +257,7 @@ bkcde.default <- function(h=NULL,
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
+  if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
   if(is.null(degree.cores)) degree.cores <- degree.max-degree.min+1
   if(is.null(nmulti.cores)) nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
@@ -337,7 +339,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq.post <- numeric()
     ## Here we test for unique values of x.eval to reduce potential computation
     x.eval.unique <- unique(x.eval)
-    for(j in 1:length(x.eval.unique)) {
+    proper.out <- mclapply(1:length(x.eval.unique), function(j) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
         f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
@@ -373,7 +375,7 @@ bkcde.default <- function(h=NULL,
       foo[foo < 0] <- 0
       foo <- foo/int.f.seq[j]     
       f.yx[x.eval==x.eval.unique[j]] <- foo
-    }
+    },mc.cores = proper.cores)
     ## As a summary measure report the mean of the integrals (if x.eval contains
     ## a constant, then the mean will be a scalar equal to that constant)
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
@@ -410,6 +412,7 @@ bkcde.default <- function(h=NULL,
                       h=h,
                       ksum.cores=ksum.cores,
                       nmulti.cores=nmulti.cores,
+                      proper.cores=proper.cores,
                       proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
@@ -567,7 +570,8 @@ plot.bkcde <- function(x,
                        proper = NULL,
                        x.eval = NULL,
                        phi = NULL,
-                       plot.cores = NULL,
+                       ci.cores = NULL,
+                       proper.cores = NULL,
                        plot.behavior = c("plot","plot-data","data"),
                        sub = NULL,
                        theta = NULL,
@@ -593,17 +597,22 @@ plot.bkcde <- function(x,
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
-  if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
+  if(!is.null(ci.cores)) if(ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
-  if(is.null(plot.cores)) {
+  if(is.null(ci.cores)) {
     ksum.cores <- x$ksum.cores
   } else {
-    ksum.cores <- plot.cores
+    ksum.cores <- ci.cores
+  }
+  if(is.null(proper.cores)) {
+    proper.cores <- x$proper.cores
+  } else {
+    proper.cores <- proper.cores
   }
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
@@ -627,7 +636,7 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,proper.cores=proper.cores,...)
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
     if(plot.behavior != "data") {
       if(is.null(theta)) theta <- 120
@@ -668,7 +677,7 @@ plot.bkcde <- function(x,
     ## All processing goes into computing the matrix of bootstrap estimates, so
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
-    if(is.null(plot.cores)) plot.cores <- detectCores()
+    if(is.null(ci.cores)) ci.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
       bkcde(h=x$h,
@@ -681,8 +690,9 @@ plot.bkcde <- function(x,
             x.lb=x$x.lb,
             x.ub=x$x.ub,
             proper=proper,
+            proper.cores=proper.cores,
             degree=x$degree)$f
-    },1:B,mc.cores=plot.cores))
+    },1:B,mc.cores=ci.cores))
     if(ci.bias.correct) {
       bias.vec <- colMeans(boot.mat) - x.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
@@ -801,7 +811,8 @@ plot.bkcde <- function(x,
                 ci.sim.lb=ci.sim.lb,
                 ci.sim.ub=ci.sim.ub,
                 secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
-                plot.cores=plot.cores))
+                ci.cores=plot.cores,
+                proper.cores=proper.cores))
   }
 }
 
