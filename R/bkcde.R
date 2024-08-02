@@ -539,10 +539,10 @@ bkcde.optim <- function(x=x,
 
 plot.bkcde <- function(x,
                        ci = FALSE, 
-                       ci.method = c("all","Pointwise","Bonferroni","Simultaneous"), 
+                       ci.method = c("Pointwise","Bonferroni","Simultaneous","all"), 
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
-                       B = 9999, 
+                       B = 1000, 
                        plot.n.grid = 20,
                        plot.persp = FALSE,
                        plot.persp.x.grid = NULL,
@@ -551,7 +551,7 @@ plot.bkcde <- function(x,
                        x.eval = NULL,
                        phi = NULL,
                        plot.cores = NULL,
-                       plot = TRUE,
+                       plot.behavior = c("plot","plot-data","data"),
                        sub = NULL,
                        theta = NULL,
                        ylim = NULL,
@@ -563,6 +563,7 @@ plot.bkcde <- function(x,
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   ci.method <- match.arg(ci.method)
+  plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
@@ -601,7 +602,7 @@ plot.bkcde <- function(x,
     y.plot.eval <- data.grid$Var2
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
     predict.mat <- matrix(x.fitted,plot.n.grid,plot.n.grid)
-    if(plot) {
+    if(plot.behavior != "data") {
       if(is.null(theta)) theta <- 120
       if(is.null(phi)) phi <- 45
       if(is.null(xlab)) xlab <- "x"
@@ -622,7 +623,7 @@ plot.bkcde <- function(x,
     y.plot.eval <- y.grid <- x$y.eval
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
-    if(plot) {
+    if(plot.behavior != "data") {
       if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
       if(is.null(ylab)) ylab <- "f(y|x)"
       if(is.null(xlab)) xlab <- paste("y|x=",x.eval,sep="")
@@ -672,7 +673,7 @@ plot.bkcde <- function(x,
   } else {
     if(is.null(ylim)) ylim <- NULL
   }
-  if(plot) {
+  if(plot.behavior != "data") {
     if(plot.persp) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
@@ -792,7 +793,7 @@ plot.bkcde <- function(x,
                ),lty=1:4,bty="n")
       }
     }
-  } else if(!plot) {
+  } else if(plot.behavior != "plot") {
     ## Return in vector form for the user to plot as they wish (if
     ## plot.persp=TRUE convert to matrix using x.grid & y.grid)
     return(list(f=x.fitted,
