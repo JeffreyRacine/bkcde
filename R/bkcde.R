@@ -664,7 +664,7 @@ plot.bkcde <- function(x,
     }
   }
   if(ci) {
-    cat("Computing bootstrap confidence intervals (will replot with ci & legend when complete)...")
+    cat("Computing bootstrap confidence intervals (will replot with intervals when complete)...")
     ## All processing goes into computing the matrix of bootstrap estimates, so
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
@@ -713,7 +713,7 @@ plot.bkcde <- function(x,
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
       if(ci & ci.method == "Pointwise") {
-        ## First lower, then plot, then upper
+        ## First lower, then plot, then upper (surfaces)
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
@@ -748,6 +748,7 @@ plot.bkcde <- function(x,
       } else {
         if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
+      ## First plot, then lower and upper (lines)
       plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
            sub=sub,
            ylim=ylim,

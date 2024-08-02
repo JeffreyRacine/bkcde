@@ -1,6 +1,6 @@
 import(stats, parallel, MCPAN)
 importFrom("grDevices", "extendrange")
-importFrom("graphics", "grid", "legend", "lines", "persp")
+importFrom("graphics", "grid", "legend", "lines", "persp", "par")
 importFrom("parallel", "mcmapply", "mclapply")
 importFrom("MCPAN", "SCSrank")
 export("bkcde", "bkcde.default", "bkcde.loo", "bkcde.optim", "EssDee",
