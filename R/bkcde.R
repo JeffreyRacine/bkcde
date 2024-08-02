@@ -703,13 +703,13 @@ plot.bkcde <- function(x,
     if(plot.3D) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
-        zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
+        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
-        zlim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
+        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        zlim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
       } else {
-        zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
       if(ci & ci.method == "Pointwise") {
