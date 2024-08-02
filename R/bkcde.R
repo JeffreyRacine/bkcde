@@ -6,7 +6,7 @@
 
 ## mclapply() and mcmapply() from the parallel package are used throughout
 ## instead of lapply() and mapply() to allow for multi-core computing, and when
-## ksum.cores, degree.cores, or nmulti.cores are set to a value greater than 1,
+## ksum.cores, optim.degree.cores, or optim.nmulti.cores are set to a value greater than 1,
 ## the number of cores used in the parallel processing is set to the value of
 ## the respective argument.  But when these are set to 1, the number of cores
 ## used in the parallel processing is set to 1, i.e., serial processing occurs
@@ -211,13 +211,13 @@ bkcde.default <- function(h=NULL,
                           y.lb=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
-                          degree.cores=NULL,
+                          optim.degree.cores=NULL,
                           degree.max=3,
                           degree.min=0,
                           degree=0,
                           ksum.cores=1,
                           n.integrate=1000,
-                          nmulti.cores=NULL,
+                          optim.nmulti.cores=NULL,
                           nmulti=3,
                           penalty.method=c("smooth","constant","trim"),
                           penalty.cutoff=.Machine$double.xmin,
@@ -258,8 +258,8 @@ bkcde.default <- function(h=NULL,
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
   if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
-  if(is.null(degree.cores)) degree.cores <- degree.max-degree.min+1
-  if(is.null(nmulti.cores)) nmulti.cores <- nmulti
+  if(is.null(optim.degree.cores)) optim.degree.cores <- degree.max-degree.min+1
+  if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
@@ -277,8 +277,8 @@ bkcde.default <- function(h=NULL,
                              degree.max=degree.max,
                              nmulti=nmulti,
                              ksum.cores=ksum.cores,
-                             degree.cores=degree.cores,
-                             nmulti.cores=nmulti.cores,
+                             optim.degree.cores=optim.degree.cores,
+                             optim.nmulti.cores=optim.nmulti.cores,
                              penalty.method=penalty.method,
                              penalty.cutoff=penalty.cutoff,
                              verbose=verbose,
@@ -399,7 +399,7 @@ bkcde.default <- function(h=NULL,
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
-                      degree.cores=degree.cores,
+                      optim.degree.cores=optim.degree.cores,
                       degree.mat=degree.mat,
                       degree.max=degree.max,
                       degree.min=degree.min,
@@ -411,7 +411,7 @@ bkcde.default <- function(h=NULL,
                       h.mat=h.mat,
                       h=h,
                       ksum.cores=ksum.cores,
-                      nmulti.cores=nmulti.cores,
+                      optim.nmulti.cores=optim.nmulti.cores,
                       proper.cores=proper.cores,
                       proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
@@ -448,8 +448,8 @@ bkcde.optim <- function(x=x,
                         degree.max=degree.max,
                         nmulti=nmulti,
                         ksum.cores=ksum.cores,
-                        degree.cores=degree.cores,
-                        nmulti.cores=nmulti.cores,
+                        optim.degree.cores=optim.degree.cores,
+                        optim.nmulti.cores=optim.nmulti.cores,
                         penalty.method=penalty.method,
                         penalty.cutoff=penalty.cutoff,
                         verbose=verbose,
@@ -506,14 +506,14 @@ bkcde.optim <- function(x=x,
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return
-    },mc.cores = nmulti.cores)
+    },mc.cores = optim.nmulti.cores)
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
     optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
     optim.out
-  },mc.cores = degree.cores)
+  },mc.cores = optim.degree.cores)
   ## Return object with largest likelihood function over all models and
   ## multistarts, padded with additional information
   output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
@@ -610,7 +610,7 @@ plot.bkcde <- function(x,
     ksum.cores <- ci.cores
   }
   if(is.null(proper.cores)) {
-    proper.cores <- x$proper.cores
+    proper.cores <- 1
   } else {
     proper.cores <- proper.cores
   }
@@ -861,15 +861,16 @@ summary.bkcde <- function(object, ...) {
   if(!is.na(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
+  cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
+  cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
+  cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
+  cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
-  cat("Number of cores used in parallel processing for degree selection: ",object$degree.cores,"\n",sep="")
-  cat("Number of cores used in parallel processing for multistart optimization: ",object$nmulti.cores,"\n",sep="")
-  cat("Total number of cores used in parallel processing: ",object$ksum.cores*object$degree.cores*object$nmulti.cores,"\n",sep="")
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-  cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$degree.cores*object$nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
+  cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
   cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
-      " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$degree.cores*object$nmulti.cores),format="f",digits=2),")\n",sep="")
+      " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
   cat("\n")
   invisible()
 }
