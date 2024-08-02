@@ -8,7 +8,7 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-predict.bkcde(object, newdata, proper = NULL, ...)
+\method{predict}{bkcde}(object, newdata, proper = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

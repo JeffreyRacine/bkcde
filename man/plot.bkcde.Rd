@@ -8,7 +8,35 @@ A Capitalized Title (ideally limited to 65 characters)
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-plot.bkcde(x, B = 3999, alpha = 0.05, ci = FALSE, ci.bias.correct = TRUE, ci.cores = NULL, ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), ci.progress = TRUE, ksum.cores = NULL, phi = NULL, plot.2D.n.grid = 100, plot.2D.y.grid = NULL, plot.3D = FALSE, plot.3D.n.grid = 10, plot.3D.x.grid = NULL, plot.3D.y.grid = NULL, plot.behavior = c("plot", "plot-data", "data"), proper = NULL, proper.cores = NULL, sub = NULL, theta = NULL, type = NULL, x.eval = NULL, xlab = NULL, ylab = NULL, ylim = NULL, zlab = NULL, zlim = NULL, ...)
+\method{plot}{bkcde}(x, 
+     B = 3999, 
+     alpha = 0.05, 
+     ci = FALSE, 
+     ci.bias.correct = TRUE, 
+     ci.cores = NULL, 
+     ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), 
+     ci.progress = TRUE, 
+     ksum.cores = NULL, 
+     phi = NULL, 
+     plot.2D.n.grid = 100, 
+     plot.2D.y.grid = NULL, 
+     plot.3D = FALSE, 
+     plot.3D.n.grid = 10, 
+     plot.3D.x.grid = NULL, 
+     plot.3D.y.grid = NULL, 
+     plot.behavior = c("plot", "plot-data", "data"), 
+     proper = NULL, 
+     proper.cores = NULL, 
+     sub = NULL, 
+     theta = NULL, 
+     type = NULL, 
+     x.eval = NULL, 
+     xlab = NULL, 
+     ylab = NULL, 
+     ylim = NULL, 
+     zlab = NULL, 
+     zlim = NULL, 
+     ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
