@@ -2,12 +2,12 @@
 \alias{bkcde}
 \alias{bkcde.call}
 \alias{bkcde.default}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+Boundary Corrected Polynomial Adaptive Conditional Kernel Density Estimation
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+bkcde() is a function that estimates the conditional density of a response variable given a predictor variable using a boundary corrected polynomial adaptive kernel density estimator. The function is designed to be fast and memory efficient by using parallel processing and vectorized operations. The function is also designed to be flexible by allowing the user to specify the degree of the polynomial and the bandwidths of the kernel functions manually, if so desired.
 }
 \usage{
 bkcde(...)
@@ -40,87 +40,195 @@ bkcde(...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{h}{
-%%     ~~Describe \code{h} here~~
+  a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the bkcde.optim() function.
 }
   \item{x}{
-%%     ~~Describe \code{x} here~~
+  a numeric vector of the predictor variable.
 }
   \item{y}{
-%%     ~~Describe \code{y} here~~
+  a numeric vector of the response variable.
 }
   \item{x.eval}{
-%%     ~~Describe \code{x.eval} here~~
+  a numeric vector of the predictor variable at which to evaluate the conditional density. If x.eval is NULL, the function will evaluate the conditional density at the sample x values
 }
   \item{y.eval}{
-%%     ~~Describe \code{y.eval} here~~
+  a numeric vector of the response variable at which to evaluate the conditional density. If y.eval is NULL, the function will evaluate the conditional density at the sample y values
 }
   \item{x.lb}{
-%%     ~~Describe \code{x.lb} here~~
+  the lower bound of the predictor variable. If x.lb is NULL, the function will use the minimum of x as the lower bound
 }
   \item{y.lb}{
-%%     ~~Describe \code{y.lb} here~~
+  the lower bound of the response variable. If y.lb is NULL, the function will use the minimum of y as the lower bound
 }
   \item{x.ub}{
-%%     ~~Describe \code{x.ub} here~~
+  the upper bound of the predictor variable. If x.ub is NULL, the function will use the maximum of x as the upper bound
 }
   \item{y.ub}{
-%%     ~~Describe \code{y.ub} here~~
+  the upper bound of the response variable. If y.ub is NULL, the function will use the maximum of y as the upper bound
 }
   \item{degree.max}{
-%%     ~~Describe \code{degree.max} here~~
+  the maximum degree of the polynomial searched over. The default is 3
 }
   \item{degree.min}{
-%%     ~~Describe \code{degree.min} here~~
+  the minimum degree of the polynomial searched. The default is 0
 }
   \item{degree}{
-%%     ~~Describe \code{degree} here~~
+  the degree of the polynomial if specified manually. The default is 0
 }
   \item{ksum.cores}{
-%%     ~~Describe \code{ksum.cores} here~~
+  the number of cores to use for the kernel sum. The default is 1
 }
   \item{n.integrate}{
-%%     ~~Describe \code{n.integrate} here~~
+  the number of points to use for numerical integration. The default is 1000
 }
   \item{nmulti}{
-%%     ~~Describe \code{nmulti} here~~
+  the number of multi-starts to use for optimization. The default is 3
 }
   \item{optim.degree.cores}{
-%%     ~~Describe \code{optim.degree.cores} here~~
+  the number of cores to use for the optimization of the degree. The default is degree.max - degree.min + 1
 }
   \item{optim.nmulti.cores}{
-%%     ~~Describe \code{optim.nmulti.cores} here~~
+  the number of cores to use for the optimization of the multi-starts. The default is nmulti
 }
   \item{penalty.cutoff}{
-%%     ~~Describe \code{penalty.cutoff} here~~
+  the cutoff value for the penalty used in the log likelihood function for negative density values. The default is .Machine\$double.xmin
 }
   \item{penalty.method}{
-%%     ~~Describe \code{penalty.method} here~~
+  the method used to penalize negative density values. The default is "smooth"
 }
   \item{poly.raw}{
-%%     ~~Describe \code{poly.raw} here~~
+  a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)
 }
   \item{proper.cores}{
-%%     ~~Describe \code{proper.cores} here~~
+  the number of cores to use for the proper normalization. The default is 12
 }
   \item{proper}{
-%%     ~~Describe \code{proper} here~~
+  a logical value indicating whether to use proper normalization. The default is TRUE
 }
   \item{verbose}{
-%%     ~~Describe \code{verbose} here~~
+  a logical value indicating whether to print warnings. The default is FALSE
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+  additional arguments to be passed to the bkcde.optim() function
 }
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
 \value{
+return.list <- list(convergence.mat = convergence.mat, convergence.vec = convergence.vec, 
+        convergence = convergence, degree.mat = degree.mat, degree.max = degree.max, 
+        degree.min = degree.min, degree = degree, f.yx.integral.post = int.f.seq.post, 
+        f.yx.integral.pre.neg = int.f.seq.pre.neg, f.yx.integral = int.f.seq, 
+        f = f.yx, h.mat = h.mat, h = h, ksum.cores = ksum.cores, 
+        optim.degree.cores = optim.degree.cores, optim.nmulti.cores = optim.nmulti.cores, 
+        proper.cores = proper.cores, proper = proper, secs.elapsed = as.numeric(difftime(Sys.time(), 
+            secs.start.total, units = "secs")), secs.estimate = as.numeric(difftime(Sys.time(), 
+            secs.start.estimate, units = "secs")), secs.optim.mat = secs.optim.mat, 
+        value.mat = value.mat, value.vec = value.vec, value = value, 
+        x.eval = x.eval, x.lb = x.lb, x.ub = x.ub, x = x, y.eval = y.eval, 
+        y.lb = y.lb, y.ub = y.ub, y = y)
 %%  ~Describe the value returned
 %%  If it is a LIST, use
 %%  \item{comp1 }{Description of 'comp1'}
 %%  \item{comp2 }{Description of 'comp2'}
 %% ...
+\item{convergence.mat}{
+a matrix of convergence values for each multi-start and degree
+}
+\item{convergence.vec}{
+a vector of convergence values for each multi-start
+}
+\item{convergence}{
+a scalar convergence values reported by optim()
+}
+\item{degree.mat}{
+a matrix of degrees for each multi-start
+}
+\item{degree.max}{
+the maximum degree of the polynomial searched over
+}
+\item{degree.min}{
+the minimum degree of the polynomial searched
+}
+\item{degree}{
+the degree of the polynomial if specified manually
+}
+\item{f.yx.integral.post}{
+the integral of the conditional density after proper normalization
+}
+\item{f.yx.integral.pre.neg}{
+the integral of the conditional density before proper normalization
+}
+\item{f.yx.integral}{
+the integral of the conditional density
+}
+\item{f}{
+the conditional density
+}
+\item{h.mat}{
+a matrix of bandwidths for each multi-start
+}
+\item{h}{
+a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable
+}
+\item{ksum.cores}{
+the number of cores to use for the kernel sum
+}
+\item{optim.degree.cores}{
+the number of cores to use for the optimization of the degree
+}
+\item{optim.nmulti.cores}{
+the number of cores to use for the optimization of the multi-starts
+}
+\item{proper.cores}{
+the number of cores to use for the proper normalization
+}
+\item{proper}{
+a logical value indicating whether to use proper normalization
+}
+\item{secs.elapsed}{
+the total time elapsed in seconds
+}
+\item{secs.estimate}{
+the time elapsed for the estimation in seconds
+}
+\item{secs.optim.mat}{
+a matrix of times elapsed for each multi-start
+}
+\item{value.mat}{
+a matrix of values for each multi-start
+}
+\item{value.vec}{
+a vector of values for each multi-start
+}
+\item{value}{
+a scalar value reported by optim()
+}
+\item{x.eval}{
+a numeric vector of the predictor variable at which to evaluate the conditional density
+}
+\item{x.lb}{
+the lower bound of the predictor variable
+}
+\item{x.ub}{
+the upper bound of the predictor variable
+}
+\item{x}{
+a numeric vector of the predictor variable
+}
+\item{y.eval}{
+a numeric vector of the response variable at which to evaluate the conditional density
+}
+\item{y.lb}{
+the lower bound of the response variable
+}
+\item{y.ub}{
+the upper bound of the response variable
+}
+\item{y}{
+a numeric vector of the response variable
+}
 }
 \references{
 %% ~put references to the literature/web site here ~
