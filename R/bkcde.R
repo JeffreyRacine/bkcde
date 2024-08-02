@@ -370,7 +370,7 @@ bkcde.default <- function(h=NULL,
       int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
       # Correct the estimate to ensure it is non-negative and integrates to 1
       foo <- f.yx[x.eval==x.eval.unique[j]]
-      foo[foo<0] <- 0
+      foo[foo < 0] <- 0
       foo <- foo/int.f.seq[j]     
       f.yx[x.eval==x.eval.unique[j]] <- foo
     }
@@ -671,6 +671,7 @@ plot.bkcde <- function(x,
     if(ci.bias.correct) {
       bias.vec <- colMeans(boot.mat) - x.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
+      if(proper) boot.mat <- pmax(boot.mat,0)
     }
     ci.pw.lb <- apply(boot.mat, 2, quantile, probs = alpha / 2)
     ci.pw.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / 2)
