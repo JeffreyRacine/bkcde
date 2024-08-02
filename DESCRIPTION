@@ -8,4 +8,4 @@ Date: 2024-08-02
 Author: Jeffrey S. Racine
 Maintainer: Jeffrey S. Racine <raicnej@mcmaster.ca>
 Description: This package uses data-driven methods to jointly determine bandwidths, the polynomial order, and approximates unknown bounds freeing the user from having to select any of these in applied settings.
-License: GPL-3.0-or-later
+License: GPL (>= 3)
