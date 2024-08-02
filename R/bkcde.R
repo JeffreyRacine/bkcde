@@ -793,7 +793,8 @@ plot.bkcde <- function(x,
                ),lty=1:4,bty="n")
       }
     }
-  } else if(plot.behavior != "plot") {
+  } 
+  if(plot.behavior != "plot") {
     ## Return in vector form for the user to plot as they wish (if
     ## plot.persp=TRUE convert to matrix using x.grid & y.grid)
     return(list(f=x.fitted,
