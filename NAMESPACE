@@ -1,7 +1,8 @@
-import(stats, parallel, MCPAN)
+import(stats, parallel, MCPAN, pbmcapply)
 importFrom("grDevices", "extendrange")
 importFrom("graphics", "grid", "legend", "lines", "persp", "par")
 importFrom("parallel", "mcmapply", "mclapply")
+importFrom("pbmcapply", "pbmcmapply", "pbmclapply")
 importFrom("MCPAN", "SCSrank")
 export("bkcde", "bkcde.default", "bkcde.loo", "bkcde.optim", "EssDee",
        "fitted.bkcde", "integrate.trapezoidal", "kernel.bk", "log.likelihood",

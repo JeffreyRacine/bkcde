@@ -559,6 +559,7 @@ plot.bkcde <- function(x,
                        ci = FALSE, 
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"), 
                        ci.bias.correct = TRUE,
+                       ci.progress = TRUE,
                        alpha = 0.05, 
                        B = 3999, 
                        plot.3D = FALSE,
@@ -585,6 +586,7 @@ plot.bkcde <- function(x,
                        ...) {
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
+  if(!is.logical(ci.progress)) stop("ci.progress must be logical in plot.bkcde()")
   ## Note that the Bonferroni method places a restriction on the smallest number
   ## of bootstrap replications such that (alpha/(2*plot.2D.n.grid))*(B+1) or
   ## (alpha/(2*plot.3D.n.grid^2))*(B+1) is a positive integer - this is on the
@@ -674,12 +676,18 @@ plot.bkcde <- function(x,
     }
   }
   if(ci) {
-    cat("Computing bootstrap confidence intervals (will replot with intervals when complete)...")
     ## All processing goes into computing the matrix of bootstrap estimates, so
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
     if(is.null(ci.cores)) ci.cores <- detectCores()
-    boot.mat <- t(mcmapply(function(b){
+    mcmapply.progress <- function(...,progress=TRUE) {
+      if(progress) {
+        pbmcmapply(...)
+      } else {
+        mcmapply(...)
+      }
+    }
+    boot.mat <- t(mcmapply.progress(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
       bkcde(h=x$h,
             x=x$x[ii],
@@ -694,7 +702,7 @@ plot.bkcde <- function(x,
             proper.cores=proper.cores,
             ksum.cores=ksum.cores,
             degree=x$degree)$f
-    },1:B,mc.cores=ci.cores))
+    },1:B,mc.cores=ci.cores,progress=ci.progress))
     if(ci.bias.correct) {
       bias.vec <- colMeans(boot.mat) - x.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
