@@ -672,34 +672,68 @@ plot.bkcde <- function(x,
       } else if(ci.method == "Bonferroni") {
         zlim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
+        zlim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
       } else {
         zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
-      if(is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
-      if(!is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...) 
       if(ci & ci.method == "Pointwise") {
         ## First lower, then plot, then upper
-        persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+        }
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Bonferroni") {
-        persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)        
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+        }
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Simultaneous") {
-        persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
+        }
         par(new = TRUE)
-        persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)        
+        if(is.null(ylim)) {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+        } else {
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+        }  
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "all") {
         warning("plotting all confidence intervals in plot.bkcde() may be visually overwhelming, ignored (but you can retrieve the ci data via plot=FALSE)",immediate. = TRUE)
@@ -711,7 +745,7 @@ plot.bkcde <- function(x,
       } else if(ci.method == "Bonferroni") {
         if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub))
+        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
       } else {
         if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
@@ -751,7 +785,8 @@ plot.bkcde <- function(x,
       }
     }
   } else if(!plot) {
-    ## Returned in vector form for the user to plot as they wish (if plot.persp=TRUE convert to matrix)
+    ## Returned in vector form for the user to plot as they wish (if
+    ## plot.persp=TRUE convert to matrix using x.grid & y.grid)
     return(list(f=x.fitted,
                 x=x.plot.eval,
                 y=y.plot.eval,
