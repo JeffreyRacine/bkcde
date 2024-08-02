@@ -581,6 +581,7 @@ plot.bkcde <- function(x,
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
   if(plot.persp) {
+    ## Plot 3D
     if(is.null(plot.persp.x.grid)) {
       x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.n.grid)
     } else {
@@ -607,10 +608,14 @@ plot.bkcde <- function(x,
       if(is.null(ylab)) ylab <- "y"
       if(is.null(zlab)) zlab <- "f(y|x)"
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
-      if(is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
-      if(!is.null(ylim)) persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
+      if(is.null(ylim)) {
+        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
+      } else {
+        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
+      }
     }
   } else if(!plot.persp) {
+    ## Plot 2D
     predict.mat <- NULL
     x.grid <- NULL
     y.grid <- NULL
@@ -634,6 +639,9 @@ plot.bkcde <- function(x,
   }
   if(ci) {
     cat("Computing bootstrap confidence intervals (will replot with ci & legend when complete)...")
+    ## All processing goes into computing the matrix of bootstrap estimates, so
+    ## once this is done it makes sense to then generate all three types of
+    ## confidence intervals
     if(is.null(plot.cores)) plot.cores <- detectCores()
     boot.mat <- t(mcmapply(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
@@ -666,7 +674,7 @@ plot.bkcde <- function(x,
   }
   if(plot) {
     if(plot.persp) {
-      ## Plot again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
+      ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
         zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
@@ -739,7 +747,7 @@ plot.bkcde <- function(x,
         warning("plotting all confidence intervals in plot.bkcde() may be visually overwhelming, ignored (but you can retrieve the ci data via plot=FALSE)",immediate. = TRUE)
       }
     } else {
-      ## Plot again with ylim set for the confidence intervals
+      ## Plot 2D again with ylim set for the confidence intervals
       if(ci.method == "Pointwise") {
         if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
@@ -785,7 +793,7 @@ plot.bkcde <- function(x,
       }
     }
   } else if(!plot) {
-    ## Returned in vector form for the user to plot as they wish (if
+    ## Return in vector form for the user to plot as they wish (if
     ## plot.persp=TRUE convert to matrix using x.grid & y.grid)
     return(list(f=x.fitted,
                 x=x.plot.eval,
