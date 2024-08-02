@@ -4,9 +4,8 @@ importFrom("graphics", "grid", "legend", "lines", "persp", "par")
 importFrom("parallel", "mcmapply", "mclapply")
 importFrom("pbmcapply", "pbmcmapply", "pbmclapply")
 importFrom("MCPAN", "SCSrank")
-export("bkcde", "bkcde.default", "bkcde.loo", "bkcde.optim", "EssDee",
-       "fitted.bkcde", "integrate.trapezoidal", "kernel.bk", "log.likelihood",
-       "NZD","plot.bkcde", "predict.bkcde", "summary.bkcde")
+export("bkcde", "bkcde.default", "fitted.bkcde", "plot.bkcde",
+       "predict.bkcde", "summary.bkcde")
 S3method(bkcde, default)
 S3method(plot, bkcde)
 S3method(fitted, bkcde)
