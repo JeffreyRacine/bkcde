@@ -542,12 +542,13 @@ plot.bkcde <- function(x,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"), 
                        ci.bias.correct = TRUE,
                        alpha = 0.05, 
-                       B = 1999, 
-                       plot.n.grid = 10,
-                       plot.y.grid = NULL,
-                       plot.persp = FALSE,
-                       plot.persp.x.grid = NULL,
-                       plot.persp.y.grid = NULL,
+                       B = 3999, 
+                       plot.3D = FALSE,
+                       plot.2D.n.grid = 100,
+                       plot.2D.y.grid = NULL,
+                       plot.3D.n.grid = 10,
+                       plot.3D.x.grid = NULL,
+                       plot.3D.y.grid = NULL,
                        proper = NULL,
                        x.eval = NULL,
                        phi = NULL,
@@ -564,11 +565,14 @@ plot.bkcde <- function(x,
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   ## Note that the Bonferroni method places a restriction on the smallest number
-  ## of bootstrap replications such that (alpha/(plot.n.grid^2))*(B+1) is a
-  ## positive integer - this is on the user to ensure. The simultaneous method
-  ## will almost certainly require fewer bootstrap replications than the
-  ## Bonferroni method. The pointwise method requires the fewest, alpha*(B+1)
-  ## must be a positive integer.
+  ## of bootstrap replications such that (alpha/(2*plot.2D.n.grid))*(B+1) or
+  ## (alpha/(2*plot.3D.n.grid^2))*(B+1) is a positive integer - this is on the
+  ## user to ensure. The simultaneous method will almost certainly require fewer
+  ## bootstrap replications than the Bonferroni method. The pointwise method
+  ## requires the fewest, alpha*(B+1) must be a positive integer. So, for the
+  ## Bonferroni bounds the smallest number of bootstrap replications using the
+  ## default (alpha=0.05, plot.2D.n.grid=100 or alpha=0.05, plot.3D.n.grid=10 is
+  ## 3999. For non-default values the user should adjust B accordingly.
   ci.method <- match.arg(ci.method)
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
@@ -576,10 +580,10 @@ plot.bkcde <- function(x,
   if(!is.null(plot.cores)) if(plot.cores < 1) stop("plot.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
-  if(plot.persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.persp = TRUE",immediate. = TRUE)
-  if(!is.null(plot.persp.x.grid) & !is.null(plot.persp.y.grid) & length(plot.persp.x.grid) != length(plot.persp.y.grid)) stop("length of plot.persp.x.grid must be equal to length of plot.persp.y.grid in plot.bkcde()")
+  if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
+  if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
-  if(!plot.persp & is.null(x.eval)) stop("x.eval must be provided in plot.bkcde() when plot.persp = FALSE")
+  if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(plot.cores)) {
     ksum.cores <- x$ksum.cores
   } else {
@@ -588,27 +592,27 @@ plot.bkcde <- function(x,
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
-  if(plot.persp) {
+  if(plot.3D) {
     ## Plot 3D
-    if(is.null(plot.persp.x.grid)) {
-      x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.n.grid)
+    if(is.null(plot.3D.x.grid)) {
+      x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.3D.n.grid)
     } else {
-      x.grid <- plot.persp.x.grid
-      plot.n.grid <- length(x.grid)
+      x.grid <- plot.3D.x.grid
+      plot.3D.n.grid <- length(x.grid)
     }
-    if(is.null(plot.persp.y.grid)) {
-      y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.n.grid)
+    if(is.null(plot.3D.y.grid)) {
+      y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.3D.n.grid)
     } else {
-      y.grid <- plot.persp.y.grid
-      plot.n.grid <- length(y.grid)
+      y.grid <- plot.3D.y.grid
+      plot.3D.n.grid <- length(y.grid)
     }
-    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.persp.x.grid?)")
-    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.persp.y.grid?)")
+    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.3D.x.grid?)")
+    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.3D.y.grid?)")
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
-    predict.mat <- matrix(x.fitted,plot.n.grid,plot.n.grid)
+    predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
     if(plot.behavior != "data") {
       if(is.null(theta)) theta <- 120
       if(is.null(phi)) phi <- 45
@@ -622,21 +626,21 @@ plot.bkcde <- function(x,
         persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
       }
     }
-  } else if(!plot.persp) {
+  } else if(!plot.3D) {
     ## Plot 2D
     predict.mat <- NULL
-    if(is.null(plot.y.grid)) {
-      y.plot.eval <- y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.n.grid)
+    if(is.null(plot.2D.y.grid)) {
+      y.plot.eval <- y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.2D.n.grid)
     } else {
-      y.plot.eval <- y.grid <- plot.y.grid
-      plot.n.grid <- length(y.grid)
+      y.plot.eval <- y.grid <- plot.2D.y.grid
+      plot.2D.n.grid <- length(y.grid)
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
     if(plot.behavior != "data") {
       if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
       if(is.null(ylab)) ylab <- "f(y|x)"
-      if(is.null(xlab)) xlab <- paste("y|x=",x.eval,sep="")
+      if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
       if(is.null(type)) type <- "l"
       plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
            sub=sub,
@@ -685,7 +689,7 @@ plot.bkcde <- function(x,
     if(is.null(ylim)) ylim <- NULL
   }
   if(plot.behavior != "data") {
-    if(plot.persp) {
+    if(plot.3D) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
         zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
@@ -700,9 +704,9 @@ plot.bkcde <- function(x,
       if(ci & ci.method == "Pointwise") {
         ## First lower, then plot, then upper
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
         }
         par(new = TRUE)
         if(is.null(ylim)) {
@@ -712,16 +716,16 @@ plot.bkcde <- function(x,
         }
         par(new = TRUE)
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
         }
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Bonferroni") {
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
         }
         par(new = TRUE)
         if(is.null(ylim)) {
@@ -731,16 +735,16 @@ plot.bkcde <- function(x,
         }
         par(new = TRUE)
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
         }
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Simultaneous") {
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
         }
         par(new = TRUE)
         if(is.null(ylim)) {
@@ -750,9 +754,9 @@ plot.bkcde <- function(x,
         }
         par(new = TRUE)
         if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
         } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.n.grid,plot.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
+          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
         }  
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "all") {
@@ -807,7 +811,7 @@ plot.bkcde <- function(x,
   } 
   if(plot.behavior != "plot") {
     ## Return in vector form for the user to plot as they wish (if
-    ## plot.persp=TRUE convert to matrix using x.grid & y.grid)
+    ## plot.3D=TRUE convert to matrix using x.grid & y.grid)
     return(list(f=x.fitted,
                 x=x.plot.eval,
                 y=y.plot.eval,
