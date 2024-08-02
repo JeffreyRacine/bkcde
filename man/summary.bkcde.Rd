@@ -2,10 +2,10 @@
 \alias{summary.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-An S3 Method for Summarizing bkcde Objects
+A Capitalized Title (ideally limited to 65 characters)
 }
 \description{
-This function provides a summary of the results of a \code{bkcde} object.
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
 summary.bkcde(object, ...)
@@ -13,10 +13,10 @@ summary.bkcde(object, ...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-  An object of class \code{bkcde}.
+%%     ~~Describe \code{object} here~~
 }
   \item{\dots}{
-  Additional arguments to be passed to \code{summary.bkcde}.
+%%     ~~Describe \code{\dots} here~~
 }
 }
 \details{
@@ -33,7 +33,7 @@ summary.bkcde(object, ...)
 %% ~put references to the literature/web site here ~
 }
 \author{
-Jeffrey S. Racine <racinej@mcmaster.ca>
+%%  ~~who you are~~
 }
 \note{
 %%  ~~further notes~~
@@ -68,32 +68,43 @@ function (object, ...)
         "\n", sep = "")
     cat("Degree of local polynomial: ", object$degree, "\n", 
         sep = "")
-    if (!is.null(object$f.yx.integral)) 
-        cat("Integral of estimate (prior to adjustment): ", object$f.yx.integral, 
+    if (!is.na(object$f.yx.integral.pre.neg)) 
+        cat("Integral of estimate (pre any negativity correction): ", 
+            formatC(object$f.yx.integral.pre.neg, format = "f", 
+                digits = 12), "\n", sep = "")
+    if (!is.na(object$f.yx.integral)) 
+        cat("Integral of estimate (post negativity, prior to integration to 1 correction): ", 
+            formatC(object$f.yx.integral, format = "f", digits = 12), 
             "\n", sep = "")
+    if (!is.na(object$f.yx.integral.post)) 
+        cat("Integral of estimate (post all corrections): ", 
+            formatC(object$f.yx.integral.post, format = "f", 
+                digits = 12), "\n", sep = "")
+    cat("Number of cores used for optimization in parallel processing for degree selection: ", 
+        object$optim.degree.cores, "\n", sep = "")
+    cat("Number of cores used for optimization in parallel processing for multistart optimization: ", 
+        object$optim.nmulti.cores, "\n", sep = "")
+    cat("Total number of cores used for optimization in parallel processing: ", 
+        object$ksum.cores * object$optim.degree.cores * object$optim.nmulti.cores, 
+        "\n", sep = "")
+    cat("Number of cores used in parallel processing for ensuring proper density: ", 
+        object$proper.cores, "\n", sep = "")
     cat("Number of cores used in parallel processing for kernel sum: ", 
         object$ksum.cores, "\n", sep = "")
-    cat("Number of cores used in parallel processing for degree selection: ", 
-        object$degree.cores, "\n", sep = "")
-    cat("Number of cores used in parallel processing for multistart optimization: ", 
-        object$nmulti.cores, "\n", sep = "")
-    cat("Total number of cores used in parallel processing: ", 
-        object$ksum.cores * object$degree.cores * object$nmulti.cores, 
-        "\n", sep = "")
     cat("Elapsed time (total): ", formatC(object$secs.elapsed, 
         format = "f", digits = 2), " seconds\n", sep = "")
     cat("Optimization and estimation time: ", formatC(object$secs.estimate + 
         sum(object$secs.optim.mat), format = "f", digits = 2), 
         " seconds\n", sep = "")
     cat("Optimization and estimation time per core: ", formatC((object$secs.estimate + 
-        sum(object$secs.optim.mat))/(object$ksum.cores * object$degree.cores * 
-        object$nmulti.cores), format = "f", digits = 2), " seconds/core\n", 
-        sep = "")
+        sum(object$secs.optim.mat))/(object$ksum.cores * object$optim.degree.cores * 
+        object$optim.nmulti.cores), format = "f", digits = 2), 
+        " seconds/core\n", sep = "")
     cat("Parallel efficiency: ", formatC(object$secs.elapsed/(object$secs.estimate + 
         sum(object$secs.optim.mat)), format = "f", digits = 2), 
         " (allow for overhead and blocking, ideal = ", formatC(1/(object$ksum.cores * 
-            object$degree.cores * object$nmulti.cores), format = "f", 
-            digits = 2), ")\n", sep = "")
+            object$optim.degree.cores * object$optim.nmulti.cores), 
+            format = "f", digits = 2), ")\n", sep = "")
     cat("\n")
     invisible()
   }

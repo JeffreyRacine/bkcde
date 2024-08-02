@@ -2,10 +2,10 @@
 \alias{kernel.bk}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Boundary Kernel Function
+A Capitalized Title (ideally limited to 65 characters)
 }
 \description{
-The boundary kernel function is a doubly truncated Gaussian kernel function that is used to estimate the density of a random variable that can explicitly take on values in a bounded interval. The bounds can be the empirical support of the data or can be user-specified.
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
 kernel.bk(x, X, h, a = -Inf, b = Inf)
@@ -13,32 +13,36 @@ kernel.bk(x, X, h, a = -Inf, b = Inf)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-  point at which the kernel is to be evaluated
+%%     ~~Describe \code{x} here~~
 }
   \item{X}{
-  vector of data points
+%%     ~~Describe \code{X} here~~
 }
   \item{h}{
-  bandwidth
+%%     ~~Describe \code{h} here~~
 }
   \item{a}{
-  lower bound of the interval
+%%     ~~Describe \code{a} here~~
 }
   \item{b}{
-  upper bound of the interval
+%%     ~~Describe \code{b} here~~
 }
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
 \value{
-a vector of length X containing the values of the kernel function at the points in x-X
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
 }
 \references{
 %% ~put references to the literature/web site here ~
 }
 \author{
-Jeffrey S. Racine <racinej@mcmaster.ca>
+%%  ~~who you are~~
 }
 \note{
 %%  ~~further notes~~
@@ -50,6 +54,22 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-x <- rnorm(10)
-bk <- kernel.bk(x[1], x, 1, -1, 1)
+##---- Should be DIRECTLY executable !! ----
+##-- ==>  Define data, use random,
+##--	or standard data sets, see data().
+
+## The function is currently defined as
+function (x, X, h, a = -Inf, b = Inf) 
+{
+    dnorm((x - X)/h)/(h * (pnorm((b - x)/h) - pnorm((a - x)/h)))
+  }
 }
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory (show via RShowDoc("KEYWORDS")):
+% \keyword{ ~kwd1 }
+% \keyword{ ~kwd2 }
+% Use only one keyword per line.
+% For non-standard keywords, use \concept instead of \keyword:
+% \concept{ ~cpt1 }
+% \concept{ ~cpt2 }
+% Use only one concept per line.

@@ -2,31 +2,38 @@
 \alias{fitted.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-An S3 Method to Extract the Fitted Values from a \code{bkcde} Object
+A Capitalized Title (ideally limited to 65 characters)
 }
 \description{
-This function extracts the fitted values from a \code{bkcde} object.
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-fitted.bkcde(x)
+fitted.bkcde(object, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{
-    An object of class \code{bkcde}.
+  \item{object}{
+%%     ~~Describe \code{object} here~~
+}
+  \item{\dots}{
+%%     ~~Describe \code{\dots} here~~
 }
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
 \value{
-A vector of fitted values.
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
 }
 \references{
 %% ~put references to the literature/web site here ~
 }
 \author{
-Jeffrey S. Racine <racinej@mcmaster.ca>
+%%  ~~who you are~~
 }
 \note{
 %%  ~~further notes~~
@@ -38,21 +45,17 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-library(bkcde)
-set.seed(42)
-n <- 100
-n.grid <- 100
-x <- rnorm(n)
-x.eval <- 0
-x.eval.grid <- rep(x.eval,n.grid)
-y <- rnorm(n,mean=x)
-y.grid <- seq(min(y),max(y),length=n.grid)
-dgp <- dnorm(y.grid,mean=x.eval)
-bkcde.out <- bkcde(x=x,y=y,
-                   x.eval=x.eval.grid,
-                   y.eval=y.grid,
-                   proper=TRUE)
-plot(y.grid,fitted(bkcde.out))
+##---- Should be DIRECTLY executable !! ----
+##-- ==>  Define data, use random,
+##--	or standard data sets, see data().
+
+## The function is currently defined as
+function (object, ...) 
+{
+    if (!inherits(object, "bkcde")) 
+        stop("object must be of class bkcde in fitted.bkcde()")
+    return(object$f)
+  }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):

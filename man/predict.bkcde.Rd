@@ -2,24 +2,27 @@
 \alias{predict.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-An S3 Method to Predict Values from a Bivariate Kernel Conditional Density Estimator
+A Capitalized Title (ideally limited to 65 characters)
 }
 \description{
-This function predicts values from a bivariate kernel conditional density estimator.
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-predict.bkcde(object, newdata, ...)
+predict.bkcde(object, newdata, proper = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-  An object of class \code{bkcde}.
+%%     ~~Describe \code{object} here~~
 }
   \item{newdata}{
-  A data frame containing the values at which to predict the conditional density.
+%%     ~~Describe \code{newdata} here~~
+}
+  \item{proper}{
+%%     ~~Describe \code{proper} here~~
 }
   \item{\dots}{
-  Additional arguments to be passed to the function.
+%%     ~~Describe \code{\dots} here~~
 }
 }
 \details{
@@ -36,7 +39,7 @@ predict.bkcde(object, newdata, ...)
 %% ~put references to the literature/web site here ~
 }
 \author{
-Jeffrey S. Racine <racinej@mcmaster.ca>
+%%  ~~who you are~~
 }
 \note{
 %%  ~~further notes~~
@@ -53,7 +56,7 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 ##--	or standard data sets, see data().
 
 ## The function is currently defined as
-function (object, newdata, ...) 
+function (object, newdata, proper = NULL, ...) 
 {
     if (!inherits(object, "bkcde")) 
         stop("object must be of class bkcde in predict.bkcde()")
@@ -61,9 +64,14 @@ function (object, newdata, ...)
         stop("newdata must be a data frame in predict.bkcde()")
     if (!all(names(newdata) \%in\% c("x", "y"))) 
         stop("newdata must contain columns x and y in predict.bkcde()")
+    if (!is.null(proper) & !is.logical(proper)) 
+        stop("proper must be logical in predict.bkcde()")
+    if (is.null(proper)) 
+        proper <- object$proper
     return(bkcde(h = object$h, x = object$x, y = object$y, x.eval = newdata$x, 
         y.eval = newdata$y, y.lb = object$y.lb, y.ub = object$y.ub, 
-        x.lb = object$x.lb, x.ub = object$x.ub, degree = object$degree)$f)
+        x.lb = object$x.lb, x.ub = object$x.ub, proper = proper, 
+        degree = object$degree, ...)$f)
   }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

@@ -2,74 +2,66 @@
 \alias{bkcde.optim}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Optimize the Bandwidth and Polynomial Degree of a Bivariate Kernel Conditional Density Estimator
+A Capitalized Title (ideally limited to 65 characters)
 }
 \description{
-This function optimizes the bandwidth and polynomial degree of a bivariate kernel conditional density estimator using leave-one-out likelihood cross-validation.
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-bkcde.optim(x = x, 
-            y = y, 
-            y.lb = y.lb, 
-            y.ub = y.ub, 
-            x.lb = x.lb, 
-            x.ub = x.ub, 
-            poly.raw = poly.raw, 
-            degree.min = degree.min, 
-            degree.max = degree.max, 
-            nmulti = nmulti, 
-            ksum.cores = ksum.cores, 
-            degree.cores = degree.cores, 
-            nmulti.cores = nmulti.cores, 
-            max.pen.neg.loo = max.pen.neg.loo,
-            ...)
+bkcde.optim(x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, x.ub = x.ub, degree.max = degree.max, degree.min = degree.min, ksum.cores = ksum.cores, nmulti = nmulti, optim.degree.cores = optim.degree.cores, optim.nmulti.cores = optim.nmulti.cores, penalty.cutoff = penalty.cutoff, penalty.method = penalty.method, poly.raw = poly.raw, verbose = verbose, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-  a vector of length $n$ containing the $x$-coordinates of the data points
+%%     ~~Describe \code{x} here~~
 }
   \item{y}{
-  a vector of length $n$ containing the $y$-coordinates of the data points
+%%     ~~Describe \code{y} here~~
 }
   \item{y.lb}{
-  the lower bound of the $y$-variable
+%%     ~~Describe \code{y.lb} here~~
 }
   \item{y.ub}{
-  the upper bound of the $y$-variable
+%%     ~~Describe \code{y.ub} here~~
 }
   \item{x.lb}{
-  the lower bound of the $x$-variable
+%%     ~~Describe \code{x.lb} here~~
 }
   \item{x.ub}{
-  the upper bound of the $x$-variable
-}
-  \item{poly.raw}{
-  a logical indicating whether the raw polynomial basis should be used
-}
-  \item{degree.min}{
-  the minimum polynomial degree to consider
+%%     ~~Describe \code{x.ub} here~~
 }
   \item{degree.max}{
-  the maximum polynomial degree to consider
+%%     ~~Describe \code{degree.max} here~~
 }
-  \item{nmulti}{
-  the number of random initializations to use
+  \item{degree.min}{
+%%     ~~Describe \code{degree.min} here~~
 }
   \item{ksum.cores}{
-  the number of cores to use for the kernel sum
+%%     ~~Describe \code{ksum.cores} here~~
 }
-  \item{degree.cores}{
-  the number of cores to use for the polynomial degree optimization
+  \item{nmulti}{
+%%     ~~Describe \code{nmulti} here~~
 }
-  \item{nmulti.cores}{
-  the number of cores to use for the random initialization optimization
+  \item{optim.degree.cores}{
+%%     ~~Describe \code{optim.degree.cores} here~~
 }
-  \item{max.pen.neg.loo}{
-  a logical value that indicates whether the maximum penalty for negative leave-one-out likelihoods should be used \code{.Machine\$double.xmin}
+  \item{optim.nmulti.cores}{
+%%     ~~Describe \code{optim.nmulti.cores} here~~
+}
+  \item{penalty.cutoff}{
+%%     ~~Describe \code{penalty.cutoff} here~~
+}
+  \item{penalty.method}{
+%%     ~~Describe \code{penalty.method} here~~
+}
+  \item{poly.raw}{
+%%     ~~Describe \code{poly.raw} here~~
+}
+  \item{verbose}{
+%%     ~~Describe \code{verbose} here~~
 }
   \item{\dots}{
-  additional arguments to be passed to \code{optim}
+%%     ~~Describe \code{\dots} here~~
 }
 }
 \details{
@@ -104,10 +96,11 @@ bkcde.optim(x = x,
 
 ## The function is currently defined as
 function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb, 
-    x.ub = x.ub, poly.raw = poly.raw, degree.min = degree.min, 
-    degree.max = degree.max, nmulti = nmulti, ksum.cores = ksum.cores, 
-    degree.cores = degree.cores, nmulti.cores = nmulti.cores, 
-    max.pen.neg.loo = max.pen.neg.loo, ...) 
+    x.ub = x.ub, degree.max = degree.max, degree.min = degree.min, 
+    ksum.cores = ksum.cores, nmulti = nmulti, optim.degree.cores = optim.degree.cores, 
+    optim.nmulti.cores = optim.nmulti.cores, penalty.cutoff = penalty.cutoff, 
+    penalty.method = penalty.method, poly.raw = poly.raw, verbose = verbose, 
+    ...) 
 {
     if (degree.min < 0 | degree.max >= length(y)) 
         stop("degree.min must lie in [0,1,...,", length(y) - 
@@ -152,13 +145,14 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
             st <- system.time(optim.return <- optim(par = init, 
                 fn = bkcde.loo, x = x, y = y, y.lb = y.lb, y.ub = y.ub, 
                 x.lb = x.lb, x.ub = x.ub, poly.raw = poly.raw, 
-                degree = p, ksum.cores = ksum.cores, max.pen.neg.loo = max.pen.neg.loo, 
+                degree = p, ksum.cores = ksum.cores, penalty.method = penalty.method, 
+                penalty.cutoff = penalty.cutoff, verbose = verbose, 
                 lower = lower, upper = upper, method = "L-BFGS-B", 
                 control = list(fnscale = -1)))
             optim.return$secs.optim <- st["elapsed"]
             optim.return$degree <- p
             optim.return
-        }, mc.cores = nmulti.cores)
+        }, mc.cores = optim.nmulti.cores)
         optim.out <- nmulti.return[[which.max(sapply(nmulti.return, 
             function(x) x$value))]]
         optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
@@ -166,7 +160,7 @@ function (x = x, y = y, y.lb = y.lb, y.ub = y.ub, x.lb = x.lb,
         optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
         optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
         optim.out
-    }, mc.cores = degree.cores)
+    }, mc.cores = optim.degree.cores)
     output.return <- degree.return[[which.max(sapply(degree.return, 
         function(x) x$value))]]
     output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
