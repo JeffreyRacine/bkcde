@@ -525,6 +525,21 @@ bkcde.optim <- function(x=x,
   return(output.return)
 }
 
+## persp() does not allow ylim and zlim to be set to NULL, so to be passable
+## this function avoids unnecessary duplication of code in plot.bkcde()
+
+persp.lim <- function(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=NULL,zlim=NULL,...) {
+  if(is.null(ylim) & is.null(zlim)) {
+    persp(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype=ticktype,...)
+  } else if(is.null(ylim) & !is.null(zlim)) {
+    persp(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype=ticktype,zlim=zlim,...)
+  } else if(!is.null(ylim) & is.null(zlim)) {
+    persp(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype=ticktype,ylim=ylim,...)
+  } else {
+    persp(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype=ticktype,ylim=ylim,zlim=zlim,...)
+  }
+}
+
 ## plot.bkcde() is used to plot the results of the boundary kernel CDE along
 ## with bootstrap confidence intervals generated as either pointwise,
 ## Bonferroni, or simultaneous intervals. A simple bootstrap mean correction is
@@ -557,6 +572,7 @@ plot.bkcde <- function(x,
                        sub = NULL,
                        theta = NULL,
                        ylim = NULL,
+                       zlim = NULL,
                        ylab = NULL,
                        xlab = NULL,
                        zlab = NULL,
@@ -619,12 +635,7 @@ plot.bkcde <- function(x,
       if(is.null(xlab)) xlab <- "x"
       if(is.null(ylab)) ylab <- "y"
       if(is.null(zlab)) zlab <- "f(y|x)"
-      ## Unlike plot() persp() does accept a null ylim argument so we need to check...
-      if(is.null(ylim)) {
-        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",...)
-      } else {
-        persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,...)    
-      }
+      persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
     }
   } else if(!plot.3D) {
     ## Plot 2D
@@ -703,61 +714,25 @@ plot.bkcde <- function(x,
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
       if(ci & ci.method == "Pointwise") {
         ## First lower, then plot, then upper
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
-        }
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
-        }
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
-        }
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Bonferroni") {
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
-        }
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
-        }
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
-        }
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Simultaneous") {
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...) 
-        }
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",zlim=zlim,ylim=ylim,...)
-        }
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        if(is.null(ylim)) {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,...)
-        } else {
-          persp(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",zlim=zlim,border="grey",col=NA,lty=2,ylim=ylim,...)
-        }  
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "all") {
         warning("plotting all confidence intervals in plot.bkcde() may be visually overwhelming, ignored (but you can retrieve the ci data via plot=FALSE)",immediate. = TRUE)
