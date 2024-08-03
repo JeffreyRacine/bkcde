@@ -91,7 +91,7 @@ bkcde(...)
   the number of cores to use for the optimization of the multi-starts. The default is nmulti
 }
   \item{penalty.cutoff}{
-  the cutoff value for the penalty used in the log likelihood function for negative density values. The default is .Machine\$double.xmin
+  the cutoff value for the penalty used in the log likelihood function for negative density values. 
 }
   \item{penalty.method}{
   the method used to penalize negative density values. The default is "smooth"
@@ -217,7 +217,7 @@ a numeric vector of the response variable
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~

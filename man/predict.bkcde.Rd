@@ -37,7 +37,7 @@ Additional arguments to be passed to the \code{bkcde} function.
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 %%  ~~further notes~~
