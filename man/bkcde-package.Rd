@@ -27,7 +27,17 @@ Maintainer: \packageMaintainer{bkcde}
 \seealso{
 %%  ~~ Optional links to other man pages, e.g. ~~
 %%  ~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
+\code{\link{bkcde}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
-%%  ~~ Optional simple examples of the most important functions ~~
+library(bkcde)
+set.seed(42)
+n <- 250
+x <- runif(n,-.25,.25)
+s1 <- 1
+s2 <- 1.25
+y <- rbeta(n,s1+x,s2+x)
+f.yx <- bkcde(x=x, y=y, proper=FALSE)
+summary(f.yx)
+plot(f.yx,plot.3D=TRUE,ci=TRUE,proper=FALSE,ci.method="Bonferroni")
 }
