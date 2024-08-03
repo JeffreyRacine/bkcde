@@ -2,10 +2,10 @@
 \alias{predict.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-A Capitalized Title (ideally limited to 65 characters)
+S3 Predict Method for Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function predicts the conditional density of a response variable given a set of covariates using a boundary corrected polynomial adaptive kernel conditional density estimation model.
 }
 \usage{
 \method{predict}{bkcde}(object, newdata, proper = NULL, ...)
@@ -13,27 +13,25 @@ A Capitalized Title (ideally limited to 65 characters)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-%%     ~~Describe \code{object} here~~
+An object of class \code{bkcde} returned by the function \code{\link{bkcde}}.
 }
   \item{newdata}{
-%%     ~~Describe \code{newdata} here~~
+A data frame containing the covariates and response variable for which the conditional density is to be predicted. The data frame must contain columns named \code{x} and \code{y}.
 }
   \item{proper}{
-%%     ~~Describe \code{proper} here~~
+A logical value indicating whether the conditional density should be rendered proper. If \code{NULL}, the value of \code{proper} used in the \code{bkcde} function that created the \code{object} is used.
 }
   \item{\dots}{
-%%     ~~Describe \code{\dots} here~~
+Additional arguments to be passed to the \code{bkcde} function.
 }
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
 \value{
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
+\item{f}{
+  A vector of predicted conditional density values.
+}
 }
 \references{
 %% ~put references to the literature/web site here ~
@@ -51,28 +49,18 @@ A Capitalized Title (ideally limited to 65 characters)
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or standard data sets, see data().
-
-## The function is currently defined as
-function (object, newdata, proper = NULL, ...) 
-{
-    if (!inherits(object, "bkcde")) 
-        stop("object must be of class bkcde in predict.bkcde()")
-    if (!is.data.frame(newdata)) 
-        stop("newdata must be a data frame in predict.bkcde()")
-    if (!all(names(newdata) \%in\% c("x", "y"))) 
-        stop("newdata must contain columns x and y in predict.bkcde()")
-    if (!is.null(proper) & !is.logical(proper)) 
-        stop("proper must be logical in predict.bkcde()")
-    if (is.null(proper)) 
-        proper <- object$proper
-    return(bkcde(h = object$h, x = object$x, y = object$y, x.eval = newdata$x, 
-        y.eval = newdata$y, y.lb = object$y.lb, y.ub = object$y.ub, 
-        x.lb = object$x.lb, x.ub = object$x.ub, proper = proper, 
-        degree = object$degree, ...)$f)
-  }
+library(bkcde)
+set.seed(42)
+n <- 250
+x <- runif(n,-.25,.25)
+y <- rbeta(n,1+x,1.5+x)
+f.yx <- bkcde(x=x, y=y, proper=FALSE)
+x.eval <- c(0,.1)
+y.eval <- c(.25,0.5)
+## Predicted density values
+predict(f.yx, data.frame(x=x.eval, y=y.eval))
+## True density values
+dbeta(y.eval, 1+x.eval, 1.5+x.eval)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
