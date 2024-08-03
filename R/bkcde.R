@@ -627,15 +627,11 @@ plot.bkcde <- function(x,
     ## Plot 3D
     if(is.null(plot.3D.x.grid)) {
       x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.3D.n.grid)
-    } else {
-      x.grid <- plot.3D.x.grid
-      plot.3D.n.grid <- length(x.grid)
-    }
-    if(is.null(plot.3D.y.grid)) {
       y.grid <- seq(min(x$y.eval),max(x$y.eval),length=plot.3D.n.grid)
     } else {
+      x.grid <- plot.3D.x.grid
       y.grid <- plot.3D.y.grid
-      plot.3D.n.grid <- length(y.grid)
+      plot.3D.n.grid <- length(x.grid)
     }
     if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.3D.x.grid?)")
     if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.3D.y.grid?)")
@@ -866,7 +862,7 @@ predict.bkcde <- function(object, newdata, proper = NULL, ...) {
 summary.bkcde <- function(object, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in summary.bkcde()")
   cat("Call:\n")
-  cat("bkcde(h=",object$h,", x, y, x.eval, y.eval, y.lb=",object$y.lb,", y.ub=",object$y.ub,", x.lb=",object$x.lb,", x.ub=",object$x.ub,", degree=",object$degree,")\n",sep="")
+  cat("bkcde(h.y=",round(object$h[1],4),", h.x=",round(object$h[2],4),", x, y, x.eval, y.eval, y.lb=",object$y.lb,", y.ub=",object$y.ub,", x.lb=",object$x.lb,", x.ub=",object$x.ub,", degree=",object$degree,")\n",sep="")
   cat("\n")
   cat("Number of sample realizations: ",length(object$y),"\n",sep="")
   cat("Number of evaluation points: ",length(object$y.eval),"\n",sep="")
