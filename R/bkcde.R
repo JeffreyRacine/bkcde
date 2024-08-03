@@ -334,13 +334,14 @@ bkcde.default <- function(h=NULL,
     ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
     ## (avoid unnecessary computation, particularly when x.eval contains a
     ## constant or x.eval is taken from expand.grid() and contains a repeated
-    ## sequence of identical values)
+    ## sequence of identical values). Test for unique values of x.eval to reduce
+    ## potential computation. We use mclapply so return a list of integrals
+    ## evaluated on y.seq for all unique x.eval values
+    x.eval.unique <- unique(x.eval)
     int.f.seq.pre.neg <- numeric()
     int.f.seq <- numeric()
     int.f.seq.post <- numeric()
-    ## Here we test for unique values of x.eval to reduce potential computation
-    x.eval.unique <- unique(x.eval)
-    proper.out <- mclapply(1:length(x.eval.unique), function(j) {
+    proper.out <- mclapply(1:length(x.eval.unique),function(j) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
         f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
@@ -350,18 +351,6 @@ bkcde.default <- function(h=NULL,
         X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
         f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
       }
-      ## Ensure the final result is proper (i.e., non-negative and integrates
-      ## to 1)
-      if(verbose & any(f.yx[x.eval==x.eval.unique[j]] < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
-                                                                    degree,
-                                                                    ", j = ",
-                                                                    length(x.eval==x.eval.unique[j]),
-                                                                    " element(s), h.y = ",
-                                                                    round(h[1],5),
-                                                                    ", h.x = ",
-                                                                    round(h[2],5),
-                                                                    "]",
-                                                                    immediate. = TRUE)
       ## Compute integral of f.seq including any possible negative values
       int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
       ## Set any possible negative f.seq values to 0
@@ -371,12 +360,28 @@ bkcde.default <- function(h=NULL,
       ## Compute integral of f.seq after setting any possible negative values to 0
       ## and correcting to ensure final estimate integrates to 1
       int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
-      # Correct the estimate to ensure it is non-negative and integrates to 1
-      foo <- f.yx[x.eval==x.eval.unique[j]]
-      foo[foo < 0] <- 0
-      foo <- foo/int.f.seq[j]     
-      f.yx[x.eval==x.eval.unique[j]] <- foo
+      return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
+                  int.f.seq=int.f.seq[j],
+                  int.f.seq.post=int.f.seq.post[j]))
     },mc.cores = proper.cores)
+    ## Now gather the results and divide by the integral to ensure the estimate is proper
+    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                        degree,
+                                        ", j = ",
+                                        length(isTRUE(f.yx < 0)),
+                                        " element(s), h.y = ",
+                                        round(h[1],5),
+                                        ", h.x = ",
+                                        round(h[2],5),
+                                        "]",
+                                        immediate. = TRUE)
+    f.yx[f.yx < 0] <- 0
+    for(j in 1:length(x.eval.unique)) {
+      int.f.seq.pre.neg[j] <- proper.out[[j]]$int.f.seq.pre.neg
+      int.f.seq[j] <- proper.out[[j]]$int.f.seq
+      int.f.seq.post[j] <- proper.out[[j]]$int.f.seq.post
+      f.yx[x.eval==x.eval.unique[j]] <- f.yx[x.eval==x.eval.unique[j]]/int.f.seq[j]
+    }
     ## As a summary measure report the mean of the integrals (if x.eval contains
     ## a constant, then the mean will be a scalar equal to that constant)
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
