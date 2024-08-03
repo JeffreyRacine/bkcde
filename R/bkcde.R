@@ -335,8 +335,9 @@ bkcde.default <- function(h=NULL,
     ## (avoid unnecessary computation, particularly when x.eval contains a
     ## constant or x.eval is taken from expand.grid() and contains a repeated
     ## sequence of identical values). Test for unique values of x.eval to reduce
-    ## potential computation. We use mclapply so return a list of integrals
-    ## evaluated on y.seq for all unique x.eval values
+    ## potential computation. We use mclapply to return the list of integrals
+    ## evaluated on y.seq for all unique x.eval values (this is done in parallel
+    ## and can save substantial time)
     x.eval.unique <- unique(x.eval)
     int.f.seq.pre.neg <- numeric()
     int.f.seq <- numeric()
@@ -364,7 +365,8 @@ bkcde.default <- function(h=NULL,
                   int.f.seq=int.f.seq[j],
                   int.f.seq.post=int.f.seq.post[j]))
     },mc.cores = proper.cores)
-    ## Now gather the results and divide by the integral to ensure the estimate is proper
+    ## Now gather the results, correct for negative entries then divide f.xy by
+    ## the integral to ensure the estimate is proper
     if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", j = ",
