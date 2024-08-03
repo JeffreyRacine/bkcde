@@ -23,7 +23,7 @@ bkcde(...)
       y.ub = NULL, 
       degree.max = 3, 
       degree.min = 0, 
-      degree = 0, 
+      degree = NULL, 
       ksum.cores = 1, 
       n.integrate = 1000, 
       nmulti = 3, 
@@ -73,7 +73,7 @@ bkcde(...)
   the minimum degree of the polynomial searched. The default is 0
 }
   \item{degree}{
-  the degree of the polynomial if specified manually. The default is 0
+  the degree of the polynomial if specified manually. The default is NULL
 }
   \item{ksum.cores}{
   the number of cores to use for the kernel sum. The default is 1
