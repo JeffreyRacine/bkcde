@@ -213,7 +213,7 @@ bkcde.default <- function(h=NULL,
                           y.ub=NULL,
                           degree.max=3,
                           degree.min=0,
-                          degree=0,
+                          degree=NULL,
                           ksum.cores=1,
                           n.integrate=1000,
                           nmulti=3,
@@ -253,7 +253,8 @@ bkcde.default <- function(h=NULL,
   if(!is.logical(verbose)) stop("verbose must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
-  if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
+  if(!is.null(h) & is.null(degree)) stop("must provide degree in bkcde() when h is not NULL")
+  if(!is.null(degree)) if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
