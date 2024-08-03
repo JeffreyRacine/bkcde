@@ -232,6 +232,7 @@ bkcde.default <- function(h=NULL,
   ## useful to avoid local optima in the optimization of the bandwidths)
   if(is.null(x)) stop("must provide x in bkcde()")
   if(is.null(y)) stop("must provide y in bkcde()")
+  if(length(x) != length(y)) stop("length of x must be equal to length of y in bkcde()")
   if(!is.null(x.eval) & is.null(y.eval) & length(x.eval) != length(y)) stop("length of x.eval must be equal to length of y in bkcde() when y.eval is NULL")
   if(!is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in bkcde() when x.eval and y.eval are not NULL")
   if(!is.null(y.eval) & is.null(x.eval)) stop("must provide x.eval in bkcde() when y.eval is not NULL")
@@ -562,6 +563,7 @@ plot.bkcde <- function(x,
                        ci.bias.correct = TRUE,
                        ci.cores = NULL,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"),
+                       ci.preplot = TRUE,
                        ci.progress = TRUE,
                        ksum.cores = NULL,
                        phi = NULL,
@@ -587,6 +589,7 @@ plot.bkcde <- function(x,
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   if(!is.logical(ci.progress)) stop("ci.progress must be logical in plot.bkcde()")
+  if(!is.logical(ci.preplot)) stop("ci.preplot must be logical in plot.bkcde()")
   ## Note that the Bonferroni method places a restriction on the smallest number
   ## of bootstrap replications such that (alpha/(2*plot.2D.n.grid))*(B+1) or
   ## (alpha/(2*plot.3D.n.grid^2))*(B+1) is a positive integer - this is on the
@@ -641,7 +644,7 @@ plot.bkcde <- function(x,
     y.plot.eval <- data.grid$Var2
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,proper.cores=proper.cores,...)
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
-    if(plot.behavior != "data") {
+    if(ci.preplot & plot.behavior != "data") {
       if(is.null(theta)) theta <- 120
       if(is.null(phi)) phi <- 45
       if(is.null(xlab)) xlab <- "x"
@@ -660,7 +663,7 @@ plot.bkcde <- function(x,
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
-    if(plot.behavior != "data") {
+    if(ci.preplot & plot.behavior != "data") {
       if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
       if(is.null(ylab)) ylab <- "f(y|x)"
       if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
@@ -821,7 +824,9 @@ plot.bkcde <- function(x,
                 secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
                 x.grid=x.grid,
                 x=x.plot.eval,
-                y.grid=y.grid))
+                y.grid=y.grid,
+                ylim=ylim,
+                zlim=zlim))
   }
 }
 

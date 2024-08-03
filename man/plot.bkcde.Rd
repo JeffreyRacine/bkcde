@@ -15,6 +15,7 @@ Plot method for \code{bkcde} objects.
      ci.bias.correct = TRUE, 
      ci.cores = NULL, 
      ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), 
+     ci.preplot = TRUE,
      ci.progress = TRUE, 
      ksum.cores = NULL, 
      phi = NULL, 
@@ -60,6 +61,9 @@ Plot method for \code{bkcde} objects.
 }
   \item{ci.method}{
  method for confidence intervals
+}
+\item{ci.preplot}{
+ logical, whether to generate an initial plot and display it before bootstrapping confidence intervals
 }
   \item{ci.progress}{
  logical, whether to display progress bar for bootstrapping
