@@ -383,9 +383,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
     int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
     int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
-    for(j in 1:length(x.eval.unique)) {
-      f.yx[x.eval==x.eval.unique[j]] <- f.yx[x.eval==x.eval.unique[j]]/int.f.seq[j]
-    }
+    f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
     ## As a summary measure report the mean of the integrals (if x.eval contains
     ## a constant, then the mean will be a scalar equal to that constant)
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
