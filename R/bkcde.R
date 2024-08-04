@@ -346,15 +346,18 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- numeric()
     int.f.seq <- numeric()
     int.f.seq.post <- numeric()
+    ## We test for only 1 unique value of x.eval to avoid parallel processing in
+    ## the outer mcmapply call and invoke fitting the mcmapply sequence of
+    ## f(y|x) values with proper.cores
     proper.out <- mclapply(1:length(x.eval.unique),function(j) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
-        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ksum.cores))
+        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
       } else {
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
         X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ksum.cores))
+        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
       }
       ## Compute integral of f.seq including any possible negative values
       int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
@@ -368,7 +371,7 @@ bkcde.default <- function(h=NULL,
       return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                   int.f.seq=int.f.seq[j],
                   int.f.seq.post=int.f.seq.post[j]))
-    },mc.cores = proper.cores)
+    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1))
     ## Now gather the results, correct for negative entries then divide elements
     ## of f.xy by the corresponding integral (one for each x.eval.unique) to
     ## ensure the estimate is proper
