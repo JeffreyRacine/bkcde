@@ -22,7 +22,7 @@ Plot method for \code{bkcde} objects.
      phi = NULL, 
      plot.2D.n.grid = 100, 
      plot.2D.y.grid = NULL, 
-     plot.3D = FALSE, 
+     plot.3D = TRUE, 
      plot.3D.n.grid = 10, 
      plot.3D.x.grid = NULL, 
      plot.3D.y.grid = NULL, 
@@ -163,6 +163,7 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \examples{
 library(bkcde)
+## Example 1 - cross-validated bandwidths and polynomial order
 set.seed(42)
 n <- 250
 x <- runif(n,-.25,.25)
@@ -170,6 +171,13 @@ y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
 plot(f.yx,ci=TRUE,plot.3D=TRUE,proper=FALSE,ci.method="Simultaneous")
+## Example 2 - large sample, manual bandwidths and polynomial order
+n <- 100000
+x <- rnorm(n)
+y <- rnorm(n,mean=x)
+f.yx.large <- bkcde(h=c(0.5,1),degree=0,x=x,y=y,proper=FALSE)
+plot(f.yx.large,plot.3D.n.grid=50)
+summary(f.yx.large)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
