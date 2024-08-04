@@ -911,3 +911,37 @@ summary.bkcde <- function(object, ...) {
   cat("\n")
   invisible()
 }
+
+## This function takes a subset of the (x,y) data, computes the optimal h and
+## degree, then repeats 10 times and takes the median of the h vector and degree
+## vector and returns those values. This is a fast way to compute the optimal
+## bandwidth and polynomial degree based upon Racine, J.S. (1993), "An Efficient
+## Cross-Validation Algorithm For Window Width Selection for Nonparametric
+## Kernel Regression," Communications in Statistics, October, Volume 22, Issue
+## 4, pages 1107-1114.
+
+fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
+  if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
+  if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
+  if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
+  if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
+  if(n.sub < 1) stop("n.sub must be at least 10 in fast.optim()")
+  if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
+  if(!is.logical(proper)) stop("proper must be logical in fast.optim()")
+  n <- length(y)
+  h.degree.mat <- matrix(NA,nrow=resamples,ncol=3)
+  for(j in 1:resamples) {
+    cat("\rResample ",j," of ",resamples,"...",sep="")
+    ii <- sample(n,size=n.sub)
+    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=proper,...)
+    h.degree.mat[j,1] <- (bkcde.out$h[1]/EssDee(y))*n.sub^{1/6}
+    h.degree.mat[j,2] <- (bkcde.out$h[2]/EssDee(x))*n.sub^{1/6}
+    h.degree.mat[j,3] <- bkcde.out$degree
+  }
+  cat("\r                                          \r")
+  ## Compute median of columns of h.degree.mat
+  return(list(h=c(median(h.degree.mat[,1])*EssDee(y)*n^{-1/6},
+                  median(h.degree.mat[,2])*EssDee(x)*n^{-1/6}),
+              degree=round(median(h.degree.mat[,3])),
+              h.degree.mat=h.degree.mat))
+}
