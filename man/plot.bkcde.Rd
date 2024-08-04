@@ -17,6 +17,7 @@ Plot method for \code{bkcde} objects.
      ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), 
      ci.preplot = TRUE,
      ci.progress = TRUE, 
+     fitted.cores = NULL,
      ksum.cores = NULL, 
      phi = NULL, 
      plot.2D.n.grid = 100, 
@@ -68,6 +69,9 @@ Plot method for \code{bkcde} objects.
   \item{ci.progress}{
  logical, whether to display progress bar for bootstrapping
 }
+\item{fitted.cores}{
+ number of cores to use for fitted values
+ }
   \item{ksum.cores}{
  number of cores to use for kernel sum
 }

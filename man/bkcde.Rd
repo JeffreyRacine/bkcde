@@ -24,6 +24,7 @@ bkcde(...)
       degree.max = 3, 
       degree.min = 0, 
       degree = NULL, 
+      fitted.cores = 12,
       ksum.cores = 1, 
       n.integrate = 1000, 
       nmulti = 3, 
@@ -74,6 +75,9 @@ bkcde(...)
 }
   \item{degree}{
   the degree of the polynomial if specified manually. The default is NULL
+}
+  \item{fitted.cores}{
+  the number of cores to use for the fitted values. The default is 12
 }
   \item{ksum.cores}{
   the number of cores to use for the kernel sum. The default is 1
@@ -231,14 +235,14 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 \examples{
 library(bkcde)
 set.seed(42)
-n <- 250
+n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 summary(f.yx)
 par(mfrow=c(2,2))
-plot(f.yx,ci=TRUE)
-plot(f.yx,plot.3D=TRUE,ci=TRUE)
+plot(f.yx,ci=TRUE,ci.preplot=TRUE)
+plot(f.yx,plot.3D=TRUE,ci=TRUE,ci.preplot=TRUE,expand=1.75)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):

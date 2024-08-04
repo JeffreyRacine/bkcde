@@ -214,6 +214,7 @@ bkcde.default <- function(h=NULL,
                           degree.max=3,
                           degree.min=0,
                           degree=NULL,
+                          fitted.cores=12,
                           ksum.cores=1,
                           n.integrate=1000,
                           nmulti=3,
@@ -266,7 +267,8 @@ bkcde.default <- function(h=NULL,
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then likelihood cross-validation is used to
-  ## obtain the bandwidths and polynomial order
+  ## obtain the bandwidths and polynomial order (use ksum.cores,
+  ## optim.degree.cores, optim.nmulti.cores)
   if(is.null(h)) {
     optim.out <- bkcde.optim(x=x,
                              y=y,
@@ -310,11 +312,11 @@ bkcde.default <- function(h=NULL,
     secs.optim.mat <- NULL
   }
   secs.start.estimate <- Sys.time()
-  ## Compute the conditional density estimate
+  ## Compute the fitted conditional density estimate (use fitted.cores)
   if(degree == 0) {
     ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
     ## compute the estimate \hat f(y|x) as efficiently as possible
-    f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=ksum.cores))
+    f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
   } else {
     ## Choice of raw or orthogonal polynomials
     X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -322,9 +324,10 @@ bkcde.default <- function(h=NULL,
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to estimate \hat f(y|x) rather than the intercept term from
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=ksum.cores))
+    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
   }
-  ## Ensure the estimate is proper
+  ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
+  ## could be < # proper.cores allocated)
   if(proper) {
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
@@ -410,6 +413,7 @@ bkcde.default <- function(h=NULL,
                       degree.max=degree.max,
                       degree.min=degree.min,
                       degree=degree,
+                      fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
                       f.yx.integral=int.f.seq,
@@ -571,6 +575,7 @@ plot.bkcde <- function(x,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"),
                        ci.preplot = TRUE,
                        ci.progress = TRUE,
+                       fitted.cores = NULL,
                        ksum.cores = NULL,
                        phi = NULL,
                        plot.2D.n.grid = 100,
@@ -617,7 +622,10 @@ plot.bkcde <- function(x,
   if(is.null(proper)) proper <- x$proper
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
-  if(is.null(proper.cores)) proper.cores <- 1
+  ## proper.cores and fitted.cores are used in the predict() function and only
+  ## in the bootstrap if ci=TRUE and ci.cores>1
+  if(is.null(proper.cores)) proper.cores <- detectCores()
+  if(is.null(fitted.cores)) fitted.cores <- detectCores()
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
@@ -636,14 +644,14 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,proper.cores=proper.cores,...)
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,...)
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
+    if(is.null(theta)) theta <- 120
+    if(is.null(phi)) phi <- 45
+    if(is.null(xlab)) xlab <- "x"
+    if(is.null(ylab)) ylab <- "y"
+    if(is.null(zlab)) zlab <- "f(y|x)"
     if(ci.preplot & plot.behavior != "data") {
-      if(is.null(theta)) theta <- 120
-      if(is.null(phi)) phi <- 45
-      if(is.null(xlab)) xlab <- "x"
-      if(is.null(ylab)) ylab <- "y"
-      if(is.null(zlab)) zlab <- "f(y|x)"
       persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
     }
   } else if(!plot.3D) {
@@ -657,11 +665,11 @@ plot.bkcde <- function(x,
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
     x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
+    if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
+    if(is.null(ylab)) ylab <- "f(y|x)"
+    if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
+    if(is.null(type)) type <- "l"
     if(ci.preplot & plot.behavior != "data") {
-      if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
-      if(is.null(ylab)) ylab <- "f(y|x)"
-      if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
-      if(is.null(type)) type <- "l"
       plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
            sub=sub,
            ylim=ylim,
@@ -695,8 +703,9 @@ plot.bkcde <- function(x,
             y.ub=x$y.ub,
             x.lb=x$x.lb,
             x.ub=x$x.ub,
+            fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
             proper=proper,
-            proper.cores=proper.cores,
+            proper.cores=ifelse(ci.cores>1,1,proper.cores),
             ksum.cores=ksum.cores,
             degree=x$degree)$f
     },1:B,mc.cores=ci.cores,progress=ci.progress))
@@ -873,6 +882,7 @@ summary.bkcde <- function(object, ...) {
   cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
   cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
+  cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
