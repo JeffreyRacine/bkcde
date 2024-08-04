@@ -26,6 +26,7 @@ bkcde(...)
       degree = NULL, 
       fitted.cores = 12,
       ksum.cores = 1, 
+      n.grid = 10,
       n.integrate = 1000, 
       nmulti = 3, 
       optim.degree.cores = NULL, 
@@ -82,6 +83,9 @@ bkcde(...)
   \item{ksum.cores}{
   the number of cores to use for the kernel sum. The default is 1
 }
+  \item{n.grid}{
+  the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 10
+  }
   \item{n.integrate}{
   the number of points to use for numerical integration. The default is 1000
 }

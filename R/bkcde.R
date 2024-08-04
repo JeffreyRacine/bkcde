@@ -216,6 +216,7 @@ bkcde.default <- function(h=NULL,
                           degree=NULL,
                           fitted.cores=12,
                           ksum.cores=1,
+                          n.grid=10,
                           n.integrate=1000,
                           nmulti=3,
                           optim.degree.cores=NULL,
@@ -237,8 +238,16 @@ bkcde.default <- function(h=NULL,
   if(!is.null(x.eval) & is.null(y.eval) & length(x.eval) != length(y)) stop("length of x.eval must be equal to length of y in bkcde() when y.eval is NULL")
   if(!is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in bkcde() when x.eval and y.eval are not NULL")
   if(!is.null(y.eval) & is.null(x.eval)) stop("must provide x.eval in bkcde() when y.eval is not NULL")
-  if(is.null(x.eval)) x.eval <- x
-  if(is.null(y.eval)) y.eval <- y
+  ## We set x.eval and y.eval to short sequences if they are not provided to
+  ## avoid excessive computation with large samples when only x and y are
+  ## provided (essentially what would be the default for plot.3D.n.grid in
+  ## plot.bkcde()). Of course these can be changed, and plot will override them
+  ## if desired, as will predict.bkcde().
+  if(is.null(x.eval) & is.null(y.eval)) {
+    data.grid <- expand.grid(seq(min(x),max(x),length=n.grid),seq(min(y),max(y),length=n.grid))
+    x.eval <- data.grid$Var1
+    y.eval <- data.grid$Var2
+  }
   if(is.null(y.lb)) y.lb <- min(y)
   if(is.null(y.ub)) y.ub <- max(y)
   if(is.null(x.lb)) x.lb <- min(x)
