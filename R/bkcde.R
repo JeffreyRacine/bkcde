@@ -255,12 +255,16 @@ bkcde.default <- function(h=NULL,
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(!is.null(h) & is.null(degree)) stop("must provide degree in bkcde() when h is not NULL")
+  if(!is.null(h) & length(h) != 2) stop("h must be a vector of length 2 in bkcde()")
   if(!is.null(degree)) if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
   if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
+  if(fitted.core < 1) stop("fitted.cores must be at least 1 in bkcde()")
+  if(!is.null(optim.degree.cores) & optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
+  if(!is.null(optim.nmulti.cores) & optim.nmulti.cores < 1) stop("optim.nmulti.cores must be at least 1 in bkcde()")
   if(is.null(optim.degree.cores)) optim.degree.cores <- degree.max-degree.min+1
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
@@ -622,6 +626,8 @@ plot.bkcde <- function(x,
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
+  if(plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
+  if(plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
