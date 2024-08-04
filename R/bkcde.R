@@ -384,8 +384,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
     int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
     f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
-    ## As a summary measure report the mean of the integrals (if x.eval contains
-    ## a constant, then the mean will be a scalar equal to that constant)
+    ## As a summary measure report the mean of the integrals
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
     int.f.seq <- mean(int.f.seq)
     int.f.seq.post <- mean(int.f.seq.post)
@@ -396,7 +395,7 @@ bkcde.default <- function(h=NULL,
     if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", ", 
-                                        length(f.yx[f.yx<0]), 
+                                        length(isTRUE(f.yx < 0)),
                                         " element(s), h.y = ",
                                         round(h[1],5),
                                         ", h.x = ",
