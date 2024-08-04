@@ -366,8 +366,9 @@ bkcde.default <- function(h=NULL,
                   int.f.seq=int.f.seq[j],
                   int.f.seq.post=int.f.seq.post[j]))
     },mc.cores = proper.cores)
-    ## Now gather the results, correct for negative entries then divide f.xy by
-    ## the integral to ensure the estimate is proper
+    ## Now gather the results, correct for negative entries then divide elements
+    ## of f.xy by the corresponding integral (one for each x.eval.unique) to
+    ## ensure the estimate is proper
     if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
                                         degree,
                                         ", j = ",
@@ -382,7 +383,9 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
     int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
     int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
-    f.yx[x.eval %in% x.eval.unique] <- f.yx[x.eval %in% x.eval.unique]/int.f.seq
+    for(j in 1:length(x.eval.unique)) {
+      f.yx[x.eval==x.eval.unique[j]] <- f.yx[x.eval==x.eval.unique[j]]/int.f.seq[j]
+    }
     ## As a summary measure report the mean of the integrals (if x.eval contains
     ## a constant, then the mean will be a scalar equal to that constant)
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
