@@ -616,16 +616,8 @@ plot.bkcde <- function(x,
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
-  if(is.null(ksum.cores)) {
-    ksum.cores <- x$ksum.cores
-  } else {
-    ksum.cores <- ksum.cores
-  }
-  if(is.null(proper.cores)) {
-    proper.cores <- 1
-  } else {
-    proper.cores <- proper.cores
-  }
+  if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
+  if(is.null(proper.cores)) proper.cores <- 1
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
