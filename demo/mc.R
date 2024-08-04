@@ -13,37 +13,43 @@ n <- 100 # scan("n.dat",quiet=TRUE)
 n.grid <- 25 # scan("ngrid.dat",quiet=TRUE)
 M <- 1000 # scan("M.dat",quiet=TRUE)
 trim <- 0.00 # scan("trim.dat",quiet=TRUE)
-nmulti <- 2 # scan("nmulti.dat",quiet=TRUE)
+nmulti <- 3 # scan("nmulti.dat",quiet=TRUE)
 plot.during <- TRUE # scan("plot.dat",logical(),quiet=TRUE)
 p.min <- 0 # scan("pmin.dat",quiet=TRUE)
 p.max <- 3 # scan("pmax.dat",quiet=TRUE)
-plot.pdf <- FALSE # scan("pdf.dat",logical(),quiet=TRUE)
+plot.pdf <- TRUE # scan("pdf.dat",logical(),quiet=TRUE)
 ksum.cores <- 1 # scan("ksum_cores.dat",quiet=TRUE)
-degree.cores <- 4 # scan("degree_cores.dat",quiet=TRUE)
-nmulti.cores <- 2 # scan("nmulti_cores.dat",quiet=TRUE)
+optim.degree.cores <- 6 # scan("degree_cores.dat",quiet=TRUE)
+optim.nmulti.cores <- 3 # scan("nmulti_cores.dat",quiet=TRUE)
 progress <- TRUE
 
 ## Need these declared regardless of whether starting from scratch or picking up
 ## where it left off (if runtime exceeded, reboot of system, etc.)
 
-rmse.mat <- matrix(NA,nrow=M,ncol=4)
-cv.mat <- matrix(NA,nrow=M,ncol=3)
+rmse.models.mat <- matrix(NA,nrow=M,ncol=4)
+cv.models.mat <- matrix(NA,nrow=M,ncol=3)
+rmse.candidates.mat <- matrix(NA,nrow=M,ncol=p.max-p.min+1)
+cv.candidates.mat <- matrix(NA,nrow=M,ncol=p.max-p.min+1)
 degree.mat <- matrix(NA,nrow=M,ncol=3)
 times.mat <- matrix(NA,nrow=M,ncol=2)
 
 ## If the output files exist and have data in them, read them in and continue
 
-if(file.exists("rmse.out") && nrow(read.table("rmse.out",header=TRUE)) > 0) {
-  m <- nrow(read.table("rmse.out",header=TRUE))
-  rmse.mat[1:m,] <- data.matrix(read.table("rmse.out",header=TRUE))
-  cv.mat[1:m,] <- data.matrix(read.table("cv.out",header=TRUE))
+if(file.exists("rmse_models.out") && nrow(read.table("rmse_models.out",header=TRUE)) > 0) {
+  m <- nrow(read.table("rmse_models.out",header=TRUE))
+  rmse.models.mat[1:m,] <- data.matrix(read.table("rmse_models.out",header=TRUE))
+  cv.models.mat[1:m,] <- data.matrix(read.table("cv_models.out",header=TRUE))
+  rmse.candidates.mat[1:m,] <- data.matrix(read.table("rmse_candidates.out",header=TRUE))
+  cv.candidates.mat[1:m,] <- data.matrix(read.table("cv_candidates.out",header=TRUE))
   degree.mat[1:m,] <- data.matrix(read.table("degree.out",header=TRUE))
   times.mat[1:m,] <- data.matrix(read.table("times.out",header=TRUE))
   m <- m+1
   aborts <- scan("aborts.out")
 } else {
-  write(c("BKPA","HRL","FYT","CCJM"),file="rmse.out",ncolumns=4)
-  write(c("BKPA","HRL","FYT"),file="cv.out",ncolumns=3)
+  write(c("BKPA","HRL","FYT","CCJM"),file="rmse_models.out",ncolumns=4)
+  write(c("BKPA","HRL","FYT"),file="cv_models.out",ncolumns=3)
+  write(paste("p=",p.min:p.max,sep=""),file="rmse_candidates.out",ncolumns=p.max-p.min+1)
+  write(paste("p=",p.min:p.max,sep=""),file="cv_candidates.out",ncolumns=p.max-p.min+1)
   write(c("BKPA","HRL","FYT"),file="degree.out",ncolumns=3)
   write(c("CCJM","BKPA"),file="times.out",ncolumns=2)
   m <- 1
@@ -70,10 +76,10 @@ for(i in m:M) {
   
   while(!lpcde.success) {
     
-    ## The lpcde method of Catteano et al 2024 aborts on some DGPs, so we
-    ## "forgive" it and draw another "friendlier" resample for this implementation
-      ## (0.1.4 as of this writing)
-
+    ## The lpcde method of Catteano et al 2024 aborts on some DGPs, so
+    ## we "forgive" it and draw another "friendlier" resample for this
+    ## implementation (0.1.4 as of this writing)
+    
     x.min <- -.25
     x.max <- .25
     x <- runif(n,x.min,x.max)
@@ -83,7 +89,7 @@ for(i in m:M) {
     s2 <- 1.5
     y <- rbeta(n,s1+x,s2+x)
     y.grid <- seq(quantile(y,trim),quantile(y,1-trim),length=n.grid)
-    dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)      
+    dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)
     
     f.yx.lpcde <- tryCatch(lpcde(x_data=x, 
                                  y_data=y, 
@@ -117,8 +123,16 @@ for(i in m:M) {
                   degree.max=p.max,
                   nmulti=nmulti,
                   ksum.cores=ksum.cores,
-                  degree.cores=degree.cores,
-                  nmulti.cores=nmulti.cores)
+                  optim.degree.cores=optim.degree.cores,
+                  optim.nmulti.cores=optim.nmulti.cores)
+  
+  options(scipen=9)
+  foo <-data.frame(cbind(t(apply(output$value.mat,1,range)),
+              apply(output$value.mat,1,IQR),
+              apply(output$value.mat,1,max)-apply(output$value.mat,1,min)))
+  colnames(foo) <- c("min","max","iqr","range")
+  rownames(foo) <- paste("p=",p.min:p.max,sep="")
+  print(foo)
   
   ## Fit the Hall et al model (p=0) and Fan et al model (p=1) with an infinite
   ## support kernel
@@ -137,8 +151,8 @@ for(i in m:M) {
           degree.max=p,
           nmulti=nmulti,
           ksum.cores=ksum.cores,
-          degree.cores=1,
-          nmulti.cores=nmulti.cores)
+          optim.degree.cores=1,
+          optim.nmulti.cores=optim.nmulti.cores)
   },mc.cores=2)
   
   output.hrl <- output.inf[[1]]
@@ -146,20 +160,11 @@ for(i in m:M) {
   
   st.bkcde <- as.numeric(difftime(Sys.time(),st.bkcde,units="secs"))
   
-  rmse.mat[i,] <- c(sqrt(mean((output$f-dgp)^2)),
-                    sqrt(mean((output.hrl$f-dgp)^2)),
-                    sqrt(mean((output.fyt$f-dgp)^2)),
-                    sqrt(mean((f.yx.lpcde$Estimate[,"est_RBC"]-dgp)^2)))
-  write(rmse.mat[i,],file="rmse.out",ncolumns=4,append=TRUE)
-  write(apply(rmse.mat[1:i,,drop=FALSE],2,mean),file="mean_rmse.out",ncolumns=4)
-  write(apply(rmse.mat[1:i,,drop=FALSE],2,median),file="median_rmse.out",ncolumns=4)    
-  degree.mat[i,] <- c(output$degree,output.hrl$degree,output.fyt$degree)
-  write(degree.mat[i,],file="degree.out",ncolumns=3,append=TRUE)
-  cv.mat[i,] <- c(output$value,output.hrl$value,output.fyt$value)
-  write(cv.mat[i,],file="cv.out",ncolumns=3,append=TRUE)
-  write(aborts,file="aborts.out")
-  write(c(st.lpcde,st.bkcde),file="times.out",ncolumns=2,append=TRUE)
-  
+  rmse.models.mat[i,] <- c(sqrt(mean((output$f-dgp)^2)),
+                           sqrt(mean((output.hrl$f-dgp)^2)),
+                           sqrt(mean((output.fyt$f-dgp)^2)),
+                           sqrt(mean((f.yx.lpcde$Estimate[,"est_RBC"]-dgp)^2)))
+
   ## Write fitted values and rmse values from each degree p.min,..., p.max
   ## (these are used to construct the final bkcde() model)
   
@@ -169,11 +174,9 @@ for(i in m:M) {
                  y=y,
                  x.eval=x.eval.grid,
                  y.eval=y.grid,
-                 degree.min=p,
-                 degree.max=p)$f
-    rmse.p <- sqrt(mean((f.p-dgp)^2))
+                 degree=p)$f
+    rmse.candidates.mat[i,p-p.min+1] <- sqrt(mean((f.p-dgp)^2))
     write(f.p,file=paste("f_p_",p,".out",sep=""),append=TRUE, ncolumns=n.grid)
-    write(rmse.p,file=paste("rmse_p_",p,".out",sep=""),append=TRUE)
   }
   ## Write fitted values from the bkcde and infinite support models
   write(output$f,file="f_bkcde.out",append=TRUE,ncolumns=n.grid)
@@ -185,18 +188,59 @@ for(i in m:M) {
   write(y,file="y.out",append=TRUE,ncolumns=n)
   write(dgp,file="dgp.out",append=TRUE,ncolumns=n.grid)
   write(y.grid,file="ygrid.out",append=TRUE,ncolumn=n.grid)
+  ## Write the RMSE and CV values for each model and candidate, along with
+  ## summary statistics
+  write(rmse.models.mat[i,],file="rmse_models.out",ncolumns=4,append=TRUE)
+  write(apply(rmse.models.mat[1:i,,drop=FALSE],2,mean),file="mean_rmse_models.out",ncolumns=4)
+  write(apply(rmse.models.mat[1:i,,drop=FALSE],2,median),file="median_rmse_models.out",ncolumns=4)    
+  degree.mat[i,] <- c(output$degree,output.hrl$degree,output.fyt$degree)
+  write(degree.mat[i,],file="degree.out",ncolumns=3,append=TRUE)
+  cv.models.mat[i,] <- c(output$value,output.hrl$value,output.fyt$value)
+  write(cv.models.mat[i,],file="cv_models.out",ncolumns=3,append=TRUE)
+  cv.candidates.mat[i,] <- output$value.vec
+  write(cv.candidates.mat[i,],file="cv_candidates.out",ncolumns=p.max-p.min+1,append=TRUE)
+  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_cv_candidates.out",ncolumns=p.max-p.min+1)
+  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,median),file="median_cv_candidates.out",ncolumns=p.max-p.min+1)
+  write(rmse.candidates.mat[i,],file="rmse_candidates.out",ncolumns=p.max-p.min+1,append=TRUE)
+  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_rmse_candidates.out",ncolumns=p.max-p.min+1)
+  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,median),file="median_rmse_candidates.out",ncolumns=p.max-p.min+1)
+  write(aborts,file="aborts.out")
+  write(c(st.lpcde,st.bkcde),file="times.out",ncolumns=2,append=TRUE)
+  write(output$h,file="h.out",append=TRUE,ncolumns=2)
+  write(output.hrl$h,file="h_hrl.out",append=TRUE,ncolumns=2)
+  write(output.fyt$h,file="h_fyt.out",append=TRUE,ncolumns=2)
+  write(c(output$f.yx.integral.pre.neg,output$f.yx.integral,output$f.yx.integral.post),file="integral.out",append=TRUE,ncolumns=3)
+  write(c(output.fyt$f.yx.integral.pre.neg,output.fyt$f.yx.integral,output.fyt$f.yx.integral.post),file="integral_fyt.out",append=TRUE,ncolumns=3)
   
   if(plot.during) {
-    if(plot.pdf) pdf()
-    boxplot(rmse.mat[1:i,,drop=FALSE],
-            names=c("BKPA","HRL","FYT","CCJM"),
-            col=c("red","green","blue","purple"),
-            main=c("Mean RMSE",paste(formatC(apply(rmse.mat[1:i,,drop=FALSE],2,mean),format="f",digits=3),collapse=", ")),
-            sub=paste(formatC(apply(rmse.mat[1:i,,drop=FALSE],2,median),format="f",digits=3),collapse=", "),
+    if(plot.during & !plot.pdf) par(mfrow=c(2,2),cex=.5)
+    if(plot.pdf) pdf(file="rmse.pdf",pointsize=7)
+    ## RMSE
+    df <- data.frame(rmse.candidates.mat[1:i,,drop=FALSE],rmse.models.mat[1:i,,drop=FALSE])
+    names(df) <- c(paste("p=",p.min:p.max,sep=""),"BKPA","HRL","FYT","CCJM")
+    boxplot(df,
+            main=paste("RMSE Boxplots (", nrow(rmse.models.mat[1:i,,drop=FALSE])," of ",M," replications completed)\nMedian: ",paste(formatC(apply(df,2,median),format="f",digits=3),collapse=", "),sep=""),
+            sub=paste("Relative Median: ", paste(formatC(apply(df,2,median)/apply(df,2,median)[7],format="f",digits=2),collapse=", "),sep=""),
             ylab="RMSE",
             outline=FALSE,
             notch=TRUE)
-    abline(h=median(rmse.mat[1:i,1,drop=FALSE]),lty=2)
+    abline(h=median(rmse.models.mat[1:i,1,drop=FALSE]),lty=2)
+    if(plot.pdf) dev.off()
+    if(plot.pdf) pdf(file="cv.pdf",pointsize=7)
+    ## Cross-validation
+    df <- data.frame(cv.candidates.mat[1:i,,drop=FALSE],cv.models.mat[1:i,,drop=FALSE])
+    names(df) <- c(paste("p=",p.min:p.max,sep=""),"BKPA","HRL","FYT")
+    boxplot(df,
+            main=paste("CV Boxplots (", nrow(cv.models.mat[1:i,,drop=FALSE])," of ",M," replications completed)\nMedian: ",paste(formatC(apply(df,2,median),format="f",digits=3),collapse=", "),sep=""),
+            sub=paste("Relative Median: ", paste(formatC(apply(df,2,median)/apply(df,2,median)[4],format="f",digits=2),collapse=", "),sep=""),
+            ylab="CV",
+            outline=FALSE,
+            notch=TRUE)
+    abline(h=median(cv.models.mat[1:i,1,drop=FALSE]),lty=2)
+    if(plot.pdf) dev.off()
+    if(plot.pdf) pdf(file="degree.pdf",pointsize=7)
+    ## create a barchart for the counts
+    barplot(prop.table(table(ordered(degree.mat[1:i,1,drop=FALSE],levels=p.min:p.max))), xlab="Polynomial Order", ylab="Proportion", col="lightblue", border="black")
     if(plot.pdf) dev.off()
   }
   
@@ -207,3 +251,5 @@ for(i in m:M) {
   }
   
 }
+
+warnings()
