@@ -256,15 +256,15 @@ bkcde.default <- function(h=NULL,
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(!is.null(h) & is.null(degree)) stop("must provide degree in bkcde() when h is not NULL")
   if(!is.null(h) & length(h) != 2) stop("h must be a vector of length 2 in bkcde()")
-  if(!is.null(degree)) if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
+  if(!is.null(degree) && (degree < 0 | degree >= length(y))) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
   if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
-  if(fitted.core < 1) stop("fitted.cores must be at least 1 in bkcde()")
-  if(!is.null(optim.degree.cores) & optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
-  if(!is.null(optim.nmulti.cores) & optim.nmulti.cores < 1) stop("optim.nmulti.cores must be at least 1 in bkcde()")
+  if(fitted.cores < 1) stop("fitted.cores must be at least 1 in bkcde()")
+  if(!is.null(optim.degree.cores) && optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
+  if(!is.null(optim.nmulti.cores) && optim.nmulti.cores < 1) stop("optim.nmulti.cores must be at least 1 in bkcde()")
   if(is.null(optim.degree.cores)) optim.degree.cores <- degree.max-degree.min+1
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
@@ -621,7 +621,7 @@ plot.bkcde <- function(x,
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
-  if(!is.null(ci.cores)) if(ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
+  if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
