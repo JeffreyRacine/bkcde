@@ -155,7 +155,7 @@ log.likelihood <- function(delete.one.values,
 ## bkcde.loo() is the leave-one-out likelihood cross-validation function that
 ## supports local polynomial estimation of degree p (raw polynomials or
 ## orthogonal polynomials can be used and appear to provide identical results
-## for modest p.max)
+## for modest degree.max)
 
 bkcde.loo <- function(h=NULL,
                       x=NULL,
@@ -224,6 +224,7 @@ bkcde.default <- function(h=NULL,
                           penalty.cutoff=.Machine$double.xmin,
                           penalty.method=c("smooth","constant","trim"),
                           poly.raw=FALSE,
+                          progress=FALSE,
                           proper.cores=12,
                           proper=TRUE,
                           verbose=FALSE,
@@ -283,6 +284,7 @@ bkcde.default <- function(h=NULL,
   ## obtain the bandwidths and polynomial order (use ksum.cores,
   ## optim.degree.cores, optim.nmulti.cores)
   if(is.null(h)) {
+    if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts)...",sep="")
     optim.out <- bkcde.optim(x=x,
                              y=y,
                              y.lb=y.lb,
@@ -324,6 +326,10 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
+  if(progress) {
+    cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
+    cat("\rFitting conditional density estimate... ",sep="")
+  }
   secs.start.estimate <- Sys.time()
   ## Compute the fitted conditional density estimate (use fitted.cores)
   if(degree == 0) {
@@ -339,9 +345,11 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
   }
+  if(progress) cat("\rFitting conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
   ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
   ## could be < # proper.cores allocated)
   if(proper) {
+    if(progress) cat("\rComputing integrals to ensure estimate is proper... ",sep="")
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
@@ -384,7 +392,7 @@ bkcde.default <- function(h=NULL,
       return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                   int.f.seq=int.f.seq[j],
                   int.f.seq.post=int.f.seq.post[j]))
-    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=verbose)
+    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
     ## Now gather the results, correct for negative entries then divide elements
     ## of f.xy by the corresponding integral (one for each x.eval.unique) to
     ## ensure the estimate is proper
@@ -407,6 +415,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
     int.f.seq <- mean(int.f.seq)
     int.f.seq.post <- mean(int.f.seq.post)
+    if(progress) cat("\rComputing integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
   } else {
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
@@ -606,7 +615,6 @@ plot.bkcde <- function(x,
                        ci.cores = NULL,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"),
                        ci.preplot = TRUE,
-                       ci.progress = TRUE,
                        fitted.cores = NULL,
                        ksum.cores = NULL,
                        phi = NULL,
@@ -617,6 +625,7 @@ plot.bkcde <- function(x,
                        plot.3D.x.grid = NULL,
                        plot.3D.y.grid = NULL,
                        plot.behavior = c("plot","plot-data","data"),
+                       progress = TRUE,
                        proper = NULL,
                        proper.cores = NULL,
                        sub = NULL,
@@ -631,7 +640,7 @@ plot.bkcde <- function(x,
                        ...) {
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
-  if(!is.logical(ci.progress)) stop("ci.progress must be logical in plot.bkcde()")
+  if(!is.logical(progress)) stop("progress must be logical in plot.bkcde()")
   if(!is.logical(ci.preplot)) stop("ci.preplot must be logical in plot.bkcde()")
   ## Note that the Bonferroni method places a restriction on the smallest number
   ## of bootstrap replications such that (alpha/(2*plot.2D.n.grid))*(B+1) or
@@ -679,7 +688,7 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,...)
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,progress=progress,...)
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
@@ -699,7 +708,7 @@ plot.bkcde <- function(x,
       plot.2D.n.grid <- length(y.grid)
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,...)
+    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,progress=progress,...)
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
     if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
@@ -736,7 +745,7 @@ plot.bkcde <- function(x,
             proper.cores=ifelse(ci.cores>1,1,proper.cores),
             ksum.cores=ksum.cores,
             degree=x$degree)$f
-    },1:B,mc.cores=ci.cores,progress=ci.progress))
+    },1:B,mc.cores=ci.cores,progress=progress))
     if(ci.bias.correct) {
       bias.vec <- colMeans(boot.mat) - x.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
@@ -964,6 +973,7 @@ fast.optim <- function(x, y,
                                                  clear = TRUE,
                                                  force = TRUE,
                                                  total = resamples)
+  if(progress) cat("\rResampling: 0%")
   for(j in 1:resamples) {
     ii <- sample(n,size=n.sub)
     ## Since cross-validation in bkcde() appropriately deals with improper

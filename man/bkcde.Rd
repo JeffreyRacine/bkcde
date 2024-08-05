@@ -34,6 +34,7 @@ bkcde(...)
       penalty.cutoff = .Machine$double.xmin, 
       penalty.method = c("smooth", "constant", "trim"), 
       poly.raw = FALSE, 
+      progress = FALSE,
       proper.cores = 12, 
       proper = TRUE, 
       verbose = FALSE, 
@@ -107,6 +108,9 @@ bkcde(...)
   \item{poly.raw}{
   a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)
 }
+\item{progress}{
+  a logical value indicating whether to print progress. The default is FALSE
+}
   \item{proper.cores}{
   the number of cores to use for the proper normalization. The default is 12
 }
@@ -114,7 +118,7 @@ bkcde(...)
   a logical value indicating whether to use proper normalization. The default is TRUE
 }
   \item{verbose}{
-  a logical value indicating whether to print warnings. The default is FALSE
+  a logical value indicating whether to print warnings and issue other low-level messaages. The default is FALSE
 }
   \item{\dots}{
   additional arguments to be passed to the bkcde.optim() function

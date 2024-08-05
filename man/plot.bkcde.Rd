@@ -16,7 +16,6 @@ Plot method for \code{bkcde} objects.
      ci.cores = NULL, 
      ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), 
      ci.preplot = TRUE,
-     ci.progress = TRUE, 
      fitted.cores = NULL,
      ksum.cores = NULL, 
      phi = NULL, 
@@ -27,6 +26,7 @@ Plot method for \code{bkcde} objects.
      plot.3D.x.grid = NULL, 
      plot.3D.y.grid = NULL, 
      plot.behavior = c("plot", "plot-data", "data"), 
+     progress = TRUE, 
      proper = NULL, 
      proper.cores = NULL, 
      sub = NULL, 
@@ -66,9 +66,6 @@ Plot method for \code{bkcde} objects.
 \item{ci.preplot}{
  logical, whether to generate an initial plot and display it before bootstrapping confidence intervals
 }
-  \item{ci.progress}{
- logical, whether to display progress bar for bootstrapping
-}
 \item{fitted.cores}{
  number of cores to use for fitted values
  }
@@ -98,6 +95,9 @@ Plot method for \code{bkcde} objects.
 }
   \item{plot.behavior}{
  behavior of plot
+}
+  \item{progress}{
+ logical, whether to display progress bar for bootstrapping
 }
   \item{proper}{
  logical, whether to ensure estimated density (and bootstrap) is non-negative and integrates to 1
