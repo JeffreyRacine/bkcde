@@ -234,7 +234,7 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
+\code{\link{fast.optim}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
 library(bkcde)

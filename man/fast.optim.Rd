@@ -54,23 +54,38 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
+\code{\link{bkcde}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
 library(bkcde)
-## Generate some data from a beta distribution with the same parameters as the
-## true density, and estimate the density then plot the results
+## Generate some data from a beta distribution, estimate the density then plot
+## the results
 set.seed(42)
 s1 <- s2 <- 1
 n <- 100000
 n.grid <- 25
 x <- runif(n,0,4)
 y <- rbeta(n,s1+x,s2+x)
-## Compute the optimal h and degree
+## Compute the optimal bandwidth vector and polynomial degree then use them in 
+## the call to bkcde()
 optimal <- fast.optim(x=x,y=y,n.sub=250,resamples=10,proper=FALSE)
-bkcde.fast <- bkcde(h=optimal$h,degree=optimal$degree,x=x,y=y,proper=FALSE)
+bkcde.fast <- bkcde(h=optimal$h,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 summary(bkcde.fast)
-plot(bkcde.fast)
+par(mfrow=c(1,2))
+plot(bkcde.fast,plot.3D.n.grid=n.grid,theta=120,phi=45,shade=0.5,expand=1.25,main="Estimate")
+x.seq <- sort(unique(bkcde.fast$x.eval))
+y.seq <- sort(unique(bkcde.fast$y.eval))
+persp(x.seq,y.seq,
+      matrix(dbeta(bkcde.fast$y.eval,s1+bkcde.fast$x.eval,s2+bkcde.fast$x.eval),n.grid,n.grid),
+      theta=120,
+      phi=45,
+      ticktype="detailed",
+      xlab="x",
+      ylab="y",
+      zlab="f(y|x)",
+      shade=0.5,
+      expand=1.25,
+      main="True Density")
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
