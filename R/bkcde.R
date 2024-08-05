@@ -931,7 +931,7 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
-  if(n.sub < 1) stop("n.sub must be at least 10 in fast.optim()")
+  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
