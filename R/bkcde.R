@@ -913,41 +913,48 @@ summary.bkcde <- function(object, ...) {
 }
 
 ## This function takes a subset of the (x,y) data, computes the optimal h and
-## degree, then repeats 10 times and takes the median of the h vector and degree
-## vector and returns those values. This is a fast way to compute the optimal
-## bandwidth and polynomial degree based upon Racine, J.S. (1993), "An Efficient
-## Cross-Validation Algorithm For Window Width Selection for Nonparametric
-## Kernel Regression," Communications in Statistics, October, Volume 22, Issue
-## 4, pages 1107-1114.
+## degree, then repeats 10 times and takes the robust center of the h vector
+## conditional upon the median degree vector and returns those values. This is a
+## fast way to compute the optimal bandwidth and polynomial degree based upon
+## Racine, J.S. (1993), "An Efficient Cross-Validation Algorithm For Window
+## Width Selection for Nonparametric Kernel Regression," Communications in
+## Statistics, October, Volume 22, Issue 4, pages 1107-1114.
 
-fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, progress = TRUE,...) {
+fast.optim <- function(x, y, n.sub = 1000, resamples = 11, progress = TRUE,...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
   if(n.sub < 1) stop("n.sub must be at least 10 in fast.optim()")
   if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
-  if(!is.logical(proper)) stop("proper must be logical in fast.optim()")
   n <- length(y)
-  h.degree.mat <- matrix(NA,nrow=resamples,ncol=3)
-  if(progress) pbb <- progress::progress_bar$new(format = "  Fast Optimization [:bar] :percent eta: :eta",
+  h.mat <- matrix(NA,nrow=resamples,ncol=2)
+  degree.vec <- numeric()
+  if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
                                                  clear = TRUE,
                                                  force = TRUE,
-                                                 width = 60,
                                                  total = resamples)
   for(j in 1:resamples) {
     ii <- sample(n,size=n.sub)
-    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=proper,...)
-    h.degree.mat[j,1] <- (bkcde.out$h[1]/EssDee(y[ii]))*n.sub^{1/6}
-    h.degree.mat[j,2] <- (bkcde.out$h[2]/EssDee(x[ii]))*n.sub^{1/6}
-    h.degree.mat[j,3] <- bkcde.out$degree
+    ## cross-validation in bkcde() appropriately deals with improper densities,
+    ## so since we are only using cross-validation in this call we set
+    ## proper=FALSE
+    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
+    h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^{1/6}
+    degree.vec[j] <- bkcde.out$degree
     pbb$tick()
   }
-  ## Compute median of columns of h.degree.mat after rescaling for larger sample
-  h.degree.mat[,1] <- h.degree.mat[,1]*EssDee(y)*n^{-1/6}
-  h.degree.mat[,2] <- h.degree.mat[,2]*EssDee(x)*n^{-1/6}
-  return(list(h=c(median(h.degree.mat[,1]),
-                  median(h.degree.mat[,2])),
-                  degree=round(median(h.degree.mat[,3])),
-                  h.degree.mat=h.degree.mat))
+  ## Compute median of columns of h.mat after rescaling for larger sample
+  h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
+  h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}
+  ## Use robust measures of location for h and degree but, importantly,
+  ## bandwidth properties differ with degree of polynomial (rates and values) so
+  ## it is not sensible to unconditionally return median across all degrees and
+  ## bandwidths. We first select the median polynomial order then take a robust
+  ## measure of the "typical" vector of bandwidths
+  degree.center <- round(median(degree.vec))
+  return(list(h=robustbase::covMcd(h.mat[degree.vec==degree.center,])$center,
+              degree=degree.center,
+              h.mat=h.mat,
+              degree.vec=degree.vec))
 }

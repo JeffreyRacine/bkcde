@@ -8,7 +8,7 @@ Fast Optimization of Bandwidth Vector and Polynomial Degree for bkcde using Larg
 This function optimizes the bandwidth vector and polynomial degree for the bkcde function. It is designed to be used with large data sets.
 }
 \usage{
-fast.optim(x, y, n.sub = 1000, resamples = 10, proper = FALSE, progress = TRUE, ...)
+fast.optim(x, y, n.sub = 1000, resamples = 11, progress = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -23,9 +23,6 @@ An integer specifying the number of sub-samples to use in the optimization.
 }
   \item{resamples}{
 An integer specifying the number of resamples to use in the optimization.
-}
-  \item{proper}{
-A logical value indicating whether the density estimate should be proper (not used hence set to FALSE to avoid unnecessary computation).
 }
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
@@ -75,7 +72,7 @@ x <- runif(n,0,4)
 y <- rbeta(n,s1+x,s2+x)
 ## Compute the optimal bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
-optimal <- fast.optim(x=x,y=y,n.sub=250,resamples=10,proper=FALSE)
+optimal <- fast.optim(x=x,y=y,n.sub=250)
 bkcde.fast <- bkcde(h=optimal$h,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 summary(bkcde.fast)
 par(mfrow=c(1,2))
