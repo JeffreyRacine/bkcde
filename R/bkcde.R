@@ -961,17 +961,9 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
   ## "typical" vector of bandwidths corresponding to the typical polynomial
   ## order providing n > p+1 (min required by MCD)
   degree.center <- min(find_mode(degree.vec))
-  print("degree.center")
-  print(degree.center)
-  print("degree.vec")
-  print(degree.vec)
-  print("length(degree.vec==degree.center)")
-  print(length(degree.vec[degree.vec==degree.center]))
   if(length(degree.vec[degree.vec==degree.center]) < 4) {
-    print("calling median")
     h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
   } else {
-    print("calling robustbase::covMcd")
     h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,])$center
   }
   return(list(h=h.center,
