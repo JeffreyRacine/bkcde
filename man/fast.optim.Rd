@@ -12,7 +12,8 @@ fast.optim(x, y,
            n.sub = 500, 
            resamples = 25, 
            progress = TRUE, 
-           non.covMcd=c("mean","median"), 
+           use.covMcd = TRUE,
+           non.covMcd = c("median","mean"), 
            ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -32,8 +33,11 @@ An integer specifying the number of resamples to use in the optimization.
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
 }
+\item{use.covMcd}{
+A logical value indicating whether the \code{\link[robustbase:covMcd]{covMcd()}} function from the \pkg{robustbase} package should be used instead of the median (mean) when the number of resamples having modal degree is \eqn{\ge 4}.
+}
 \item{non.covMcd}{
-A character string specifying the method to use when the number of resamples having median degree \eqn{<4}.
+A character string specifying the method to use when the number of resamples having modal degree is \eqn{<4}.
 }
   \item{\dots}{
 Additional arguments to be passed to the bkcde function.

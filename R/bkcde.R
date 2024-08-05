@@ -936,7 +936,8 @@ fast.optim <- function(x, y,
                        n.sub = 500, 
                        resamples = 25, 
                        progress = TRUE,
-                       non.covMcd=c("mean","median"),
+                       use.covMcd=TRUE,
+                       non.covMcd=c("median","mean"),
                        ...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
@@ -975,7 +976,7 @@ fast.optim <- function(x, y,
   ## "typical" vector of bandwidths corresponding to the typical polynomial
   ## order providing n > p+1 (min required by MCD)
   degree.center <- min(find_mode(degree.vec))
-  if(length(degree.vec[degree.vec==degree.center]) < 4) {
+  if(length(degree.vec[degree.vec==degree.center]) < 4 | !use.covMcd) {
     flag <- non.covMcd
     if(non.covMcd == "median") {
       h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
