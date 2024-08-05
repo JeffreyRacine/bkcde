@@ -362,7 +362,7 @@ bkcde.default <- function(h=NULL,
     ## We test for only 1 unique value of x.eval to avoid parallel processing in
     ## the outer mcmapply call and invoke fitting the mcmapply sequence of
     ## f(y|x) values with proper.cores
-    proper.out <- mclapply(1:length(x.eval.unique),function(j) {
+    proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
         f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
@@ -384,7 +384,7 @@ bkcde.default <- function(h=NULL,
       return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                   int.f.seq=int.f.seq[j],
                   int.f.seq.post=int.f.seq.post[j]))
-    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1))
+    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=verbose)
     ## Now gather the results, correct for negative entries then divide elements
     ## of f.xy by the corresponding integral (one for each x.eval.unique) to
     ## ensure the estimate is proper
@@ -570,6 +570,22 @@ persp.lim <- function(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=
   }
 }
 
+mcmapply.progress <- function(...,progress=TRUE) {
+  if(progress) {
+    pbmcmapply(...)
+  } else {
+    mcmapply(...)
+  }
+}
+
+mclapply.progress <- function(...,progress=TRUE) {
+  if(progress) {
+    pbmclapply(...)
+  } else {
+    mclapply(...)
+  }
+}
+
 ## plot.bkcde() is used to plot the results of the boundary kernel CDE along
 ## with bootstrap confidence intervals generated as either pointwise,
 ## Bonferroni, or simultaneous intervals. A simple bootstrap mean correction is
@@ -704,13 +720,6 @@ plot.bkcde <- function(x,
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
     if(is.null(ci.cores)) ci.cores <- detectCores()
-    mcmapply.progress <- function(...,progress=TRUE) {
-      if(progress) {
-        pbmcmapply(...)
-      } else {
-        mcmapply(...)
-      }
-    }
     boot.mat <- t(mcmapply.progress(function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
       bkcde(h=x$h,
