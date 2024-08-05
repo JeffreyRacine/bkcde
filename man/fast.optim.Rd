@@ -65,7 +65,7 @@ library(bkcde)
 ## Generate a million observations from a beta distribution, estimate the density then plot
 ## the results along with the true density function from which the data was drawn.
 set.seed(42)
-s1 <- s2 <- 1
+s1 <- s2 <- 1.25
 n <- 1000000
 n.grid <- 25
 x <- runif(n,0,4)

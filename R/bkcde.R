@@ -920,7 +920,7 @@ summary.bkcde <- function(object, ...) {
 ## Kernel Regression," Communications in Statistics, October, Volume 22, Issue
 ## 4, pages 1107-1114.
 
-fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
+fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, progress = TRUE,...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
@@ -930,15 +930,19 @@ fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
   if(!is.logical(proper)) stop("proper must be logical in fast.optim()")
   n <- length(y)
   h.degree.mat <- matrix(NA,nrow=resamples,ncol=3)
+  if(progress) pbb <- progress::progress_bar$new(format = "  Fast Optimization [:bar] :percent eta: :eta",
+                                                 clear = TRUE,
+                                                 force = TRUE,
+                                                 width = 60,
+                                                 total = resamples)
   for(j in 1:resamples) {
-    cat("\rResample ",j," of ",resamples,"...",sep="")
     ii <- sample(n,size=n.sub)
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=proper,...)
     h.degree.mat[j,1] <- (bkcde.out$h[1]/EssDee(y[ii]))*n.sub^{1/6}
     h.degree.mat[j,2] <- (bkcde.out$h[2]/EssDee(x[ii]))*n.sub^{1/6}
     h.degree.mat[j,3] <- bkcde.out$degree
+    pbb$tick()
   }
-  cat("\r                                          \r")
   ## Compute median of columns of h.degree.mat after rescaling for larger sample
   h.degree.mat[,1] <- h.degree.mat[,1]*EssDee(y)*n^{-1/6}
   h.degree.mat[,2] <- h.degree.mat[,2]*EssDee(x)*n^{-1/6}
