@@ -8,7 +8,7 @@ Fast Optimization of Bandwidth Vector and Polynomial Degree for bkcde using Larg
 This function optimizes the bandwidth vector and polynomial degree for the bkcde function. It is designed to be used with large data sets.
 }
 \usage{
-fast.optim(x, y, n.sub = 1000, resamples = 10, proper = FALSE, progress = TRUE...)
+fast.optim(x, y, n.sub = 1000, resamples = 10, proper = FALSE, progress = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
