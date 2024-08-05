@@ -327,7 +327,7 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  if(progress) cat("\rFitting conditional density estimate... ",sep="")
+  if(progress) cat("\rFitting conditional density estimate...\n",sep="")
   secs.start.estimate <- Sys.time()
   ## Compute the fitted conditional density estimate (use fitted.cores)
   if(degree == 0) {
@@ -343,7 +343,7 @@ bkcde.default <- function(h=NULL,
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
     f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
   }
-  if(progress) cat("\rFitting conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
+  if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
   ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
   ## could be < # proper.cores allocated)
   if(proper) {
@@ -413,7 +413,7 @@ bkcde.default <- function(h=NULL,
     int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
     int.f.seq <- mean(int.f.seq)
     int.f.seq.post <- mean(int.f.seq.post)
-    if(progress) cat("\rComputing integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
+    if(progress) cat("\rComputed integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
   } else {
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
