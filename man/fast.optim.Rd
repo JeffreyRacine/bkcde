@@ -12,7 +12,7 @@ fast.optim(x, y,
            n.sub = 500, 
            resamples = 25, 
            progress = TRUE, 
-           use.covMcd = TRUE,
+           use.covMcd = FALSE,
            non.covMcd = c("median","mean"), 
            ...)
 }
