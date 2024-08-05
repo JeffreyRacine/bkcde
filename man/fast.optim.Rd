@@ -8,7 +8,12 @@ Fast Optimization of Bandwidth Vector and Polynomial Degree for bkcde When Using
 This function optimizes the bandwidth vector and polynomial degree for the bkcde function. It is designed to be used with large data sets.
 }
 \usage{
-fast.optim(x, y, n.sub = 500, resamples = 25, progress = TRUE, ...)
+fast.optim(x, y, 
+           n.sub = 500, 
+           resamples = 25, 
+           progress = TRUE, 
+           non.covMcd=c("mean","median"), 
+           ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -26,6 +31,9 @@ An integer specifying the number of resamples to use in the optimization.
 }
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
+}
+\item{non.covMcd}{
+A character string specifying the method to use when the number of resamples having median degree \eqn{<4}.
 }
   \item{\dots}{
 Additional arguments to be passed to the bkcde function.

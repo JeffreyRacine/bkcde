@@ -924,13 +924,25 @@ find_mode <- function(x) {
 ## fast way to compute the optimal bandwidth and polynomial degree based upon
 ## Racine, J.S. (1993), "An Efficient Cross-Validation Algorithm For Window
 ## Width Selection for Nonparametric Kernel Regression," Communications in
-## Statistics, October, Volume 22, Issue 4, pages 1107-1114.
+## Statistics, October, Volume 22, Issue 4, pages 1107-1114. When the number of
+## resamples associated with the modal degree is less than 4, covMcd()$center is
+## used to compute the robust center of the h vector. The function returns the
+## optimal h, the modal degree, the matrix of bandwidths, the vector of degrees,
+## the matrix of scale factors, and a flag indicating the method used to compute
+## the robust center of the h vector. cannot be applied so instead we use either
+## the median or mean of the bandwidths associated with the modal degree.
 
-fast.optim <- function(x, y, n.sub = 500, resamples = 25, progress = TRUE,...) {
+fast.optim <- function(x, y, 
+                       n.sub = 500, 
+                       resamples = 25, 
+                       progress = TRUE,
+                       non.covMcd=c("mean","median"),
+                       ...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
+  non.covMcd <- match.arg(non.covMcd)
   if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
@@ -964,8 +976,12 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 25, progress = TRUE,...) {
   ## order providing n > p+1 (min required by MCD)
   degree.center <- min(find_mode(degree.vec))
   if(length(degree.vec[degree.vec==degree.center]) < 4) {
-    flag <- "median"
-    h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
+    flag <- non.covMcd
+    if(non.covMcd == "median") {
+      h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
+    } else {
+      h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,mean)
+    }
   } else {
     flag <- "covMcd()$center"
     h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,,drop=FALSE])$center
