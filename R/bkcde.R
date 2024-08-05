@@ -934,8 +934,8 @@ fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
     cat("\rResample ",j," of ",resamples,"...",sep="")
     ii <- sample(n,size=n.sub)
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=proper,...)
-    h.degree.mat[j,1] <- (bkcde.out$h[1]/EssDee(y))*n.sub^{1/6}
-    h.degree.mat[j,2] <- (bkcde.out$h[2]/EssDee(x))*n.sub^{1/6}
+    h.degree.mat[j,1] <- (bkcde.out$h[1]/EssDee(y[ii]))*n.sub^{1/6}
+    h.degree.mat[j,2] <- (bkcde.out$h[2]/EssDee(x[ii]))*n.sub^{1/6}
     h.degree.mat[j,3] <- bkcde.out$degree
   }
   cat("\r                                          \r")
@@ -943,7 +943,7 @@ fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
   h.degree.mat[,1] <- h.degree.mat[,1]*EssDee(y)*n^{-1/6}
   h.degree.mat[,2] <- h.degree.mat[,2]*EssDee(x)*n^{-1/6}
   return(list(h=c(median(h.degree.mat[,1]),
-                  median(h.degree.mat[,2]),
+                  median(h.degree.mat[,2])),
                   degree=round(median(h.degree.mat[,3])),
                   h.degree.mat=h.degree.mat))
 }
