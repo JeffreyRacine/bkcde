@@ -5,7 +5,7 @@
 S3 Predict Method for Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 }
 \description{
-This function predicts the conditional density of a response variable given a set of covariates using a boundary corrected polynomial adaptive kernel conditional density estimation model.
+This function predicts the conditional density of a response variable given a covariate using a boundary corrected polynomial adaptive kernel conditional density estimation model.
 }
 \usage{
 \method{predict}{bkcde}(object, newdata, proper = NULL, ...)
@@ -16,7 +16,7 @@ This function predicts the conditional density of a response variable given a se
 An object of class \code{bkcde} returned by the function \code{\link{bkcde}}.
 }
   \item{newdata}{
-A data frame containing the covariates and response variable for which the conditional density is to be predicted. The data frame must contain columns named \code{x} and \code{y}.
+A data frame containing the covariate and response variable for which the conditional density is to be predicted. The data frame must contain columns named \code{x} and \code{y}.
 }
   \item{proper}{
 A logical value indicating whether the conditional density should be rendered proper. If \code{NULL}, the value of \code{proper} used in the \code{bkcde} function that created the \code{object} is used.
