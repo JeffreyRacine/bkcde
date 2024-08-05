@@ -951,7 +951,7 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 25, progress = TRUE,...) {
     degree.vec[j] <- bkcde.out$degree
     pbb$tick()
   }
-  scale.factor.mat <- h.hat
+  scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for large sample
   h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
   h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}

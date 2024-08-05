@@ -72,7 +72,7 @@ x <- runif(n,0,4)
 y <- rbeta(n,s1+x,s2+x)
 ## Compute the optimal bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
-optimal <- fast.optim(x=x,y=y,n.sub=250)
+optimal <- fast.optim(x=x,y=y,n.sub=250,resamples=10)
 bkcde.fast <- bkcde(h=optimal$h,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 summary(bkcde.fast)
 par(mfrow=c(1,2))
