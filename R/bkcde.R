@@ -912,6 +912,12 @@ summary.bkcde <- function(object, ...) {
   invisible()
 }
 
+find_mode <- function(x) {
+  u <- unique(x)
+  tab <- tabulate(match(x, u))
+  u[tab == max(tab)]
+}
+
 ## This function takes a subset of the (x,y) data, computes the optimal h and
 ## degree, then repeats 10 times and takes the robust center of the h vector
 ## conditional upon the median degree vector and returns those values. This is a
@@ -926,7 +932,7 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 11, progress = TRUE,...) {
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
   if(n.sub < 1) stop("n.sub must be at least 10 in fast.optim()")
-  if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
+  if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
@@ -950,10 +956,24 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 11, progress = TRUE,...) {
   ## Use robust measures of location for h and degree but, importantly,
   ## bandwidth properties differ with degree of polynomial (rates and values) so
   ## it is not sensible to unconditionally return median across all degrees and
-  ## bandwidths. We first select the median polynomial order then take a robust
-  ## measure of the "typical" vector of bandwidths
-  degree.center <- round(median(degree.vec))
-  return(list(h=robustbase::covMcd(h.mat[degree.vec==degree.center,])$center,
+  ## bandwidths. We first select the "typical" polynomial order (smallest degree
+  ## mode) then take a robust measure of the "typical" vector of bandwidths
+  ## providing n > p+1 (min required by MCD)
+  degree.center <- min(find_mode(degree.vec))
+  print("degree.center")
+  print(degree.center)
+  print("degree.vec")
+  print(degree.vec)
+  print("length(degree.vec==degree.center)")
+  print(length(degree.vec[degree.vec==degree.center]))
+  if(length(degree.vec[degree.vec==degree.center]) < 4) {
+    print("calling median")
+    h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
+  } else {
+    print("calling robustbase::covMcd")
+    h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,])$center
+  }
+  return(list(h=h.center,
               degree=degree.center,
               h.mat=h.mat,
               degree.vec=degree.vec))
