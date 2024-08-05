@@ -7,5 +7,5 @@ Version: 1.9
 Date: 2024-08-04
 Author: Jeffrey S. Racine
 Maintainer: Jeffrey S. Racine <racinej@mcmaster.ca>
-Description: This package uses data-driven methods to jointly determine bandwidths, the polynomial order, and approximates unknown bounds freeing the user from having to select any of these in applied settings.
+Description: This package contains functions to estimate an unknown smooth conditional density function f(y|x) using nonparametric kernel methods when the response may be bounded in [a,b] but the bounds may be unknown to the practitioner. It uses data-driven methods to jointly determine bandwidths, the polynomial order, and approximates unknown bounds freeing the user from having to select any of these in applied settings. If the bounds are known, naturally they should and can be used. A computationally efficient method is also provided allowing for likelihood cross-validated choice of the bandwidths and polynomial order for large data samples.
 License: GPL (>= 3)
