@@ -2,13 +2,13 @@
 \alias{fast.optim}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Fast Optimization of Bandwidth Vector and Polynomial Degree for bkcde using Large Data Sets
+Fast Optimization of Bandwidth Vector and Polynomial Degree for bkcde When Using Large Data Sets
 }
 \description{
 This function optimizes the bandwidth vector and polynomial degree for the bkcde function. It is designed to be used with large data sets.
 }
 \usage{
-fast.optim(x, y, n.sub = 1000, resamples = 11, progress = TRUE, ...)
+fast.optim(x, y, n.sub = 500, resamples = 11, progress = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -32,7 +32,7 @@ Additional arguments to be passed to the bkcde function.
 }
 }
 \details{
-Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a fast optimization algorithm to select the optimal bandwidth vector and polynomial degree for the bkcde function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that the optimal bandwidth can be written as an unknown constant rescaled by the standard deviation of the data and a power of the sample size. Resampling based on sub-samples is used to estimate the optimal rescaling constant which should be appropriate regardless of the sample size. The optimal polynomial degree is selected using the same resampling based on sub-samples. The function returns the optimal bandwidth vector and polynomial degree as well as a matrix containing the rescaled bandwidths and polynomial degrees, the optimal values computed as the medians of the rescaled values over all resamples undertaken.
+Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a computationally attractive algorithm to select an appropriate bandwidth vector and polynomial degree for the \code{\link{bkcde}} function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that each (unknown) optimal bandwidth can be written as a (unknown) constant rescaled by the scale each variable (\eqn{\sigma_y} or \eqn{\sigma_y}) and by a power of the sample size (\eqn{n^{-1/6}}). The scale for each variable is based on a robust measure of spread (\code{\link{IQR}} rescaled to be 1 at the standard Gaussian). Resampling based on sub-samples of size \eqn{\ll n} is used to approximate the rescaling constants which should be appropriate regardless of the sample size where, for each resample, likelihood cross-validation is used to select the bandwidth and polynomial order. Importantly, bandwidth properties (rates and optimal values) differ with the degree of polynomial so it is not sensible to unconditionally (unconditionally) return median values across all degrees and bandwidths. Therefore, after computing the appropriate bandwidth vector and degree for each resample, we first select the median polynomial order across all resamples then take a robust measure of the \dQuote{typical} vector of bandwidths corresponding to all resamples of the same degree using \code{\link{covMcd()$center}} from the \pkg{robustbase} package. 
 }
 \value{
 \item{h}{
