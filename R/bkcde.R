@@ -919,7 +919,7 @@ find_mode <- function(x) {
 }
 
 ## This function takes a subset of the (x,y) data, computes the optimal h and
-## degree, then repeats 10 times and takes the robust centre of the h vector
+## degree, then repeats 10 times and takes the robust center of the h vector
 ## conditional upon the median degree vector and returns those values. This is a
 ## fast way to compute the optimal bandwidth and polynomial degree based upon
 ## Racine, J.S. (1993), "An Efficient Cross-Validation Algorithm For Window
@@ -953,13 +953,13 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
   ## Compute median of columns of h.mat after rescaling for larger sample
   h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
   h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}
-  ## Use robust measures of location for h and degree but, importantly,
-  ## bandwidth properties differ with degree of polynomial (rates and values) so
-  ## it is not sensible to unconditionally return median across all degrees and
-  ## bandwidths. We first select the "typical" polynomial order (smallest degree
-  ## mode) then take a robust measure of the "typical" vector of bandwidths
-  ## corresponding to the typical polynomial order providing n > p+1 (min
-  ## required by MCD)
+  ## Use robust "typical" measures of location for h and degree since,
+  ## importantly, bandwidth properties differ with degree of polynomial (rates
+  ## and values) and so it is not sensible to unconditionally return e.g. the
+  ## median across all degrees and bandwidths. We first select the "typical"
+  ## polynomial order (smallest degree mode) then take a robust measure of the
+  ## "typical" vector of bandwidths corresponding to the typical polynomial
+  ## order providing n > p+1 (min required by MCD)
   degree.center <- min(find_mode(degree.vec))
   print("degree.center")
   print(degree.center)
