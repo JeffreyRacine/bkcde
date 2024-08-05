@@ -926,7 +926,7 @@ find_mode <- function(x) {
 ## Width Selection for Nonparametric Kernel Regression," Communications in
 ## Statistics, October, Volume 22, Issue 4, pages 1107-1114.
 
-fast.optim <- function(x, y, n.sub = 500, resamples = 11, progress = TRUE,...) {
+fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
