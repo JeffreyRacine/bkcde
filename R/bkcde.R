@@ -314,6 +314,7 @@ bkcde.default <- function(h=NULL,
     convergence.mat <- optim.out$convergence.mat
     secs.optim <- optim.out$secs.optim
     secs.optim.mat <- optim.out$secs.optim.mat
+    if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else {
     h.mat <- NULL
     degree.mat <- NULL
@@ -326,10 +327,7 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  if(progress) {
-    cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
-    cat("\rFitting conditional density estimate... ",sep="")
-  }
+  if(progress) cat("\rFitting conditional density estimate... ",sep="")
   secs.start.estimate <- Sys.time()
   ## Compute the fitted conditional density estimate (use fitted.cores)
   if(degree == 0) {
