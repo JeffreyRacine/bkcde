@@ -964,13 +964,16 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 25, progress = TRUE,...) {
   ## order providing n > p+1 (min required by MCD)
   degree.center <- min(find_mode(degree.vec))
   if(length(degree.vec[degree.vec==degree.center]) < 4) {
+    flag <- "median"
     h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
   } else {
+    flag <- "covMcd()$center"
     h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,,drop=FALSE])$center
   }
   return(list(h=h.center,
               degree=degree.center,
               h.mat=h.mat,
+              degree.vec=degree.vec,
               scale.factor.mat=scale.factor.mat,
-              degree.vec=degree.vec))
+              flag=flag))
 }
