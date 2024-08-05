@@ -32,14 +32,18 @@ Additional arguments to be passed to the bkcde function.
 }
 }
 \details{
-%%  ~~ If necessary, more details than the description above ~~
+Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a fast optimization algorithm to select the optimal bandwidth vector and polynomial degree for the bkcde function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that the optimal bandwidth can be written as an unknown constant rescaled by the standard deviation of the data and a power of the sample size. Resampling based on sub-samples is used to estimate the optimal rescaling constant which should be appropriate regardless of the sample size. The optimal polynomial degree is selected using the same resampling based on sub-samples. The function returns the optimal bandwidth vector and polynomial degree as well as a matrix containing the rescaled bandwidths and polynomial degrees, the optimal values computed as the medians of the rescaled values over all resamples undertaken.
 }
 \value{
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
+\item{h}{
+A numeric vector of length 2 containing the optimal bandwidths.
+}
+\item{degree}{
+An integer specifying the optimal polynomial degree.
+}
+\item{h.degree.mat}{
+A matrix containing the rescaled bandwidths and polynomial degrees.
+}
 }
 \references{
 Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window Width Selection for Nonparametric Kernel Regression,} Communications in Statistics, October, Volume 22, Issue 4, pages 1107-1114.
@@ -58,11 +62,11 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \examples{
 library(bkcde)
-## Generate some data from a beta distribution, estimate the density then plot
-## the results
+## Generate a million observations from a beta distribution, estimate the density then plot
+## the results along with the true density function from which the data was drawn.
 set.seed(42)
 s1 <- s2 <- 1
-n <- 100000
+n <- 1000000
 n.grid <- 25
 x <- runif(n,0,4)
 y <- rbeta(n,s1+x,s2+x)
