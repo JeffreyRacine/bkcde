@@ -920,13 +920,13 @@ find_mode <- function(x) {
 
 ## This function takes a subset of the (x,y) data, computes the optimal h and
 ## degree, then repeats 10 times and takes the robust center of the h vector
-## conditional upon the median degree vector and returns those values. This is a
+## conditional upon the modeal degree vector and returns those values. This is a
 ## fast way to compute the optimal bandwidth and polynomial degree based upon
 ## Racine, J.S. (1993), "An Efficient Cross-Validation Algorithm For Window
 ## Width Selection for Nonparametric Kernel Regression," Communications in
 ## Statistics, October, Volume 22, Issue 4, pages 1107-1114.
 
-fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
+fast.optim <- function(x, y, n.sub = 500, resamples = 25, progress = TRUE,...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
@@ -942,18 +942,20 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
                                                  total = resamples)
   for(j in 1:resamples) {
     ii <- sample(n,size=n.sub)
-    ## cross-validation in bkcde() appropriately deals with improper densities,
-    ## so since we are only using cross-validation in this call we set
-    ## proper=FALSE
+    ## Since cross-validation in bkcde() appropriately deals with improper
+    ## densities, and since we are only using cross-validation in this call, we
+    ## set proper=FALSE. We retrieve the "scale factors" after removing scale
+    ## and sample size factors.
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
     h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^{1/6}
     degree.vec[j] <- bkcde.out$degree
     pbb$tick()
   }
-  ## Compute median of columns of h.mat after rescaling for larger sample
+  scale.factor.mat <- h.hat
+  ## Compute "typical" column elements of h.mat after rescaling for large sample
   h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
   h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}
-  ## Use robust "typical" measures of location for h and degree since,
+  ## We use robust "typical" measures of location for h and degree since,
   ## importantly, bandwidth properties differ with degree of polynomial (rates
   ## and values) and so it is not sensible to unconditionally return e.g. the
   ## median across all degrees and bandwidths. We first select the "typical"
@@ -964,10 +966,11 @@ fast.optim <- function(x, y, n.sub = 500, resamples = 10, progress = TRUE,...) {
   if(length(degree.vec[degree.vec==degree.center]) < 4) {
     h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
   } else {
-    h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,])$center
+    h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,,drop=FALSE])$center
   }
   return(list(h=h.center,
               degree=degree.center,
               h.mat=h.mat,
+              scale.factor.mat=scale.factor.mat,
               degree.vec=degree.vec))
 }
