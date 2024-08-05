@@ -939,9 +939,11 @@ fast.optim <- function(x, y, n.sub = 1000, resamples = 10, proper=FALSE, ...) {
     h.degree.mat[j,3] <- bkcde.out$degree
   }
   cat("\r                                          \r")
-  ## Compute median of columns of h.degree.mat
-  return(list(h=c(median(h.degree.mat[,1])*EssDee(y)*n^{-1/6},
-                  median(h.degree.mat[,2])*EssDee(x)*n^{-1/6}),
-              degree=round(median(h.degree.mat[,3])),
-              h.degree.mat=h.degree.mat))
+  ## Compute median of columns of h.degree.mat after rescaling for larger sample
+  h.degree.mat[,1] <- h.degree.mat[,1]*EssDee(y)*n^{-1/6}
+  h.degree.mat[,2] <- h.degree.mat[,2]*EssDee(x)*n^{-1/6}
+  return(list(h=c(median(h.degree.mat[,1]),
+                  median(h.degree.mat[,2]),
+                  degree=round(median(h.degree.mat[,3])),
+                  h.degree.mat=h.degree.mat))
 }
