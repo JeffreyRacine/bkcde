@@ -968,6 +968,7 @@ fast.optim <- function(x, y,
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
+  cv.vec <- numeric()
   if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
                                                  clear = TRUE,
                                                  force = TRUE,
@@ -982,6 +983,7 @@ fast.optim <- function(x, y,
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
     h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^{1/6}
     degree.vec[j] <- bkcde.out$degree
+    cv.vec[j] <- bkcde.out$value
     if(progress) pbb$tick()
   }
   scale.factor.mat <- h.mat
@@ -1010,6 +1012,7 @@ fast.optim <- function(x, y,
   return(list(h=h.center,
               degree=degree.center,
               h.mat=h.mat,
+              cv.vec=cv.vec,
               degree.vec=degree.vec,
               scale.factor.mat=scale.factor.mat,
               flag=flag))
