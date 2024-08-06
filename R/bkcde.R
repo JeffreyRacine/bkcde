@@ -284,7 +284,7 @@ bkcde.default <- function(h=NULL,
   ## obtain the bandwidths and polynomial order (use ksum.cores,
   ## optim.degree.cores, optim.nmulti.cores)
   if(is.null(h)) {
-    if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts)...",sep="")
+    if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
     optim.out <- bkcde.optim(x=x,
                              y=y,
                              y.lb=y.lb,
@@ -327,7 +327,7 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  if(progress) cat("\rFitting conditional density estimate...\n",sep="")
+  if(progress) cat("\rFitting conditional density estimate...",sep="")
   secs.start.estimate <- Sys.time()
   ## Compute the fitted conditional density estimate (use fitted.cores)
   if(degree == 0) {
@@ -347,7 +347,7 @@ bkcde.default <- function(h=NULL,
   ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
   ## could be < # proper.cores allocated)
   if(proper) {
-    if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
+    if(progress) cat("\rComputing integrals to ensure estimate is proper...",sep="")
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
@@ -723,6 +723,7 @@ plot.bkcde <- function(x,
     }
   }
   if(ci) {
+    if(progress) cat("\rComputing bootstrap confidence intervals...\n",sep="") 
     ## All processing goes into computing the matrix of bootstrap estimates, so
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
@@ -756,7 +757,7 @@ plot.bkcde <- function(x,
     ci.SCS <- SCSrank(boot.mat, conf.level=1-alpha)$conf.int
     ci.sim.lb <- ci.SCS[,1]
     ci.sim.ub <- ci.SCS[,2]
-    cat("\r                                                                                             ")
+    if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
   } else {
     if(is.null(ylim)) ylim <- NULL
   }
