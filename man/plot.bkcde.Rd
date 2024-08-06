@@ -26,7 +26,7 @@ Plot method for \code{bkcde} objects.
      plot.3D.x.grid = NULL, 
      plot.3D.y.grid = NULL, 
      plot.behavior = c("plot", "plot-data", "data"), 
-     progress = TRUE, 
+     progress = FALSE, 
      proper = NULL, 
      proper.cores = NULL, 
      sub = NULL, 
@@ -97,7 +97,7 @@ Plot method for \code{bkcde} objects.
  behavior of plot
 }
   \item{progress}{
- logical, whether to display progress bar for bootstrapping
+ logical, whether to display progress when estimating and bootstrapping
 }
   \item{proper}{
  logical, whether to ensure estimated density (and bootstrap) is non-negative and integrates to 1

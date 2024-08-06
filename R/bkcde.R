@@ -623,7 +623,7 @@ plot.bkcde <- function(x,
                        plot.3D.x.grid = NULL,
                        plot.3D.y.grid = NULL,
                        plot.behavior = c("plot","plot-data","data"),
-                       progress = TRUE,
+                       progress = FALSE,
                        proper = NULL,
                        proper.cores = NULL,
                        sub = NULL,
@@ -952,7 +952,7 @@ find_mode <- function(x) {
 fast.optim <- function(x, y, 
                        n.sub = 500, 
                        resamples = 25, 
-                       progress = TRUE,
+                       progress = FALSE,
                        use.covMcd = FALSE,
                        non.covMcd = c("median","mean"),
                        ...) {
@@ -982,7 +982,7 @@ fast.optim <- function(x, y,
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
     h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^{1/6}
     degree.vec[j] <- bkcde.out$degree
-    pbb$tick()
+    if(progress) pbb$tick()
   }
   scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for large sample
