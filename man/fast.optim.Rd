@@ -11,7 +11,7 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 fast.optim(x, y, 
            n.sub = 500, 
            resamples = 25, 
-           progress = FALSE
+           progress = FALSE,
            ...)
 }
 %- maybe also 'usage' for other objects documented here.
