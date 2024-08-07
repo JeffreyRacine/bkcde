@@ -953,16 +953,12 @@ fast.optim <- function(x, y,
                        n.sub = 500, 
                        resamples = 25, 
                        progress = FALSE,
-                       use.covMcd = FALSE,
-                       non.covMcd = c("median","mean"),
                        ...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
   if(!is.logical(progress)) stop("progress must be logical in fast.optim()")
-  if(!is.logical(use.covMcd)) stop("use.covMcd must be logical in fast.optim()")
-  non.covMcd <- match.arg(non.covMcd)
   if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
@@ -997,23 +993,19 @@ fast.optim <- function(x, y,
   ## polynomial order (smallest degree mode) then take a robust measure of the
   ## "typical" vector of bandwidths corresponding to the typical polynomial
   ## order providing n > p+1 (min required by MCD)
-  degree.center <- min(find_mode(degree.vec))
-  if(length(degree.vec[degree.vec==degree.center]) < 4 | !use.covMcd) {
-    flag <- non.covMcd
-    if(non.covMcd == "median") {
-      h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,median)
-    } else {
-      h.center <- apply(h.mat[degree.vec==degree.center,,drop=FALSE],2,mean)
-    }
-  } else {
-    flag <- "covMcd()$center"
-    h.center <- robustbase::covMcd(h.mat[degree.vec==degree.center,,drop=FALSE])$center
-  }
-  return(list(h=h.center,
-              degree=degree.center,
+  degree <- min(find_mode(degree.vec))
+  
+  h.median <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,median)
+  h.mean <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,mean)
+  h.covMcd <- ifelse(length(degree.vec[degree.vec==degree]) < 4, robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center, h.mean)
+  h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
+  
+  return(list(h.median=h.median,
+              h.mean=h.mean,
+              h.covMcd=h.covMcd,
+              degree=degree,
               h.mat=h.mat,
               cv.vec=cv.vec,
               degree.vec=degree.vec,
-              scale.factor.mat=scale.factor.mat,
-              flag=flag))
+              scale.factor.mat=scale.factor.mat))
 }

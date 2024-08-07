@@ -11,9 +11,7 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 fast.optim(x, y, 
            n.sub = 500, 
            resamples = 25, 
-           progress = FALSE, 
-           use.covMcd = FALSE,
-           non.covMcd = c("median","mean"), 
+           progress = FALSE
            ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -33,12 +31,6 @@ An integer specifying the number of resamples to use in the optimization.
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
 }
-\item{use.covMcd}{
-A logical value indicating whether the \code{\link[robustbase:covMcd]{covMcd()}} function from the \pkg{robustbase} package should be used instead of the median (mean) when the number of resamples having modal degree is \eqn{\ge 4}.
-}
-\item{non.covMcd}{
-A character string specifying the method to use when the number of resamples having modal degree is \eqn{<4}.
-}
   \item{\dots}{
 Additional arguments to be passed to the bkcde function.
 }
@@ -47,8 +39,17 @@ Additional arguments to be passed to the bkcde function.
 Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a computationally attractive algorithm to select an appropriate bandwidth vector and polynomial degree for the \code{\link{bkcde}} function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that each (unknown) optimal bandwidth can be written as a (unknown) constant rescaled by the scale of each variable (\eqn{\sigma_y} or \eqn{\sigma_y}) and by a power of the sample size (\eqn{n^{-1/6}}). The scale estimate for each variable is based on a robust measure of spread (\code{\link{IQR}} rescaled to be 1 at the standard Gaussian). Resampling based on sub-samples of size \eqn{\ll n} is used to approximate the rescaling constants which should be appropriate regardless of the sample size where, for each resample, likelihood cross-validation is used to select the bandwidth and polynomial order. Importantly, bandwidth properties (rates and optimal values) may differ with the polynomial degree so it is not sensible to return the \dQuote{typical} value taken across all polynomial degrees selected across the resamples. Therefore, after computing the appropriate bandwidth vector and degree for each resample, we first select the modal polynomial order across all resamples and then construct a robust measure of the \dQuote{typical} vector of bandwidths corresponding to all resamples of the same degree if possible (for \code{\link[robustbase:covMcd]{covMcd()$center}} it is the number of resamples having median degree \eqn{>3}) using \code{\link[robustbase:covMcd]{covMcd()$center}} from the \pkg{robustbase} package. 
 }
 \value{
-\item{h}{
-A numeric vector of length 2 containing the optimal bandwidths.
+\item{h.median}{
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the median criterion
+}
+\item{h.mean}{
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the mean criterion
+}
+\item{h.covMcd}{
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the robust mean criterion
+}
+\item{h.ml}{
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the maximum likelihood criterion
 }
 \item{degree}{
 An integer specifying the optimal polynomial degree.
@@ -85,7 +86,7 @@ y <- rbeta(n,s1+x,s2+x)
 ## Compute the optimal bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
 optimal <- fast.optim(x=x,y=y,n.sub=250,resamples=10)
-bkcde.fast <- bkcde(h=optimal$h,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
+bkcde.fast <- bkcde(h=optimal$h.median,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 summary(bkcde.fast)
 par(mfrow=c(1,2))
 plot(bkcde.fast,plot.3D.n.grid=n.grid,theta=120,phi=45,shade=0.5,expand=1.25,main="Estimate")
