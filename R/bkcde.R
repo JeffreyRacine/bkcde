@@ -997,12 +997,17 @@ fast.optim <- function(x, y,
   
   h.median <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,median)
   h.mean <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,mean)
-  h.covMcd <- ifelse(length(degree.vec[degree.vec==degree]) < 4, robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center, h.mean)
+  if(length(degree.vec[degree.vec==degree]) < 4) {
+    h.covMcd <- h.mean
+  } else {
+    h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
+  }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
   
   return(list(h.median=h.median,
               h.mean=h.mean,
               h.covMcd=h.covMcd,
+              h.ml=h.ml,
               degree=degree,
               h.mat=h.mat,
               cv.vec=cv.vec,
