@@ -951,14 +951,16 @@ find_mode <- function(x) {
 
 fast.optim <- function(x, y, 
                        n.sub = 500, 
-                       resamples = 25, 
                        progress = FALSE,
+                       replace = TRUE,
+                       resamples = 25, 
                        ...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
   if(!is.logical(progress)) stop("progress must be logical in fast.optim()")
+  if(!is.logical(replace)) stop("replace must be logical in fast.optim()")
   if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
@@ -971,7 +973,7 @@ fast.optim <- function(x, y,
                                                  total = resamples)
   if(progress) cat("\rResampling: 0%")
   for(j in 1:resamples) {
-    ii <- sample(n,size=n.sub)
+    ii <- sample(n,size=n.sub,replace=replace)
     ## Since cross-validation in bkcde() appropriately deals with improper
     ## densities, and since we are only using cross-validation in this call, we
     ## set proper=FALSE. We retrieve the "scale factors" after removing scale

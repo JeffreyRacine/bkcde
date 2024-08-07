@@ -10,8 +10,9 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 \usage{
 fast.optim(x, y, 
            n.sub = 500, 
-           resamples = 25, 
            progress = FALSE,
+           replace = TRUE,
+           resamples = 25, 
            ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -25,12 +26,16 @@ A numeric vector of data values.
   \item{n.sub}{
 An integer specifying the number of sub-samples to use in the optimization.
 }
-  \item{resamples}{
-An integer specifying the number of resamples to use in the optimization.
-}
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
 }
+\item{replace}{
+A logical value indicating whether the sub-samples should be drawn with replacement.
+}
+  \item{resamples}{
+An integer specifying the number of resamples to use in the optimization.
+}
+
   \item{\dots}{
 Additional arguments to be passed to the bkcde function.
 }
