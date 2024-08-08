@@ -955,7 +955,7 @@ find_mode <- function(x) {
 fast.optim <- function(x, y, 
                        n.sub = 500, 
                        progress = FALSE,
-                       replace = TRUE,
+                       replace = FALSE,
                        resamples = 25, 
                        ...) {
   if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
@@ -967,6 +967,7 @@ fast.optim <- function(x, y,
   if(!is.logical(replace)) stop("replace must be logical in fast.optim()")
   ## If only 1 resample is specified it ought to be the original sample returned, so check
   if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in fast.optim()")
+  if(n.sub==length(y) & replace==FALSE & resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
   if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)

@@ -11,7 +11,7 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 fast.optim(x, y, 
            n.sub = 500, 
            progress = FALSE,
-           replace = TRUE,
+           replace = FALSE,
            resamples = 25, 
            ...)
 }
@@ -79,7 +79,7 @@ Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window 
 Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
-%%  ~~further notes~~
+Note that sample with repacement is ill-advised, but the switch \code{resample=TRUE} can be used to allow for this. The default is \code{resample=FALSE}.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
