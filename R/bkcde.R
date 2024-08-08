@@ -965,7 +965,9 @@ fast.optim <- function(x, y,
   if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(!is.logical(progress)) stop("progress must be logical in fast.optim()")
   if(!is.logical(replace)) stop("replace must be logical in fast.optim()")
-  if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
+  ## If only 1 resample is specified it ought to be the original sample returned, so check
+  if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in fast.optim()")
+  if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
@@ -1010,15 +1012,17 @@ fast.optim <- function(x, y,
     h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
   }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
-  return(list(h.median=h.median,
-              h.mean=h.mean,
-              h.covMcd=h.covMcd,
-              h.ml=h.ml,
+  
+  return(list(cv.vec=cv.vec,
               degree=degree,
               degree.modal.length=length(degree.vec[degree.vec==degree]),
-              h.mat=h.mat,
-              cv.vec=cv.vec,
               degree.vec=degree.vec,
+              h.covMcd=h.covMcd,
+              h.mat=h.mat,
+              h.mean=h.mean,
+              h.median=h.median,
+              h.ml=h.ml,
               scale.factor.mat=scale.factor.mat))
+  
 }
-?samp
+
