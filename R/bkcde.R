@@ -929,6 +929,9 @@ summary.bkcde <- function(object, ...) {
   invisible()
 }
 
+## Simple function used to find the mode of the degree vector (may not be
+## unique)
+
 find_mode <- function(x) {
   u <- unique(x)
   tab <- tabulate(match(x, u))
@@ -959,9 +962,9 @@ fast.optim <- function(x, y,
   if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
+  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(!is.logical(progress)) stop("progress must be logical in fast.optim()")
   if(!is.logical(replace)) stop("replace must be logical in fast.optim()")
-  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
   if(resamples < 2) stop("resamples must be at least 2 in fast.optim()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
@@ -985,7 +988,8 @@ fast.optim <- function(x, y,
     if(progress) pbb$tick()
   }
   scale.factor.mat <- h.mat
-  ## Compute "typical" column elements of h.mat after rescaling for large sample
+  ## Compute "typical" column elements of h.mat after rescaling for larger
+  ## sample
   h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
   h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}
   ## We use robust "typical" measures of location for h and degree since,
@@ -994,9 +998,10 @@ fast.optim <- function(x, y,
   ## median across all degrees and bandwidths. We first select the "typical"
   ## polynomial order (smallest degree mode) then take a robust measure of the
   ## "typical" vector of bandwidths corresponding to the typical polynomial
-  ## order providing n > p+1 (min required by MCD)
+  ## order providing n > p+1 (min required by MCD). Note that the modal degrees,
+  ## when > 1 exist, may not be contiguous hence taking the mean or floor of the
+  ## mean is ill-advised.
   degree <- min(find_mode(degree.vec))
-  
   h.median <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,median)
   h.mean <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,mean)
   if(length(degree.vec[degree.vec==degree]) < 4) {
@@ -1005,14 +1010,15 @@ fast.optim <- function(x, y,
     h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
   }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
-  
   return(list(h.median=h.median,
               h.mean=h.mean,
               h.covMcd=h.covMcd,
               h.ml=h.ml,
               degree=degree,
+              degree.modal.length=length(degree.vec[degree.vec==degree]),
               h.mat=h.mat,
               cv.vec=cv.vec,
               degree.vec=degree.vec,
               scale.factor.mat=scale.factor.mat))
 }
+?samp

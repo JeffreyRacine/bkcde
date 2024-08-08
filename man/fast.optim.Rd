@@ -24,13 +24,13 @@ A numeric vector of data values.
 A numeric vector of data values.
 }
   \item{n.sub}{
-An integer specifying the number of sub-samples to use in the optimization.
+An integer specifying the sub-sample size to use (\eqn{n_{sub}} must be \eqn{\le n}, the length of x and y).
 }
 \item{progress}{
 A logical value indicating whether a progress bar should be displayed.
 }
 \item{replace}{
-A logical value indicating whether the sub-samples should be drawn with replacement.
+A logical value indicating whether the sub-samples should be drawn with replacement from x and y.
 }
   \item{resamples}{
 An integer specifying the number of resamples to use in the optimization.
@@ -41,26 +41,35 @@ Additional arguments to be passed to the bkcde function.
 }
 }
 \details{
-Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a computationally attractive algorithm to select an appropriate bandwidth vector and polynomial degree for the \code{\link{bkcde}} function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that each (unknown) optimal bandwidth can be written as a (unknown) constant rescaled by the scale of each variable (\eqn{\sigma_y} or \eqn{\sigma_y}) and by a power of the sample size (\eqn{n^{-1/6}}). The scale estimate for each variable is based on a robust measure of spread (\code{\link{IQR}} rescaled to be 1 at the standard Gaussian). Resampling based on sub-samples of size \eqn{\ll n} is used to approximate the rescaling constants which should be appropriate regardless of the sample size where, for each resample, likelihood cross-validation is used to select the bandwidth and polynomial order. Importantly, bandwidth properties (rates and optimal values) may differ with the polynomial degree so it is not sensible to return the \dQuote{typical} value taken across all polynomial degrees selected across the resamples. Therefore, after computing the appropriate bandwidth vector and degree for each resample, we first select the modal polynomial order across all resamples and then construct a robust measure of the \dQuote{typical} vector of bandwidths corresponding to all resamples of the same degree if possible (for \code{\link[robustbase:covMcd]{covMcd()$center}} it is the number of resamples having median degree \eqn{>3}) using \code{\link[robustbase:covMcd]{covMcd()$center}} from the \pkg{robustbase} package. 
+Cross-validated selection of the bandwidth vector and polynomial degree is computationally intensive for large data sets. This function uses a computationally attractive algorithm to select an appropriate bandwidth vector and polynomial degree for the \code{\link{bkcde}} function. The algorithm is based on the work of Racine (1993) and is designed to be used with large data sets. The basic idea is that each (unknown) optimal bandwidth can be written as a (unknown) constant rescaled by the scale of each variable (\eqn{\sigma_y} or \eqn{\sigma_y}) and by a power of the sample size (\eqn{n^{-1/6}}). The scale estimate for each variable is based on a robust measure of spread (\code{\link{IQR}} rescaled to be 1 at the standard Gaussian). Resampling based on sub-samples of size \eqn{\ll n} is used to approximate the rescaling constants which should be appropriate regardless of the sample size where, for each resample, likelihood cross-validation is used to select the bandwidth and polynomial order. Importantly, bandwidth properties (rates and optimal values) may differ with the polynomial degree so it is not sensible to return the \dQuote{typical} value taken across all polynomial degrees selected across the resamples. Therefore, after computing the appropriate bandwidth vector and degree for each resample, we first select the modal polynomial order across all resamples and then construct a robust measure of the \dQuote{typical} vector of bandwidths corresponding to all resamples of the same degree if possible (for \code{\link[robustbase:covMcd]{covMcd()$center}} it is the number of resamples having median degree \eqn{>3} using \code{\link[robustbase:covMcd]{covMcd()$center}} from the \pkg{robustbase} package, otherwise the mean bandwidth vector is returned). 
 }
 \value{
 \item{h.median}{
-A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the median criterion
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the median criterion (column 1 for y, column 2 for x).
 }
 \item{h.mean}{
-A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the mean criterion
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the mean criterion (column 1 for y, column 2 for x).
 }
 \item{h.covMcd}{
-A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the robust mean criterion
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the robust mean criterion (column 1 for y, column 2 for x).
 }
 \item{h.ml}{
-A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the maximum likelihood criterion
+A numeric vector of length 2 containing the optimal bandwidths for the x and y variables via the maximum likelihood criterion (column 1 for y, column 2 for x).
 }
 \item{degree}{
 An integer specifying the optimal polynomial degree.
 }
-\item{h.degree.mat}{
-A matrix containing the rescaled bandwidths and polynomial degrees.
+\item{degree.modal.length}{
+An integer specifying the number of resamples containing the modal polynomial degree.
+}
+\item{h.mat}{
+A matrix containing the optimal bandwidths for the x and y variables for each resample (column 1 for y, column 2 for x).
+}
+\item{cv.vec}{
+A numeric vector containing the cross-validated likelihood values for each resample.
+}
+\item{scale.factor.mat}{
+A matrix containing the scale factors of the bandwidths for the y and x variables (column 1 for y, column 2 for x).
 }
 }
 \references{
