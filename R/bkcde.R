@@ -211,6 +211,7 @@ bkcde.default <- function(h=NULL,
                           y.lb=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
+                          cv=c("full","sub"),
                           degree.max=3,
                           degree.min=0,
                           degree=NULL,
@@ -218,6 +219,7 @@ bkcde.default <- function(h=NULL,
                           ksum.cores=1,
                           n.grid=10,
                           n.integrate=1000,
+                          n.sub=100,
                           nmulti=3,
                           optim.degree.cores=NULL,
                           optim.nmulti.cores=NULL,
@@ -227,6 +229,7 @@ bkcde.default <- function(h=NULL,
                           progress=FALSE,
                           proper.cores=12,
                           proper=TRUE,
+                          resamples=10,
                           verbose=FALSE,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
@@ -278,12 +281,13 @@ bkcde.default <- function(h=NULL,
   if(is.null(optim.degree.cores)) optim.degree.cores <- degree.max-degree.min+1
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
+  cv <- match.arg(cv)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then likelihood cross-validation is used to
   ## obtain the bandwidths and polynomial order (use ksum.cores,
   ## optim.degree.cores, optim.nmulti.cores)
-  if(is.null(h)) {
+  if(is.null(h) & cv == "full") {
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
     optim.out <- bkcde.optim(x=x,
                              y=y,
@@ -315,6 +319,39 @@ bkcde.default <- function(h=NULL,
     secs.optim <- optim.out$secs.optim
     secs.optim.mat <- optim.out$secs.optim.mat
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
+  } else if(is.null(h) & cv == "sub") { 
+    ## Code recursion in R is a thing of beauty fast.optim() calls bkcde()...
+    if(progress) cat("\rSub-sample nested optimization running (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, ",n.sub," sub-samples",sep="")
+    optimal <- fast.optim(x=x,
+                          y=y,
+                          n.sub=n.sub,
+                          resamples=resamples,
+                          nmulti=nmulti,
+                          y.lb=y.lb,
+                          y.ub=y.ub,
+                          degree.max=degree.max,
+                          degree.min=degree.min,
+                          ksum.cores=ksum.cores,
+                          optim.degree.cores=optim.degree.cores,
+                          optim.nmulti.cores=optim.nmulti.cores,
+                          penalty.cutoff=penalty.cutoff,
+                          penalty.method=penalty.method,
+                          poly.raw=poly.raw,
+                          verbose=verbose,
+                          ...)
+    h <- optimal$h.median
+    degree <- optimal$degree
+    h.mat <- NULL
+    degree.mat <- NULL
+    value <- NULL
+    value.vec <- NULL
+    value.mat <- NULL
+    convergence <- NULL
+    convergence.vec <- NULL
+    convergence.mat <- NULL
+    secs.optim <- NULL
+    secs.optim.mat <- NULL
+    if(progress) cat("\rSub-sample nested optimization complete (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, ",n.sub," sub-samples) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else {
     h.mat <- NULL
     degree.mat <- NULL

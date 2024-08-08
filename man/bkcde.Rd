@@ -21,6 +21,7 @@ bkcde(...)
       y.lb = NULL, 
       x.ub = NULL, 
       y.ub = NULL, 
+      cv = c("full","sub"),
       degree.max = 3, 
       degree.min = 0, 
       degree = NULL, 
@@ -28,6 +29,7 @@ bkcde(...)
       ksum.cores = 1, 
       n.grid = 10,
       n.integrate = 1000, 
+      n.sub = 100,
       nmulti = 3, 
       optim.degree.cores = NULL, 
       optim.nmulti.cores = NULL, 
@@ -37,6 +39,7 @@ bkcde(...)
       progress = FALSE,
       proper.cores = 12, 
       proper = TRUE, 
+      resamples = 10,
       verbose = FALSE, 
       ...)
 }
@@ -69,6 +72,9 @@ bkcde(...)
   \item{y.ub}{
   the upper bound of the response variable. If y.ub is NULL, the function will use the maximum of y as the upper bound
 }
+  \item{cv}{
+  the type of cross-validation to use. The default is "full"
+  }
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
 }
@@ -90,6 +96,9 @@ bkcde(...)
   \item{n.integrate}{
   the number of points to use for numerical integration. The default is 1000
 }
+\item{n.sub}{
+  the number of observations to use when \code{cv="sub"}. The default is 100
+  }
   \item{nmulti}{
   the number of multi-starts to use for optimization. The default is 3
 }
@@ -117,6 +126,9 @@ bkcde(...)
   \item{proper}{
   a logical value indicating whether to use proper normalization. The default is TRUE
 }
+\item{resamples}{
+  the number of resamples to use for cross-validation when \code{cv="sub"}. The default is 10
+  }
   \item{verbose}{
   a logical value indicating whether to print warnings and issue other low-level messaages. The default is FALSE
 }
