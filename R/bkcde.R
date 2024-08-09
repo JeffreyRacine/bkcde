@@ -837,7 +837,25 @@ plot.bkcde <- function(x,
         persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "all") {
-        warning("plotting all confidence intervals in plot.bkcde() may be visually overwhelming, ignored (but you can retrieve the ci data via plot=FALSE)",immediate. = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.pw.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...) 
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.sim.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...)
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.lb,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...) 
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=matrix(ci.bf.ub,plot.3D.n.grid,plot.3D.n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...)
+        legend("topright",
+               legend=c("Estimated f(y|x)",
+                        paste(100*(1-alpha),"% Pointwise CIs",sep=""),
+                        paste(100*(1-alpha),"% Simultaneous CIs",sep=""),
+                        paste(100*(1-alpha),"% Bonferroni CIs",sep="")
+               ),lty=1:4,col=c(1,rep("grey",3)),bty="n")
       }
     } else if(ci) {
       ## Plot 2D again with ylim set for the confidence intervals
