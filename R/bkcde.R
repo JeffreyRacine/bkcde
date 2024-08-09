@@ -300,6 +300,7 @@ bkcde.default <- function(h=NULL,
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
   penalty.method <- match.arg(penalty.method)
   cv <- match.arg(cv)
+  if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then likelihood cross-validation is used to
