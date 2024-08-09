@@ -228,6 +228,7 @@ bkcde.default <- function(h=NULL,
                           y.lb=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
+                          bwscaling = FALSE,
                           cv=c("full","sub"),
                           degree.max=3,
                           degree.min=0,
@@ -302,6 +303,7 @@ bkcde.default <- function(h=NULL,
   cv <- match.arg(cv)
   if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
+  if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then likelihood cross-validation is used to
   ## obtain the bandwidths and polynomial order (use ksum.cores,
@@ -581,8 +583,8 @@ bkcde.optim <- function(x=x,
   ## Get the sample size which we use to initialize the bandwidths using some
   ## common rules of thumb, set search bounds for bandwidths
   n <- length(y)
-  lower <- 0.1*c(EssDee(y),EssDee(x))*n^(-1/6)
-  upper <- 1000*c(EssDee(y),EssDee(x))
+  lower <- 0.1*EssDee(cbind(y,x))*n^(-1/6)
+  upper <- 1000*EssDee(cbind(y,x))
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
@@ -590,9 +592,9 @@ bkcde.optim <- function(x=x,
     ## parallel
     nmulti.return <- mclapply(1:nmulti, function(i) {
       if(i==1) {
-        init <- c(EssDee(y),EssDee(x))*n^(-1/6)
+        init <- EssDee(cbind(y,x))*n^(-1/6)
       } else {
-        init <- runif(2,0.5,5)*c(EssDee(y),EssDee(x))*n^(-1/6)
+        init <- runif(2,0.5,5)*EssDee(cbind(y,x))*n^(-1/6)
       }
       st <- system.time(optim.return <- optim(par=init,
                                               fn=bkcde.loo,

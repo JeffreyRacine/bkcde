@@ -74,6 +74,8 @@ A matrix containing the scale factors of the bandwidths for the y and x variable
 }
 \references{
 Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window Width Selection for Nonparametric Kernel Regression,} Communications in Statistics, October, Volume 22, Issue 4, pages 1107-1114.
+
+Delaigle, A. and I. Gijbels (2004), \dQuote{Bootstrap bandwidth selection in kernel density estimation from a contaminated sample}, Annals of the Institute of Statistical Mathematics, 56, 19-47.
 }
 \author{
 Jeffrey S. Racine <racinej@mcmaster.ca>

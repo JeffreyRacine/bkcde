@@ -21,6 +21,7 @@ bkcde(...)
       y.lb = NULL, 
       x.ub = NULL, 
       y.ub = NULL, 
+      bwscaling = FALSE,
       cv = c("full","sub"),
       degree.max = 3, 
       degree.min = 0, 
@@ -71,6 +72,9 @@ bkcde(...)
 }
   \item{y.ub}{
   the upper bound of the response variable. If y.ub is NULL, the function will use the maximum of y as the upper bound
+}
+\item{bwscaling}{
+  a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} 
 }
   \item{cv}{
   the type of cross-validation to use. The default is "full"
