@@ -247,6 +247,7 @@ bkcde.default <- function(h=NULL,
   ## provided (essentially what would be the default for plot.3D.n.grid in
   ## plot.bkcde()). Of course these can be changed, and plot will override them
   ## if desired, as will predict.bkcde().
+  optimize <- ifelse(is.null(h),TRUE,FALSE)
   if(is.null(x.eval) & is.null(y.eval)) {
     data.grid <- expand.grid(seq(min(x),max(x),length=n.grid),seq(min(y),max(y),length=n.grid))
     x.eval <- data.grid$Var1
@@ -469,6 +470,7 @@ bkcde.default <- function(h=NULL,
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
+                      cv=cv,
                       degree.mat=degree.mat,
                       degree.max=degree.max,
                       degree.min=degree.min,
@@ -483,6 +485,7 @@ bkcde.default <- function(h=NULL,
                       ksum.cores=ksum.cores,
                       optim.degree.cores=optim.degree.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
+                      optimize=optimize,
                       proper.cores=proper.cores,
                       proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
@@ -543,7 +546,7 @@ bkcde.optim <- function(x=x,
   ## Get the sample size which we use to initialize the bandwidths using some
   ## common rules of thumb, set search bounds for bandwidths
   n <- length(y)
-  lower <- 0.1*c(EssDee(y),EssDee(x))*n^{-1/6}
+  lower <- 0.1*c(EssDee(y),EssDee(x))*n^(-1/6)
   upper <- 1000*c(EssDee(y),EssDee(x))
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
@@ -552,9 +555,9 @@ bkcde.optim <- function(x=x,
     ## parallel
     nmulti.return <- mclapply(1:nmulti, function(i) {
       if(i==1) {
-        init <- c(EssDee(y),EssDee(x))*n^{-1/6}
+        init <- c(EssDee(y),EssDee(x))*n^(-1/6)
       } else {
-        init <- runif(2,0.5,5)*c(EssDee(y),EssDee(x))*n^{-1/6}
+        init <- runif(2,0.5,5)*c(EssDee(y),EssDee(x))*n^(-1/6)
       }
       st <- system.time(optim.return <- optim(par=init,
                                               fn=bkcde.loo,
@@ -951,23 +954,28 @@ summary.bkcde <- function(object, ...) {
   if(!is.na(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
-  cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
-  cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
-  cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
+  if(object$optimize) {
+    cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
+    cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
+    cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
+    cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
+  }
   cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
-  cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-  cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
-  cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
-      " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+  if(object$optimize) {
+    cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
+    cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
+    cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
+        " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+  }
   cat("\n")
   invisible()
 }
 
 ## Simple function used to find the mode of the degree vector (may not be
-## unique)
+## unique, when non-unique the user must determine which one to be used)
 
 find_mode <- function(x) {
   u <- unique(x)
@@ -975,19 +983,20 @@ find_mode <- function(x) {
   u[tab == max(tab)]
 }
 
-## This function takes a subset of the (x,y) data, computes the optimal h and
-## degree, then repeats 10 times and takes the robust center of the h vector
-## conditional upon the modeal degree vector and returns those values. This is a
-## fast way to compute the optimal bandwidth and polynomial degree based upon
-## Racine, J.S. (1993), "An Efficient Cross-Validation Algorithm For Window
-## Width Selection for Nonparametric Kernel Regression," Communications in
-## Statistics, October, Volume 22, Issue 4, pages 1107-1114. When the number of
-## resamples associated with the modal degree is less than 4, covMcd()$center is
-## used to compute the robust center of the h vector. The function returns the
-## optimal h, the modal degree, the matrix of bandwidths, the vector of degrees,
-## the matrix of scale factors, and a flag indicating the method used to compute
-## the robust center of the h vector. cannot be applied so instead we use either
-## the median or mean of the bandwidths associated with the modal degree.
+## This function takes a subset of the (x,y) data, computes the optimal
+## bandwidth vector h and polynomial degree, then repeats for the number of
+## resamples specified, then takes the "center" of the h vector conditional upon
+## the modal degree vector and returns those values. This is a fast way to
+## compute the optimal bandwidth and polynomial degree based upon Racine, J.S.
+## (1993), "An Efficient Cross-Validation Algorithm For Window Width Selection
+## for Nonparametric Kernel Regression," Communications in Statistics, October,
+## Volume 22, Issue 4, pages 1107-1114. When the number of resamples associated
+## with the modal degree exceeds 3 (n > p+1 using covMcd's notation),
+## covMcd()$center is used to compute the robust center of the h vector if
+## desired. A range of "center" bandwidth vectors are returned, the median
+## appears via simulation to remain the most reliable per Racine (1993). The
+## function returns the optimal h for the different criteria, the modal degree,
+## the matrix of bandwidths, the vector of degrees, etc.
 
 fast.optim <- function(x, y, 
                        n.sub = 500, 
@@ -1022,7 +1031,7 @@ fast.optim <- function(x, y,
     ## set proper=FALSE. We retrieve the "scale factors" after removing scale
     ## and sample size factors.
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
-    h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^{1/6}
+    h.mat[j,] <- (bkcde.out$h/EssDee(cbind(y[ii],x[ii])))*n.sub^(1/6)
     degree.vec[j] <- bkcde.out$degree
     cv.vec[j] <- bkcde.out$value
     if(progress) pbb$tick()
@@ -1030,8 +1039,8 @@ fast.optim <- function(x, y,
   scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for larger
   ## sample
-  h.mat[,1] <- h.mat[,1]*EssDee(y)*n^{-1/6}
-  h.mat[,2] <- h.mat[,2]*EssDee(x)*n^{-1/6}
+  h.mat[,1] <- h.mat[,1]*EssDee(y)*n^(-1/6)
+  h.mat[,2] <- h.mat[,2]*EssDee(x)*n^(-1/6)
   ## We use robust "typical" measures of location for h and degree since,
   ## importantly, bandwidth properties differ with degree of polynomial (rates
   ## and values) and so it is not sensible to unconditionally return e.g. the
@@ -1039,8 +1048,8 @@ fast.optim <- function(x, y,
   ## polynomial order (smallest degree mode) then take a robust measure of the
   ## "typical" vector of bandwidths corresponding to the typical polynomial
   ## order providing n > p+1 (min required by MCD). Note that the modal degrees,
-  ## when > 1 exist, may not be contiguous hence taking the mean or floor of the
-  ## mean is ill-advised.
+  ## when > 1 exist, may not be contiguous hence taking the mean degree may be
+  ## is ill-advised.
   degree <- min(find_mode(degree.vec))
   h.median <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,median)
   h.mean <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,mean)
@@ -1050,7 +1059,6 @@ fast.optim <- function(x, y,
     h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
   }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
-  
   return(list(cv.vec=cv.vec,
               degree=degree,
               degree.modal.length=length(degree.vec[degree.vec==degree]),
