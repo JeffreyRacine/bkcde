@@ -130,7 +130,7 @@ bkcde(...)
   the number of resamples to use for cross-validation when \code{cv="sub"}. The default is 10
   }
   \item{verbose}{
-  a logical value indicating whether to print warnings and issue other low-level messaages. The default is FALSE
+  a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
 }
   \item{\dots}{
   additional arguments to be passed to the bkcde.optim() function

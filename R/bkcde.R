@@ -155,7 +155,11 @@ log.likelihood <- function(delete.one.values,
 ## bkcde.loo() is the leave-one-out likelihood cross-validation function that
 ## supports local polynomial estimation of degree p (raw polynomials or
 ## orthogonal polynomials can be used and appear to provide identical results
-## for modest degree.max)
+## for modest degree.max). The function returns the delete-one log likelihood
+## function for a given bandwidth and polynomial order, and is called by bkcde()
+## to select the bandwidth and polynomial order. The function is used in the
+## optimization of the bandwidth and polynomial order in bkcde() and is called
+## by bkcde.optim() to select the bandwidth and polynomial order.
 
 bkcde.loo <- function(h=NULL,
                       x=NULL,
@@ -191,14 +195,27 @@ bkcde.loo <- function(h=NULL,
 }
 
 ## bckde() and bkcde.default() compute the conditional density \hat f(y|x)
-## where, if no bandwidth is provided, then likelihood cross-validation is used
-## to select the bandwidths and polynomial order via numerical optimization with
-## 5 restarts by default and polynomial orders 0,1,...,5 by default. Restarting
-## is used in an attempt to maximize the likelihood and (hopefully) avoid local
+## where, if no bandwidth is provided, likelihood cross-validation is used to
+## select the bandwidths and polynomial order via numerical optimization with 5
+## restarts by default and polynomial orders 0,1,...,5 by default. Restarting is
+## used in an attempt to maximize the likelihood and (hopefully) avoid local
 ## optima. This function supports local polynomial orders [0,1,...,n-1] where n
 ## is the number of sample realizations (raw polynomials or orthogonal
 ## polynomials can be used and appear to provide identical results for modest
-## degree.max)
+## degree.max). For large samples the function can be computationally intensive
+## so we include a sub-sampling cross-validation procedure following Racine
+## (1993) (cv="sub") which can be used to reduce computation time for large
+## samples, say of the order 10^7, which can be handled a few minutes on a
+## modern processor. Note that we rely on the mcmapply and mclapply functions
+## which rely on "forking" that is not currently available on Windows.  The
+## function returns a list of class "bkcde" with the following components:
+## convergence.mat, convergence.vec, convergence, cv, degree.mat, degree.max,
+## degree.min, degree, fitted.cores, f.yx.integral.post, f.yx.integral.pre.neg,
+## f.yx.integral, f, h.mat, h, ksum.cores, optim.degree.cores,
+## optim.nmulti.cores, optimize, proper.cores, proper, secs.elapsed,
+## secs.estimate, secs.optim.mat, value.mat, value.vec, value, x.eval, x.lb,
+## x.ub, x, y.eval, y.lb, y.ub, y. S3 methods for the class "bkcde" include
+## fitting, plotting, and predicting the conditional density estimate.
 
 bkcde <- function(...) UseMethod("bkcde")
 
@@ -510,6 +527,22 @@ bkcde.default <- function(h=NULL,
 ## polynomial order in bkcde() using the optim() function with the L-BFGS-B
 ## method which allows box constraints, that is each variable can be given a
 ## lower and/or upper bound (bandwidths must be positive so this is necessary).
+## We maximize the delete-one likelihood function (i.e., the likelihood function
+## for the leave-one-out density estimate) over all models (i.e., polynomial
+## orders) in parallel each having degree p in [degree.min,degree.max]. We use
+## nmulti multistarts for each model in parallel. The function returns the
+## object with the largest likelihood function over all models and multistarts,
+## padded with additional information. The function is parallelized over the
+## number of models and multistarts, so ideally the number of cores requested
+## would be equal to the number of multistarts (this is particularly useful to
+## avoid local optima in the optimization of the bandwidths). The function
+## returns the bandwidths and polynomial order that maximize the likelihood
+## function, the likelihood function value, the convergence status, the time
+## taken to optimize, the bandwidths and polynomial orders for all models and
+## multistarts, the likelihood function values for all models and multistarts,
+## the convergence status for all models and multistarts, and the time taken to
+## optimize for all models and multistarts. The function is used in bkcde() to
+## select the bandwidths and polynomial order when no bandwidth is provided.
 
 bkcde.optim <- function(x=x,
                         y=y,
@@ -633,17 +666,19 @@ mclapply.progress <- function(...,progress=TRUE) {
   }
 }
 
-## plot.bkcde() is used to plot the results of the boundary kernel CDE along
-## with bootstrap confidence intervals generated as either pointwise,
-## Bonferroni, or simultaneous intervals. A simple bootstrap mean correction is
+## plot.bkcde() is used to plot the results of the boundary kernel estimate of
+## f(y|x) along with bootstrap confidence intervals generated as either
+## pointwise, Bonferroni, or simultaneous intervals. Both 2D and 3D plots can be
+## produced (plot.3D=TRUE or FALSE). A simple bootstrap mean correction is
 ## applied (there are likely better ways of doing this outside of a bootstrap
-## procedure). A handful of options are available, including returning the
-## confidence intervals (pointwise, Bonferroni and simultaneous) and estimates.
-## Note that a large number of bootstrap replications should be used,
-## particularly if Bonferroni corrections are requested, and in such cases the
-## number of bootstrap replications should increase with the grid size (i.e., the
-## number of evaluation points). The function uses the SCSrank() function from
-## the MCPAN package to compute simultaneous confidence intervals.
+## procedure, leave this for future investigation). A handful of options are
+## available, including returning the confidence intervals (pointwise,
+## Bonferroni and simultaneous) and estimates (plot.behavior=...). Note that a
+## large number of bootstrap replications should be used, particularly if
+## Bonferroni corrections are requested, and in such cases the number of
+## bootstrap replications should increase with the grid size (i.e., the number
+## of evaluation points). The function uses the SCSrank() function from the
+## MCPAN package to compute simultaneous confidence intervals.
 
 plot.bkcde <- function(x,
                        B = 3999,
@@ -1001,13 +1036,15 @@ find_mode <- function(x) {
   u[tab == max(tab)]
 }
 
-## This function takes a subset of the (x,y) data, computes the optimal
-## bandwidth vector h and polynomial degree, then repeats for the number of
-## resamples specified, then takes the "center" of the h vector conditional upon
-## the modal degree vector and returns those values. This is a fast way to
-## compute the optimal bandwidth and polynomial degree based upon Racine, J.S.
-## (1993), "An Efficient Cross-Validation Algorithm For Window Width Selection
-## for Nonparametric Kernel Regression," Communications in Statistics, October,
+## This function takes subsets of the (x,y) data, computes the optimal bandwidth
+## vector h and polynomial degree for each subset using standard delete-one
+## likelihood cross-validation, then repeats for the number of resamples
+## specified, then takes the "unscaled center" of the resampled bandwidth
+## vectors conditional upon the modal degree vector and returns rescaled values
+## appropriate for the full sample size. This is a fast way to compute the
+## optimal bandwidth and polynomial degree based upon Racine, J.S. (1993), "An
+## Efficient Cross-Validation Algorithm For Window Width Selection for
+## Nonparametric Kernel Regression," Communications in Statistics, October,
 ## Volume 22, Issue 4, pages 1107-1114. When the number of resamples associated
 ## with the modal degree exceeds 3 (n > p+1 using covMcd's notation),
 ## covMcd()$center is used to compute the robust center of the h vector if

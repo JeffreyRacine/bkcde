@@ -79,7 +79,7 @@ Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window 
 Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
-Note that sample with repacement is ill-advised, but the switch \code{resample=TRUE} can be used to allow for this. The default is \code{resample=FALSE}.
+Note that sample with replacement is ill-advised, but the switch \code{resample=TRUE} can be used to allow for this. The default is \code{resample=FALSE}.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
