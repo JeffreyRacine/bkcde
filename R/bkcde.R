@@ -500,6 +500,7 @@ bkcde.default <- function(h=NULL,
                       f=f.yx,
                       h.mat=h.mat,
                       h=h,
+                      h.sf=(h/EssDee(cbind(y,x)))*n.sub^(1/6),
                       ksum.cores=ksum.cores,
                       optim.degree.cores=optim.degree.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
@@ -1004,6 +1005,7 @@ summary.bkcde <- function(object, ...) {
   cat("Number of sample realizations: ",length(object$y),"\n",sep="")
   cat("Number of evaluation points: ",length(object$y.eval),"\n",sep="")
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
+  cat("Bandwidth scale factors: sf.y = ",object$h.sf[1],", sf.x = ",object$h.sf[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
   if(!is.na(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
