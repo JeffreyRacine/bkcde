@@ -125,34 +125,34 @@ for(m in m.start:M) {
     secs.mat[m,j+1] <- f.yx.sub$secs.elapsed
   }
   
-  write(rmse.mat[m,],file="rmse.out",append=TRUE)
-  write(degree.mat[m,],file="degree.out",append=TRUE)
-  write(h.x.mat[m,],file="h.x.out",append=TRUE)
-  write(h.y.mat[m,],file="h.y.out",append=TRUE)
-  write(sf.x.mat[m,],file="sf.x.out",append=TRUE)
-  write(sf.y.mat[m,],file="sf.y.out",append=TRUE)
-  write(secs.mat[m,],file="secs.out",append=TRUE)
+  write(rmse.mat[m,],file="rmse.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(degree.mat[m,],file="degree.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(h.x.mat[m,],file="h.x.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(h.y.mat[m,],file="h.y.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(sf.x.mat[m,],file="sf.x.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(sf.y.mat[m,],file="sf.y.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(secs.mat[m,],file="secs.out",ncolumns=length(n.sub)+1,append=TRUE)
   
-  write(apply(rmse.mat[1:m,,drop=FALSE],2,mean),file="mean_rmse.out")
-  write(apply(rmse.mat[1:m,,drop=FALSE],2,median),file="median_rmse.out")
+  write(apply(rmse.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_rmse.out")
+  write(apply(rmse.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_rmse.out")
   
-  write(apply(degree.mat[1:m,,drop=FALSE],2,mean),file="mean_degree.out")
-  write(apply(degree.mat[1:m,,drop=FALSE],2,median),file="median_degree.out")
+  write(apply(degree.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_degree.out")
+  write(apply(degree.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_degree.out")
   
-  write(apply(h.x.mat[1:m,,drop=FALSE],2,mean),file="mean_h.x.out")
-  write(apply(h.x.mat[1:m,,drop=FALSE],2,median),file="median_h.x.out")
+  write(apply(h.x.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_h.x.out")
+  write(apply(h.x.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_h.x.out")
   
-  write(apply(sf.x.mat[1:m,,drop=FALSE],2,mean),file="mean_sf.x.out")
-  write(apply(sf.x.mat[1:m,,drop=FALSE],2,median),file="median_sf.x.out")
+  write(apply(sf.x.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_sf.x.out")
+  write(apply(sf.x.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_sf.x.out")
   
-  write(apply(h.y.mat[1:m,,drop=FALSE],2,mean),file="mean_h.y.out")
-  write(apply(h.y.mat[1:m,,drop=FALSE],2,median),file="median_h.y.out")
+  write(apply(h.y.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_h.y.out")
+  write(apply(h.y.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_h.y.out")
   
-  write(apply(sf.y.mat[1:m,,drop=FALSE],2,mean),file="mean_sf.y.out")
-  write(apply(sf.y.mat[1:m,,drop=FALSE],2,median),file="median_sf.y.out")
+  write(apply(sf.y.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_sf.y.out")
+  write(apply(sf.y.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_sf.y.out")
   
-  write(apply(secs.mat[1:m,,drop=FALSE],2,mean),file="mean_secs.out")
-  write(apply(secs.mat[1:m,,drop=FALSE],2,median),file="median_secs.out")
+  write(apply(secs.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_secs.out")
+  write(apply(secs.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_secs.out")
   
   colnames(rmse.mat) <- c(n,n.sub)
   if(plot.pdf) pdf(file="rmse.pdf",pointsize = 12)
