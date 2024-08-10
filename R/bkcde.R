@@ -589,22 +589,26 @@ bkcde.optim <- function(x=x,
   if(missing(x.ub)) stop("must provide x.ub in bkcde.optim()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
   ## Get the sample size which we use to initialize the bandwidths using some
-  ## common rules of thumb, set search bounds for bandwidths
+  ## common rules of thumb, set search bounds for bandwidths (scale factors of
+  ## 10^(-2) and 10^(4) are quite extreme, for the Gaussian it would be
+  ## approximately 1.06)
   n <- length(y)
-  lower <- 0.1*EssDee(cbind(y,x))*n^(-1/6)
-  upper <- 1000*EssDee(cbind(y,x))
+  lower <- 10^(-2)*EssDee(cbind(y,x))*n^(-1/6)
+  upper <- 10^(4)*EssDee(cbind(y,x))
   ## Initialize the bandwidths for the optimization, each multistart has a
   ## different initial bandwidth vector, but each polynomial model uses the same
   ## initial bandwidth vector for each multistart. This is to ensure
   ## replicability rather than generate random numbers in the forked processes.
+  ## The first vector is non random using the rule of thumb 1.06*sd*n^(-1/6) for
+  ## starting values, and the rest (ir nmulti>1) are random values above and
+  ## below these.
   par.init <- matrix(NA,nmulti,2)
   par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
   if(nmulti>1) par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),0.5,5),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
-    ## Here we run the optimization for each model over nmulti multistarts in
-    ## parallel
+    ## Here we run the optimization for each model over all multistarts
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.loo,
@@ -624,11 +628,14 @@ bkcde.optim <- function(x=x,
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
+      ## Return addition information
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return$optim.par.init <- par.init[i,]
       optim.return
     },mc.cores = optim.nmulti.cores)
+    ## Return object with largest likelihood function over all multistarts for a
+    ## given polynomial order (model) and pad with additional information
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
