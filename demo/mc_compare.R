@@ -9,27 +9,29 @@ suppressPackageStartupMessages(library(parallel))
 
 ## MC parameters
 
-n <- 100 # scan("n.dat",quiet=TRUE) 
-n.grid <- 25 # scan("ngrid.dat",quiet=TRUE)
-M <- 1000 # scan("M.dat",quiet=TRUE)
-trim <- 0.00 # scan("trim.dat",quiet=TRUE)
-nmulti <- 3 # scan("nmulti.dat",quiet=TRUE)
-plot.during <- TRUE # scan("plot.dat",logical(),quiet=TRUE)
-p.min <- 0 # scan("pmin.dat",quiet=TRUE)
-p.max <- 3 # scan("pmax.dat",quiet=TRUE)
-plot.pdf <- TRUE # scan("pdf.dat",logical(),quiet=TRUE)
-ksum.cores <- 1 # scan("ksum_cores.dat",quiet=TRUE)
-optim.degree.cores <- 6 # scan("degree_cores.dat",quiet=TRUE)
-optim.nmulti.cores <- 3 # scan("nmulti_cores.dat",quiet=TRUE)
+n <- scan("n.dat",quiet=TRUE)
+n.grid <- scan("ngrid.dat",quiet=TRUE)
+M <- scan("M.dat",quiet=TRUE)
+trim <- scan("trim.dat",quiet=TRUE)
+nmulti <- scan("nmulti.dat",quiet=TRUE)
+plot.during <- scan("plot_during.dat",logical(),quiet=TRUE)
+degree.min <- scan("degree_min.dat",quiet=TRUE)
+degree.max <- scan("degree_max.dat",quiet=TRUE)
+plot.pdf <- scan("plot_pdf.dat",logical(),quiet=TRUE)
+ksum.cores <- scan("ksum_cores.dat",quiet=TRUE)
+optim.degree.cores <- scan("degree_cores.dat",quiet=TRUE)
+optim.nmulti.cores <- scan("nmulti_cores.dat",quiet=TRUE)
 progress <- TRUE
+true.dgp <- match.arg(scan("dgp.dat",character(),quiet=TRUE),c("normal","beta"))
+bounds <- match.arg(scan("bounds.dat",character(),quiet=TRUE),c("empirical","known"))
 
 ## Need these declared regardless of whether starting from scratch or picking up
 ## where it left off (if runtime exceeded, reboot of system, etc.)
 
 rmse.models.mat <- matrix(NA,nrow=M,ncol=4)
 cv.models.mat <- matrix(NA,nrow=M,ncol=3)
-rmse.candidates.mat <- matrix(NA,nrow=M,ncol=p.max-p.min+1)
-cv.candidates.mat <- matrix(NA,nrow=M,ncol=p.max-p.min+1)
+rmse.candidates.mat <- matrix(NA,nrow=M,ncol=degree.max-degree.min+1)
+cv.candidates.mat <- matrix(NA,nrow=M,ncol=degree.max-degree.min+1)
 degree.mat <- matrix(NA,nrow=M,ncol=3)
 times.mat <- matrix(NA,nrow=M,ncol=2)
 
@@ -45,11 +47,14 @@ if(file.exists("rmse_models.out") && nrow(read.table("rmse_models.out",header=TR
   times.mat[1:m,] <- data.matrix(read.table("times.out",header=TRUE))
   m <- m+1
   aborts <- scan("aborts.out")
+  if(m > M) {
+    stop("All replications completed.\n")
+  }
 } else {
   write(c("BKPA","HRL","FYT","CCJM"),file="rmse_models.out",ncolumns=4)
   write(c("BKPA","HRL","FYT"),file="cv_models.out",ncolumns=3)
-  write(paste("p=",p.min:p.max,sep=""),file="rmse_candidates.out",ncolumns=p.max-p.min+1)
-  write(paste("p=",p.min:p.max,sep=""),file="cv_candidates.out",ncolumns=p.max-p.min+1)
+  write(paste("p=",degree.min:degree.max,sep=""),file="rmse_candidates.out",ncolumns=degree.max-degree.min+1)
+  write(paste("p=",degree.min:degree.max,sep=""),file="cv_candidates.out",ncolumns=degree.max-degree.min+1)
   write(c("BKPA","HRL","FYT"),file="degree.out",ncolumns=3)
   write(c("CCJM","BKPA"),file="times.out",ncolumns=2)
   m <- 1
@@ -67,7 +72,7 @@ if(progress) pbb <- progress_bar$new(format = "  Monte Carlo Simulation [:bar] :
                                      total = M-m+1)
 
 for(i in m:M) {
-  
+
   lpcde.success <- FALSE
   
   ## Time the lpcde and data step
@@ -76,20 +81,41 @@ for(i in m:M) {
   
   while(!lpcde.success) {
     
-    ## The lpcde method of Catteano et al 2024 aborts on some DGPs, so
-    ## we "forgive" it and draw another "friendlier" resample for this
-    ## implementation (0.1.4 as of this writing)
+    ## The lpcde method of Catteano et al 2024 aborts on some DGPs, so we
+    ## "forgive" it and draw another "friendlier" resample for this implementation
+    ## (0.1.4 as of this writing)
     
-    x.min <- -.25
-    x.max <- .25
-    x <- runif(n,x.min,x.max)
-    x.eval <- 0
-    x.eval.grid <- rep(x.eval,n.grid)
-    s1 <- 1
-    s2 <- 1.5
-    y <- rbeta(n,s1+x,s2+x)
-    y.grid <- seq(quantile(y,trim),quantile(y,1-trim),length=n.grid)
-    dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)
+    if(true.dgp=="normal") {
+      x <- runif(n,-0.5,0.5)
+      y <- rnorm(n,mean=x)
+      x.eval <- 0
+      x.eval.grid <- rep(x.eval,n.grid)
+      y.grid <- seq(quantile(y,trim),quantile(y,1-trim),length=n.grid)
+      dgp <- dnorm(y.grid,mean=x.eval)
+      if(bounds=="empirical") {
+        y.lb <- min(y)
+        y.ub <- max(y)
+      } else if(bounds=="known") {
+        y.lb <- -Inf
+        y.ub <- Inf
+      }
+    } else if(true.dgp=="beta") {
+      x <- runif(n,-.25,.25)
+      s1 <- 1
+      s2 <- 1.5
+      y <- rbeta(n,s1+x,s2+x)
+      x.eval <- 0
+      x.eval.grid <- rep(x.eval,n.grid)
+      y.grid <- seq(quantile(y,trim),quantile(y,1-trim),length=n.grid)
+      dgp <- dbeta(y.grid,s1+x.eval,s2+x.eval)
+      if(bounds=="empirical") {
+        y.lb <- min(y)
+        y.ub <- max(y)
+      } else if(bounds=="known") {
+        y.lb <- 0
+        y.ub <- 1
+      }
+    }
     
     f.yx.lpcde <- tryCatch(lpcde(x_data=x, 
                                  y_data=y, 
@@ -110,7 +136,7 @@ for(i in m:M) {
   
   st.lpcde <- as.numeric(difftime(Sys.time(),st.lpcde,units="secs"))
   
-  ## Fit models from degree p.min to p.max using empirical support bounds
+  ## Fit models from degree degree.min to degree.max using empirical support bounds
   
   st.bkcde <- Sys.time()
   
@@ -119,19 +145,20 @@ for(i in m:M) {
                   y=y,
                   x.eval=x.eval.grid,
                   y.eval=y.grid,
-                  degree.min=p.min,
-                  degree.max=p.max,
+                  degree.min=degree.min,
+                  degree.max=degree.max,
                   nmulti=nmulti,
                   ksum.cores=ksum.cores,
                   optim.degree.cores=optim.degree.cores,
                   optim.nmulti.cores=optim.nmulti.cores)
   
   options(scipen=9)
+  print(output$value.mat)
   foo <-data.frame(cbind(t(apply(output$value.mat,1,range)),
               apply(output$value.mat,1,IQR),
               apply(output$value.mat,1,max)-apply(output$value.mat,1,min)))
   colnames(foo) <- c("min","max","iqr","range")
-  rownames(foo) <- paste("p=",p.min:p.max,sep="")
+  rownames(foo) <- paste("p=",degree.min:degree.max,sep="")
   print(foo)
   
   ## Fit the Hall et al model (p=0) and Fan et al model (p=1) with an infinite
@@ -165,17 +192,17 @@ for(i in m:M) {
                            sqrt(mean((output.fyt$f-dgp)^2)),
                            sqrt(mean((f.yx.lpcde$Estimate[,"est_RBC"]-dgp)^2)))
 
-  ## Write fitted values and rmse values from each degree p.min,..., p.max
+  ## Write fitted values and rmse values from each degree degree.min,..., degree.max
   ## (these are used to construct the final bkcde() model)
   
-  for(p in p.min:p.max) {
-    f.p <- bkcde(h=output$h.mat[p-p.min+1,],
+  for(p in degree.min:degree.max) {
+    f.p <- bkcde(h=output$h.mat[p-degree.min+1,],
                  x=x,
                  y=y,
                  x.eval=x.eval.grid,
                  y.eval=y.grid,
                  degree=p)$f
-    rmse.candidates.mat[i,p-p.min+1] <- sqrt(mean((f.p-dgp)^2))
+    rmse.candidates.mat[i,p-degree.min+1] <- sqrt(mean((f.p-dgp)^2))
     write(f.p,file=paste("f_p_",p,".out",sep=""),append=TRUE, ncolumns=n.grid)
   }
   ## Write fitted values from the bkcde and infinite support models
@@ -198,12 +225,12 @@ for(i in m:M) {
   cv.models.mat[i,] <- c(output$value,output.hrl$value,output.fyt$value)
   write(cv.models.mat[i,],file="cv_models.out",ncolumns=3,append=TRUE)
   cv.candidates.mat[i,] <- output$value.vec
-  write(cv.candidates.mat[i,],file="cv_candidates.out",ncolumns=p.max-p.min+1,append=TRUE)
-  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_cv_candidates.out",ncolumns=p.max-p.min+1)
-  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,median),file="median_cv_candidates.out",ncolumns=p.max-p.min+1)
-  write(rmse.candidates.mat[i,],file="rmse_candidates.out",ncolumns=p.max-p.min+1,append=TRUE)
-  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_rmse_candidates.out",ncolumns=p.max-p.min+1)
-  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,median),file="median_rmse_candidates.out",ncolumns=p.max-p.min+1)
+  write(cv.candidates.mat[i,],file="cv_candidates.out",ncolumns=degree.max-degree.min+1,append=TRUE)
+  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_cv_candidates.out",ncolumns=degree.max-degree.min+1)
+  write(apply(cv.candidates.mat[1:i,,drop=FALSE],2,median),file="median_cv_candidates.out",ncolumns=degree.max-degree.min+1)
+  write(rmse.candidates.mat[i,],file="rmse_candidates.out",ncolumns=degree.max-degree.min+1,append=TRUE)
+  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,mean),file="mean_rmse_candidates.out",ncolumns=degree.max-degree.min+1)
+  write(apply(rmse.candidates.mat[1:i,,drop=FALSE],2,median),file="median_rmse_candidates.out",ncolumns=degree.max-degree.min+1)
   write(aborts,file="aborts.out")
   write(c(st.lpcde,st.bkcde),file="times.out",ncolumns=2,append=TRUE)
   write(output$h,file="h.out",append=TRUE,ncolumns=2)
@@ -217,7 +244,7 @@ for(i in m:M) {
     if(plot.pdf) pdf(file="rmse.pdf",pointsize=7)
     ## RMSE
     df <- data.frame(rmse.candidates.mat[1:i,,drop=FALSE],rmse.models.mat[1:i,,drop=FALSE])
-    names(df) <- c(paste("p=",p.min:p.max,sep=""),"BKPA","HRL","FYT","CCJM")
+    names(df) <- c(paste("p=",degree.min:degree.max,sep=""),"BKPA","HRL","FYT","CCJM")
     boxplot(df,
             main=paste("RMSE Boxplots (", nrow(rmse.models.mat[1:i,,drop=FALSE])," of ",M," replications completed)\nMedian: ",paste(formatC(apply(df,2,median),format="f",digits=3),collapse=", "),sep=""),
             sub=paste("Relative Median: ", paste(formatC(apply(df,2,median)/apply(df,2,median)[7],format="f",digits=2),collapse=", "),sep=""),
@@ -229,7 +256,7 @@ for(i in m:M) {
     if(plot.pdf) pdf(file="cv.pdf",pointsize=7)
     ## Cross-validation
     df <- data.frame(cv.candidates.mat[1:i,,drop=FALSE],cv.models.mat[1:i,,drop=FALSE])
-    names(df) <- c(paste("p=",p.min:p.max,sep=""),"BKPA","HRL","FYT")
+    names(df) <- c(paste("p=",degree.min:degree.max,sep=""),"BKPA","HRL","FYT")
     boxplot(df,
             main=paste("CV Boxplots (", nrow(cv.models.mat[1:i,,drop=FALSE])," of ",M," replications completed)\nMedian: ",paste(formatC(apply(df,2,median),format="f",digits=3),collapse=", "),sep=""),
             sub=paste("Relative Median: ", paste(formatC(apply(df,2,median)/apply(df,2,median)[4],format="f",digits=2),collapse=", "),sep=""),
@@ -240,7 +267,7 @@ for(i in m:M) {
     if(plot.pdf) dev.off()
     if(plot.pdf) pdf(file="degree.pdf",pointsize=7)
     ## create a barchart for the counts
-    barplot(prop.table(table(ordered(degree.mat[1:i,1,drop=FALSE],levels=p.min:p.max))), xlab="Polynomial Order", ylab="Proportion", col="lightblue", border="black")
+    barplot(prop.table(table(ordered(degree.mat[1:i,1,drop=FALSE],levels=degree.min:degree.max))), xlab="Polynomial Order", ylab="Proportion", col="lightblue", border="black")
     if(plot.pdf) dev.off()
   }
   
