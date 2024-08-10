@@ -185,11 +185,11 @@ bkcde.loo <- function(h=NULL,
   if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
-    f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=ksum.cores))
+    f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=ksum.cores,mc.set.seed=FALSE))
   } else {
     X.poly <- poly(x,raw=poly.raw,degree=degree)
     X <- cbind(1,X.poly)
-    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores))
+    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores,mc.set.seed=FALSE))
   }
   return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
 }
@@ -391,7 +391,7 @@ bkcde.default <- function(h=NULL,
   if(degree == 0) {
     ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
     ## compute the estimate \hat f(y|x) as efficiently as possible
-    f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+    f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores,mc.set.seed=FALSE))
   } else {
     ## Choice of raw or orthogonal polynomials
     X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -399,7 +399,7 @@ bkcde.default <- function(h=NULL,
     ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
     ## regression to estimate \hat f(y|x) rather than the intercept term from
     ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
+    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores,mc.set.seed=FALSE))
   }
   if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
   ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
@@ -429,12 +429,12 @@ bkcde.default <- function(h=NULL,
     proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
       K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
-        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores),mc.set.seed=FALSE))
       } else {
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
         X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores),mc.set.seed=FALSE))
       }
       ## Compute integral of f.seq including any possible negative values
       int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
@@ -617,14 +617,14 @@ bkcde.optim <- function(x=x,
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return
-    },mc.cores = optim.nmulti.cores)
+    },mc.cores = optim.nmulti.cores,mc.set.seed=FALSE)
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
     optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
     optim.out
-  },mc.cores = optim.degree.cores)
+  },mc.cores = optim.degree.cores,mc.set.seed=FALSE)
   ## Return object with largest likelihood function over all models and
   ## multistarts, padded with additional information
   output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
