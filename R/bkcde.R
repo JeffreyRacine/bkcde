@@ -343,25 +343,25 @@ bkcde.default <- function(h=NULL,
     secs.optim.mat <- optim.out$secs.optim.mat
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else if(is.null(h) & cv == "sub") { 
-    ## Code recursion in R is a thing of beauty fast.optim() calls bkcde()...
+    ## Code recursion in R is a thing of beauty sub.cv() calls bkcde()...
     if(progress) cat("\rSub-sample nested optimization running (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, ",n.sub," sub-samples",sep="")
-    optimal <- fast.optim(x=x,
-                          y=y,
-                          n.sub=n.sub,
-                          resamples=resamples,
-                          nmulti=nmulti,
-                          y.lb=y.lb,
-                          y.ub=y.ub,
-                          degree.max=degree.max,
-                          degree.min=degree.min,
-                          ksum.cores=ksum.cores,
-                          optim.degree.cores=optim.degree.cores,
-                          optim.nmulti.cores=optim.nmulti.cores,
-                          penalty.cutoff=penalty.cutoff,
-                          penalty.method=penalty.method,
-                          poly.raw=poly.raw,
-                          verbose=verbose,
-                          ...)
+    optimal <- sub.cv(x=x,
+                      y=y,
+                      n.sub=n.sub,
+                      resamples=resamples,
+                      nmulti=nmulti,
+                      y.lb=y.lb,
+                      y.ub=y.ub,
+                      degree.max=degree.max,
+                      degree.min=degree.min,
+                      ksum.cores=ksum.cores,
+                      optim.degree.cores=optim.degree.cores,
+                      optim.nmulti.cores=optim.nmulti.cores,
+                      penalty.cutoff=penalty.cutoff,
+                      penalty.method=penalty.method,
+                      poly.raw=poly.raw,
+                      verbose=verbose,
+                      ...)
     h <- optimal$h.median
     degree <- optimal$degree
     h.mat <- NULL
@@ -782,8 +782,8 @@ plot.bkcde <- function(x,
       y.grid <- plot.3D.y.grid
       plot.3D.n.grid <- length(x.grid)
     }
-    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR provide plot.3D.x.grid?)")
-    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot deploy persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR plot.3D.y.grid?)")
+    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot call persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR call plot() with plot.3D=FALSE OR call plot() and provide plot.3D.x.grid?)")
+    if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot call persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR call plot() and provide plot.3D.y.grid?)")
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
@@ -1080,23 +1080,23 @@ find_mode <- function(x) {
 ## function returns the optimal h for the different criteria, the modal degree,
 ## the matrix of bandwidths, the vector of degrees, etc.
 
-fast.optim <- function(x, y, 
-                       n.sub = 500, 
-                       progress = FALSE,
-                       replace = FALSE,
-                       resamples = 25, 
-                       ...) {
-  if(!is.numeric(x)) stop("x must be numeric in fast.optim()")
-  if(!is.numeric(y)) stop("y must be numeric in fast.optim()")
-  if(length(x) != length(y)) stop("length of x must be equal to length of y in fast.optim()")
-  if(!is.numeric(n.sub)) stop("n.sub must be numeric in fast.optim()")
-  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in fast.optim()")
-  if(!is.logical(progress)) stop("progress must be logical in fast.optim()")
-  if(!is.logical(replace)) stop("replace must be logical in fast.optim()")
+sub.cv <- function(x, y, 
+                   n.sub = 500, 
+                   progress = FALSE,
+                   replace = FALSE,
+                   resamples = 25, 
+                   ...) {
+  if(!is.numeric(x)) stop("x must be numeric in sub.cv()")
+  if(!is.numeric(y)) stop("y must be numeric in sub.cv()")
+  if(length(x) != length(y)) stop("length of x must be equal to length of y in sub.cv()")
+  if(!is.numeric(n.sub)) stop("n.sub must be numeric in sub.cv()")
+  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in sub.cv()")
+  if(!is.logical(progress)) stop("progress must be logical in sub.cv()")
+  if(!is.logical(replace)) stop("replace must be logical in sub.cv()")
   ## If only 1 resample is specified it ought to be the original sample returned, so check
-  if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in fast.optim()")
+  if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in sub.cv()")
   if(n.sub==length(y) & replace==FALSE & resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
-  if(resamples < 1) stop("resamples must be at least 1 in fast.optim()")
+  if(resamples < 1) stop("resamples must be at least 1 in sub.cv()")
   n <- length(y)
   h.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()

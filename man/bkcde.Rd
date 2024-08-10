@@ -254,7 +254,7 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{fast.optim}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
+\code{\link{sub.cv}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
 library(bkcde)
