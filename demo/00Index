@@ -2,4 +2,5 @@ mc_compare       R code for Monte Carlo simulation comparison of estimators
 mc_sub_cv        R code for Monte Carlo simulation of full sample versus sub sample optimization
 patent_world     R code for patent data panel (excess zeros and "overdispersion")
 italy            R code for Italian GDP panel (polynomial order selected is of interest)
-cps71            R code for CPS71 data (polynomial order selected is of interest)
+cps71            R code for cps71 data (polynomial order selected is of interest)
+faithful         R code for Old Faithful data (conditional density of each mode is of interest)
