@@ -329,6 +329,8 @@ bkcde.default <- function(h=NULL,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
+    h.x.init.mat <- optim.out$optim.x.init.mat
+    h.y.init.mat <- optim.out$optim.y.init.mat
     degree <- optim.out$degree
     degree.mat <- optim.out$degree.mat
     value <- optim.out$value
@@ -363,6 +365,8 @@ bkcde.default <- function(h=NULL,
     h <- optimal$h.median
     degree <- optimal$degree
     h.mat <- NULL
+    h.x.init.mat <- NULL
+    h.y.init.mat <- NULL
     degree.mat <- NULL
     value <- NULL
     value.vec <- NULL
@@ -375,6 +379,8 @@ bkcde.default <- function(h=NULL,
     if(progress) cat("\rSub-sample nested optimization complete (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, ",n.sub," sub-samples) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else {
     h.mat <- NULL
+    h.x.init.mat <- NULL
+    h.y.init.mat <- NULL
     degree.mat <- NULL
     value <- NULL
     value.vec <- NULL
@@ -502,6 +508,8 @@ bkcde.default <- function(h=NULL,
                       f=f.yx,
                       h.mat=h.mat,
                       h=h,
+                      h.x.init.mat=h.x.init.mat,
+                      h.y.init.mat=h.y.init.mat,
                       h.sf=(h/EssDee(cbind(y,x)))*n.sub^(1/6),
                       ksum.cores=ksum.cores,
                       optim.degree.cores=optim.degree.cores,
@@ -585,18 +593,20 @@ bkcde.optim <- function(x=x,
   n <- length(y)
   lower <- 0.1*EssDee(cbind(y,x))*n^(-1/6)
   upper <- 1000*EssDee(cbind(y,x))
+  ## Initialize the bandwidths for the optimization, each multistart has a
+  ## different initial bandwidth vector, but each polynomial model uses the same
+  ## initial bandwidth vector for each multistart. This is to ensure
+  ## replicability rather than generate random numbers in the forked processes.
+  par.init <- matrix(NA,nmulti,2)
+  par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
+  if(nmulti>1) par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),0.5,5),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over nmulti multistarts in
     ## parallel
     nmulti.return <- mclapply(1:nmulti, function(i) {
-      if(i==1) {
-        init <- EssDee(cbind(y,x))*n^(-1/6)
-      } else {
-        init <- runif(2,0.5,5)*EssDee(cbind(y,x))*n^(-1/6)
-      }
-      st <- system.time(optim.return <- optim(par=init,
+      st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.loo,
                                               x=x,
                                               y=y,
@@ -616,11 +626,14 @@ bkcde.optim <- function(x=x,
                                               control=list(fnscale = -1)))
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
+      optim.return$optim.par.init <- par.init[i,]
       optim.return
     },mc.cores = optim.nmulti.cores)
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
+    optim.out$optim.y.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[1])
+    optim.out$optim.x.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[2])
     optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
     optim.out
@@ -636,6 +649,8 @@ bkcde.optim <- function(x=x,
   output.return$degree.mat <- t(sapply(degree.return, function(x) x$degree.vec))
   output.return$secs.optim <- sapply(degree.return, function(x) x$secs.optim)
   output.return$secs.optim.mat <- t(sapply(degree.return, function(x) x$secs.optim.vec))
+  output.return$optim.y.init.mat <- t(sapply(degree.return, function(x) x$optim.y.init.vec))
+  output.return$optim.x.init.mat <- t(sapply(degree.return, function(x) x$optim.x.init.vec))
   return(output.return)
 }
 
