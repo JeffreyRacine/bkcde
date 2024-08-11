@@ -95,21 +95,30 @@ library(bkcde)
 ## the results along with the true density function from which the data was drawn.
 set.seed(42)
 s1 <- s2 <- 1.25
-n <- 1000000
+n <- 1e+06
 n.grid <- 25
-x <- runif(n,0,4)
+x <- runif(n,1,4)
 y <- rbeta(n,s1+x,s2+x)
-## Compute the optimal bandwidth vector and polynomial degree then use them in 
+## Compute the sub-sampled bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
-optimal <- sub.cv(x=x,y=y,n.sub=250,resamples=10)
-bkcde.sub <- bkcde(h=optimal$h.median,degree=optimal$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
-summary(bkcde.sub)
-par(mfrow=c(1,2))
-plot(bkcde.sub,plot.3D.n.grid=n.grid,theta=120,phi=45,shade=0.5,expand=1.25,main="Estimate")
-x.seq <- sort(unique(bkcde.sub$x.eval))
-y.seq <- sort(unique(bkcde.sub$y.eval))
+scv.out <- sub.cv(x=x,y=y,n.sub=250,resamples=10)
+## We set proper=FALSE as the numerical integration involved when proper=TRUE can add 
+## unecessarily to the computation time for this DGP
+f.yx.sub <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
+## Create a 3D plot of the estimate and the true density
+par(mfrow=c(1,2),cex=.8)
+options(scipen=9)
+plot(f.yx.sub,
+     plot.3D.n.grid=n.grid,
+     theta=120,
+     phi=45,
+     shade=0.5,
+     expand=1.25,
+     main=paste("Estimate (n = ",n,")",sep=""))
+x.seq <- sort(unique(f.yx.sub$x.eval))
+y.seq <- sort(unique(f.yx.sub$y.eval))
 persp(x.seq,y.seq,
-      matrix(dbeta(bkcde.sub$y.eval,s1+bkcde.sub$x.eval,s2+bkcde.sub$x.eval),n.grid,n.grid),
+      matrix(dbeta(f.yx.sub$y.eval,s1+f.yx.sub$x.eval,s2+f.yx.sub$x.eval),n.grid,n.grid),
       theta=120,
       phi=45,
       ticktype="detailed",
@@ -118,7 +127,9 @@ persp(x.seq,y.seq,
       zlab="f(y|x)",
       shade=0.5,
       expand=1.25,
-      main="True Density")
+      main=paste("True Density (n = ",n,")",sep=""))
+## summary() for the bkcde() results
+summary(f.yx.sub)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
