@@ -10,12 +10,12 @@ np.out <- npcdens(y~x)
 summary(np.out)
 ## bkcde() in the bkcde package selects the degree of the polynomial and
 ## bandwidths via likelihood cross-validation
-bkcde.out <- bkcde(x=x,y=y,degree.max=4,nmulti=5)
-summary(bkcde.out)
+f.yx <- bkcde(x=x,y=y,degree.max=4,nmulti=5)
+summary(f.yx)
 par(mfrow=c(2,2))
 ## Manually select theta and phi, no confidence intervals
 plot(np.out,view="fixed",theta=-50,phi=30,main="")
-plot(bkcde.out,proper=TRUE,plot.3D.n.grid=50,theta=-50,phi=30,col="cyan",main="")
+plot(f.yx,proper=TRUE,plot.3D.n.grid=50,theta=-50,phi=30,col="cyan",main="")
 ## Now just look at the bkcde() figure, produce bootstrapped confidence
 ## intervals and report progress
-plot(bkcde.out,ci=TRUE,B=100,plot.3D.n.grid=50,progress=TRUE)
+plot(f.yx,ci=TRUE,B=100,plot.3D.n.grid=50,progress=TRUE)

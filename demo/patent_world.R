@@ -13,7 +13,7 @@ attach(PatentsRD)
 x <- as.integer(as.character(year))
 y <- patent
 
-bkcde.out <- bkcde(x=x,y=y)
+f.yx <- bkcde(x=x,y=y)
 
 ## Estimator of Hall, Racine & Li (polynomial order 0 conditional density estimate)
 f.np <- npcdens(txdat=x,exdat=rep(1987,100),tydat=y,eydat=seq(min(y),100,length=100))
@@ -32,11 +32,11 @@ par(mfrow=c(2,2),cex=.7)
 hist(y[x==1987],xlab="patent",main="",ylim=c(0,0.06),xlim=c(0,100),prob=TRUE,breaks=500)
 lines(density(y[x==1987],from=0,to=100),lty=1,col=1)
 lines(seq(min(y),100,length=100),fitted(f.np),col=2,lty=2,lwd=2)
-lines(seq(min(y),100,length=100),predict(bkcde.out,newdata=data.frame(x=rep(1987,100),y=seq(min(y),100,length=100))),col=3,lty=3,lwd=3)
+lines(seq(min(y),100,length=100),predict(f.yx,newdata=data.frame(x=rep(1987,100),y=seq(min(y),100,length=100))),col=3,lty=3,lwd=3)
 legend("topright",legend=c("density() kernel density","npcdens() conditional kernel","bckde() conditional kernel"),col=1:3,lty=1:3,lwd=c(1,2,3),bty="n")
 
-plot(bkcde.out,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xlim=c(0,100))
+plot(f.yx,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xlim=c(0,100))
 
-plot(bkcde.out,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xlim=c(0,100),ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
+plot(f.yx,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xlim=c(0,100),ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
 
-plot(bkcde.out,plot.3D=TRUE,plot.3D.x.grid=seq(min(x),max(x),length=25),plot.3D.y.grid=seq(min(y),100,length=25),proper=FALSE,ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
+plot(f.yx,plot.3D=TRUE,plot.3D.x.grid=seq(min(x),max(x),length=25),plot.3D.y.grid=seq(min(y),100,length=25),proper=FALSE,ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)

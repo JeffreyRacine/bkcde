@@ -72,7 +72,7 @@ if(progress) pbb <- progress_bar$new(format = "  Monte Carlo Simulation [:bar] :
                                      total = M-m+1)
 
 for(i in m:M) {
-
+  
   lpcde.success <- FALSE
   
   ## Time the lpcde and data step
@@ -155,8 +155,8 @@ for(i in m:M) {
   options(scipen=9)
   print(output$value.mat)
   foo <-data.frame(cbind(t(apply(output$value.mat,1,range)),
-              apply(output$value.mat,1,IQR),
-              apply(output$value.mat,1,max)-apply(output$value.mat,1,min)))
+                         apply(output$value.mat,1,IQR),
+                         apply(output$value.mat,1,max)-apply(output$value.mat,1,min)))
   colnames(foo) <- c("min","max","iqr","range")
   rownames(foo) <- paste("p=",degree.min:degree.max,sep="")
   print(foo)
@@ -191,7 +191,7 @@ for(i in m:M) {
                            sqrt(mean((output.hrl$f-dgp)^2)),
                            sqrt(mean((output.fyt$f-dgp)^2)),
                            sqrt(mean((f.yx.lpcde$Estimate[,"est_RBC"]-dgp)^2)))
-
+  
   ## Write fitted values and rmse values from each degree degree.min,..., degree.max
   ## (these are used to construct the final bkcde() model)
   
@@ -206,7 +206,7 @@ for(i in m:M) {
     write(f.p,file=paste("f_p_",p,".out",sep=""),append=TRUE, ncolumns=n.grid)
   }
   ## Write fitted values from the bkcde and infinite support models
-  write(output$f,file="f_bkcde.out",append=TRUE,ncolumns=n.grid)
+  write(output$f,file="f_f.yx",append=TRUE,ncolumns=n.grid)
   write(output.hrl$f,file="f_hrl.out",append=TRUE,ncolumns=n.grid)
   write(output.fyt$f,file="f_fyt.out",append=TRUE,ncolumns=n.grid)
   write(f.yx.lpcde$Estimate[,"est_RBC"],file="f_lpcde.out",append=TRUE,ncolumns=n.grid)
