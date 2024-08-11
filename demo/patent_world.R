@@ -20,7 +20,7 @@ summary(bkcde.out)
 f.np <- npcdens(txdat=x,exdat=rep(1987,100),tydat=y,eydat=seq(min(y),100,length=100))
 
 ## The data has a very long tail so we hone in on firms having 100 or fewer
-## patents/year. We first take univariate historgram and density() estimators
+## patents/year. We first take univariate histogram and density() estimators
 ## for the year 1987, then overlay the conditional kernel density estimates from
 ## npcdens() and bkcde() for the same year (these use data for all years). We
 ## also plot the bkcde() 2D estimates for the year 1987 without, then with
