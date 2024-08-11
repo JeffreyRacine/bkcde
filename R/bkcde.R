@@ -661,8 +661,9 @@ bkcde.optim <- function(x=x,
   return(output.return)
 }
 
-## persp() does not allow ylim and zlim to be set to NULL, so to be passable
-## this function avoids unnecessary duplication of code in plot.bkcde()
+## persp() does not allow ylim and zlim to be set to NULL, so this function
+## allows for these options to be passable thereby avoiding unnecessary
+## duplication of code in plot.bkcde()
 
 persp.lim <- function(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=NULL,zlim=NULL,...) {
   if(is.null(ylim) & is.null(zlim)) {
@@ -675,6 +676,11 @@ persp.lim <- function(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=
     persp(x=x,y=y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype=ticktype,ylim=ylim,zlim=zlim,...)
   }
 }
+
+## Allow for progress to be displayed while running in parallel, use pbmcapply()
+## instead of mcmapply() and pbmclapply() instead of mclapply() to display a
+## progress bar. The progress bar is only displayed if progress=TRUE in the
+## function calls.
 
 mcmapply.progress <- function(...,progress=TRUE) {
   if(progress) {
@@ -1093,7 +1099,8 @@ sub.cv <- function(x, y,
   if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in sub.cv()")
   if(!is.logical(progress)) stop("progress must be logical in sub.cv()")
   if(!is.logical(replace)) stop("replace must be logical in sub.cv()")
-  ## If only 1 resample is specified it ought to be the original sample returned, so check
+  ## If only 1 resample is specified it ought to be the original sample
+  ## returned, so check
   if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in sub.cv()")
   if(n.sub==length(y) & replace==FALSE & resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
   if(resamples < 1) stop("resamples must be at least 1 in sub.cv()")
@@ -1120,7 +1127,7 @@ sub.cv <- function(x, y,
   }
   scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for larger
-  ## sample
+  ## sample size and scale of data.
   h.mat <- sweep(h.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## We use robust "typical" measures of location for h and degree since,
   ## importantly, bandwidth properties differ with degree of polynomial (rates
