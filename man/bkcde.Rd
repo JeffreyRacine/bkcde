@@ -141,7 +141,7 @@ bkcde(...)
 }
 }
 \details{
-%%  ~~ If necessary, more details than the description above ~~
+...
 }
 \value{
 \item{convergence.mat}{
@@ -242,13 +242,13 @@ a numeric vector of the response variable
 }
 }
 \references{
-%% ~put references to the literature/web site here ~
+...
 }
 \author{
 Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
-%%  ~~further notes~~
+...
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

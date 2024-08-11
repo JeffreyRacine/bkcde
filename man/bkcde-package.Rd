@@ -16,17 +16,15 @@ This package provides a variety of functions to support estimation of bounded re
 Maintainer: \packageMaintainer{bkcde}
 }
 \references{
-%%  ~~ Literature or other references for background information ~~
+...
 }
 \keyword{package}
 
 %% Uncomment below to imitate parts of library(help = bkcde)
-%\section{The \file{DESCRIPTION} File}{\packageDESCRIPTION{bkcde}}
-%\section{Documentation Index}{\packageIndices{bkcde}}
+\section{The \file{DESCRIPTION} File}{\packageDESCRIPTION{bkcde}}
+\section{Documentation Index}{\packageIndices{bkcde}}
 
 \seealso{
-%%  ~~ Optional links to other man pages, e.g. ~~
-%%  ~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
 \code{\link{bkcde}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
