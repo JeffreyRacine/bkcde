@@ -1121,8 +1121,7 @@ sub.cv <- function(x, y,
   scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for larger
   ## sample
-  h.mat[,1] <- h.mat[,1]*EssDee(y)*n^(-1/6)
-  h.mat[,2] <- h.mat[,2]*EssDee(x)*n^(-1/6)
+  h.mat <- sweep(h.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## We use robust "typical" measures of location for h and degree since,
   ## importantly, bandwidth properties differ with degree of polynomial (rates
   ## and values) and so it is not sensible to unconditionally return e.g. the
