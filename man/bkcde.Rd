@@ -274,7 +274,7 @@ summary(f.yx)
 ## a large sample of data, heteroskedasticity, and sub-sampled
 ## cross-validation (may take a few minutes to run)
 set.seed(42)
-n <- 1e+05
+n <- 1e+06
 n.grid <- 50
 x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
@@ -291,18 +291,18 @@ persp(y=y.seq,
       zlab="f(y|x)",
       zlim=range(dgp.mat,f.yx$f),
       theta=120,
-      phi=65,
+      phi=45,
       main="True",
       ticktype="detailed",
-      expand=1.5)
+      expand=0.75)
 plot(f.yx,
      zlim=range(dgp.mat,f.yx$f),
      theta=120,
-     phi=65,
+     phi=45,
      plot.3D.n.grid=n.grid,
      main="Estimate",
      progress=TRUE,
-     expand=1.5)
+     expand=0.75)
 summary(f.yx)
 }
 }
