@@ -276,13 +276,15 @@ summary(f.yx)
 \dontrun{
 ## Example 2 - A nonlinear Gaussian conditional relationship with
 ## a large sample of data, heteroskedasticity, and sub-sampled
-## cross-validation (may take a few minutes to run)
+## cross-validation (may take a few minutes to run, bump up to 1e+06
+## if you are curious and have a few minutes to go for a coffee)
 set.seed(42)
-n <- 1e+06
+n <- 1e+05
 n.grid <- 50
 x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
-## Disable proper=TRUE as we really only need the bandwidths, re-enable for plot() though...
+## Disable proper=TRUE given the large sample size as we really only need the 
+## bandwidths, manually re-enable for plot() though...
 f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,n.sub=250,resamples=10,progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
