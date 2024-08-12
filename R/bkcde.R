@@ -1139,7 +1139,7 @@ sub.cv <- function(x, y,
     ## densities, and since we are only using cross-validation in this call, we
     ## set proper=FALSE. We retrieve the "scale factors" after removing scale
     ## and sample size factors.
-    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,...)
+    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,cv.only=TRUE,...)
     h.mat[j,] <- bkcde.out$h/(EssDee(cbind(y[ii],x[ii]))*n.sub^(-1/6))
     degree.vec[j] <- bkcde.out$degree
     cv.vec[j] <- bkcde.out$value
