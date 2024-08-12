@@ -412,7 +412,7 @@ bkcde.default <- function(h=NULL,
   ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
   ## could be < # proper.cores allocated)
   if(proper) {
-    if(progress) cat("\rComputing integrals to ensure estimate is proper...",sep="")
+    if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
     ## Create a sequence of values along an appropriate grid to compute the integral.
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)

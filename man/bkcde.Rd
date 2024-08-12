@@ -258,15 +258,53 @@ Those in need of confidence intervals should use the \code{\link{plot.bkcde}} fu
 }
 \examples{
 library(bkcde)
+## Example 1 - a small sample of data and a conditional Beta
+## distribution
 set.seed(42)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
-summary(f.yx)
-par(mfrow=c(2,2))
+par(mfrow=c(2,2),cex=.75)
 plot(f.yx,plot.3D=FALSE,ci=TRUE,ci.preplot=TRUE)
 plot(f.yx,plot.3D=TRUE,ci=TRUE,ci.preplot=TRUE,expand=1.75)
+summary(f.yx)
+\dontrun{
+## Example 2 - A nonlinear Gaussian conditional relationship with
+## a large sample of data, heteroskedasticity, and sub-sampled
+## cross-validation (may take a few minutes to run)
+set.seed(42)
+n <- 1e+05
+n.grid <- 50
+x <- runif(n,-2,2)
+y <- rnorm(n,mean=x^3,sd=1+abs(x))
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",n.sub=250,resamples=10,progress=TRUE)
+par(mfrow=c(1,2),cex=.75)
+x.seq <- sort(unique(f.yx$x.eval))
+y.seq <- sort(unique(f.yx$y.eval))
+dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=f.yx$x.eval^3,sd=1+abs(f.yx$x.eval)/2),n.grid,n.grid)
+persp(y=y.seq,
+      x=x.seq,
+      z=dgp.mat,
+      xlab="X",
+      ylab="Y",
+      zlab="f(y|x)",
+      zlim=range(dgp.mat,f.yx$f),
+      theta=120,
+      phi=65,
+      main="True",
+      ticktype="detailed",
+      expand=1.5)
+plot(f.yx,
+     zlim=range(dgp.mat,f.yx$f),
+     theta=120,
+     phi=65,
+     plot.3D.n.grid=n.grid,
+     main="Estimate",
+     progress=TRUE,
+     expand=1.5)
+summary(f.yx)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
