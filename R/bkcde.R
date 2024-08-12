@@ -412,10 +412,12 @@ bkcde.default <- function(h=NULL,
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
       f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
     }
+    f.yx.unadjusted <- NA
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
     ## could be < # proper.cores allocated)
     if(proper) {
+      f.yx.unadjusted <- f.yx
       if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
       ## Create a sequence of values along an appropriate grid to compute the integral.
       if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
@@ -518,6 +520,7 @@ bkcde.default <- function(h=NULL,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
                       f.yx.integral=int.f.seq,
                       f=f.yx,
+                      f.unadjusted=f.yx.unadjusted,
                       h.mat=h.mat,
                       h=h,
                       h.x.init.mat=h.x.init.mat,

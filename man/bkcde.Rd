@@ -179,7 +179,10 @@ the integral of the conditional density before proper normalization
 the integral of the conditional density
 }
 \item{f}{
-the conditional density
+the conditional density (properly normalized if \code{proper=TRUE} or raw if \code{proper=FALSE})
+}
+\item{f.unadjusted}{ 
+the raw conditional density or \code{NA} if \code{proper=FALSE}
 }
 \item{h.mat}{
 a matrix of bandwidths for each multi-start
