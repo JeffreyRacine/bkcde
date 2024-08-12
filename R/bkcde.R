@@ -169,7 +169,7 @@ bkcde.loo <- function(h=NULL,
                       x.lb=NULL,
                       x.ub=NULL,
                       poly.raw=FALSE,
-                      degree=0,
+                      degree=NULL,
                       ksum.cores=1,
                       penalty.method=NULL,
                       penalty.cutoff=NULL,
@@ -179,6 +179,7 @@ bkcde.loo <- function(h=NULL,
   if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
   if(is.null(x)) stop("must provide x in bkcde.loo()")
   if(is.null(y)) stop("must provide y in bkcde.loo()")
+  if(is.null(degree)) stop("must provide degree in bkcde.loo()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
   if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde.loo()")
   if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.loo()")
