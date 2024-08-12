@@ -104,21 +104,21 @@ y <- rbeta(n,s1+x,s2+x)
 scv.out <- sub.cv(x=x,y=y,n.sub=250,resamples=10)
 ## We set proper=FALSE as the numerical integration involved when proper=TRUE can add 
 ## unecessarily to the computation time for this DGP
-f.yx.sub <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
+f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 ## Create a 3D plot of the estimate and the true density
 par(mfrow=c(1,2),cex=.8)
 options(scipen=9)
-plot(f.yx.sub,
+plot(f.yx,
      plot.3D.n.grid=n.grid,
      theta=120,
      phi=45,
      shade=0.5,
      expand=1.25,
      main=paste("Estimate (n = ",n,")",sep=""))
-x.seq <- sort(unique(f.yx.sub$x.eval))
-y.seq <- sort(unique(f.yx.sub$y.eval))
+x.seq <- sort(unique(f.yx$x.eval))
+y.seq <- sort(unique(f.yx$y.eval))
 persp(x.seq,y.seq,
-      matrix(dbeta(f.yx.sub$y.eval,s1+f.yx.sub$x.eval,s2+f.yx.sub$x.eval),n.grid,n.grid),
+      matrix(dbeta(f.yx$y.eval,s1+f.yx$x.eval,s2+f.yx$x.eval),n.grid,n.grid),
       theta=120,
       phi=45,
       ticktype="detailed",
@@ -129,7 +129,7 @@ persp(x.seq,y.seq,
       expand=1.25,
       main=paste("True Density (n = ",n,")",sep=""))
 ## summary() for the bkcde() results
-summary(f.yx.sub)
+summary(f.yx)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):

@@ -248,7 +248,7 @@ a numeric vector of the response variable
 Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
-...
+Those in need of confidence intervals should use the \code{\link{plot.bkcde}} function (or simply \code{\link{plot}}) with the \code{ci} argument set to TRUE (the \code{\link{predict.bkcde}} function (or simply \code{\link{predict}}) can be used to predict the conditional density at new values but does not provide confidence intervals). Note that both \code{x.eval} and \code{y.eval} can be provided to the \code{\link{plot.bkcde}} function (will provide identical fitted values to using \code{\link{predict.bkcde}}), and the intervals can be saved in an object for further processing using the option \code{plot.behavior="data"} or \code{plot.behavior="plot-data"}.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

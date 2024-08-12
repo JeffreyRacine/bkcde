@@ -5,7 +5,7 @@
 S3 Plot Method for Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 }
 \description{
-Plot method for \code{bkcde} objects.
+Plot method for \code{bkcde} objects which also provides for bootstrapped confidence intervals that include i) pointwise, ii) Bonferroni, iii) Simultaneous, and iv) all. Plotted values can be saved for further processing using the argument \code{plot.behavior}. Both 2D and 3D plots are supported.
 }
 \usage{
 \method{plot}{bkcde}(x, 
@@ -149,7 +149,7 @@ Plot method for \code{bkcde} objects.
 Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
-...
+Note that the default number of bootstrap replications, grid size, and level of confidence are set to ensure a sufficient number of replications for the Bonferroni confidence intervals. Of course, fewer can be used if desired, particularly if only pointwise intervals are needed.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -167,6 +167,7 @@ y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
 plot(f.yx,ci=TRUE,plot.3D=TRUE,proper=FALSE,ci.method="Simultaneous")
+\dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000
 x <- rnorm(n)
@@ -174,6 +175,7 @@ y <- rnorm(n,mean=x)
 f.yx.large <- bkcde(h=c(0.5,1),degree=0,x=x,y=y,proper=FALSE)
 plot(f.yx.large,plot.3D.n.grid=50)
 summary(f.yx.large)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
