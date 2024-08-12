@@ -1058,9 +1058,11 @@ summary.bkcde <- function(object, ...) {
     cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
     cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
   }
-  cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
-  cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
-  cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
+  if(!object$cv.only) {
+    cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
+    cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
+    cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
+  }
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   if(object$optimize & !object$cv.only & object$cv != "sub") {
     cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
