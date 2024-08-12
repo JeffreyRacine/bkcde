@@ -1062,12 +1062,12 @@ summary.bkcde <- function(object, ...) {
   cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
-  if(object$optimize & !object$cv.only) {
+  if(object$optimize & !object$cv.only & object$cv != "sub") {
     cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
     cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
     cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
         " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
-  } else if(object$optimize & object$cv.only & object$cv.sub!="sub") {
+  } else if(object$optimize & object$cv.only & object$cv != "sub") {
     cat("Optimization time: ",formatC(sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
     cat("Optimization time per core: ",formatC((sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
     cat("Parallel efficiency: ",formatC(object$secs.elapsed/sum(object$secs.optim.mat),format="f",digits=2),
