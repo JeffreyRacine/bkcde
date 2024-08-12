@@ -756,6 +756,7 @@ plot.bkcde <- function(x,
                        zlim = NULL,
                        ...) {
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
+  if(x$cv.only) stop("x must be the output of bkcde() called with cv.only=FALSE in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
   if(!is.logical(progress)) stop("progress must be logical in plot.bkcde()")
   if(!is.logical(ci.preplot)) stop("ci.preplot must be logical in plot.bkcde()")
@@ -1059,7 +1060,7 @@ summary.bkcde <- function(object, ...) {
     cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
   }
   if(!object$cv.only) {
-    cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
+    if(object$proper) cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   }

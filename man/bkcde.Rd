@@ -81,7 +81,7 @@ bkcde(...)
   the type of cross-validation to use. The default is "full"
   }
   \item{cv.only}{
-  a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified. The default is FALSE
+  a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE
   }
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
@@ -282,7 +282,8 @@ n <- 1e+06
 n.grid <- 50
 x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",cv.only=TRUE,n.sub=250,resamples=10,progress=TRUE)
+## Disable proper=TRUE as we really only need the bandwidths, re-enable for plot() though...
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,n.sub=250,resamples=10,progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
@@ -293,7 +294,7 @@ persp(y=y.seq,
       xlab="X",
       ylab="Y",
       zlab="f(y|x)",
-      zlim=range(dgp.mat,f.yx$f),
+      zlim=range(dgp.mat,f.yx$f[f.yx$f>0]),
       theta=120,
       phi=45,
       main="True",
@@ -306,6 +307,7 @@ plot(f.yx,
      plot.3D.n.grid=n.grid,
      main="Estimate",
      progress=TRUE,
+     proper=TRUE,
      expand=0.75)
 summary(f.yx)
 }
