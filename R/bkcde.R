@@ -395,6 +395,7 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
+  f.yx.unadjusted <- NA
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
@@ -412,7 +413,6 @@ bkcde.default <- function(h=NULL,
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
       f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
     }
-    f.yx.unadjusted <- NA
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
     ## could be < # proper.cores allocated)
