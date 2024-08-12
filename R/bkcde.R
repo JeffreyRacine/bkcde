@@ -231,6 +231,7 @@ bkcde.default <- function(h=NULL,
                           y.ub=NULL,
                           bwscaling = FALSE,
                           cv=c("full","sub"),
+                          cv.only=FALSE,
                           degree.max=3,
                           degree.min=0,
                           degree=NULL,
@@ -260,6 +261,8 @@ bkcde.default <- function(h=NULL,
   if(length(x) != length(y)) stop("length of x must be equal to length of y in bkcde()")
   if(!is.null(x.eval) & is.null(y.eval) & length(x.eval) != length(y)) stop("length of x.eval must be equal to length of y in bkcde() when y.eval is NULL")
   if(!is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in bkcde() when x.eval and y.eval are not NULL")
+  if(!is.logical(cv.only)) stop("cv.only must be logical in bkcde()")
+  if(!is.null(h) & cv.only) stop("cannot provide h when cv.only=TRUE in bkcde()")
   if(!is.null(y.eval) & is.null(x.eval)) stop("must provide x.eval in bkcde() when y.eval is not NULL")
   ## We set x.eval and y.eval to short sequences if they are not provided to
   ## avoid excessive computation with large samples when only x and y are
@@ -392,112 +395,120 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  if(progress) cat("\rFitting conditional density estimate...",sep="")
-  secs.start.estimate <- Sys.time()
-  ## Compute the fitted conditional density estimate (use fitted.cores)
-  if(degree == 0) {
-    ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
-    ## compute the estimate \hat f(y|x) as efficiently as possible
-    f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+  if(!cv.only) {
+    if(progress) cat("\rFitting conditional density estimate...",sep="")
+    secs.start.estimate <- Sys.time()
+    ## Compute the fitted conditional density estimate (use fitted.cores)
+    if(degree == 0) {
+      ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
+      ## compute the estimate \hat f(y|x) as efficiently as possible
+      f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+    } else {
+      ## Choice of raw or orthogonal polynomials
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+      ## regression to estimate \hat f(y|x) rather than the intercept term from
+      ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
+      f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
+    }
+    if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
+    ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
+    ## could be < # proper.cores allocated)
+    if(proper) {
+      if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
+      ## Create a sequence of values along an appropriate grid to compute the integral.
+      if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+      if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
+      if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
+      if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
+      ## Note that we have a conditional density f(y|x) with potentially repeated
+      ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
+      ## (avoid unnecessary computation, particularly when x.eval contains a
+      ## constant or x.eval is taken from expand.grid() and contains a repeated
+      ## sequence of identical values). Test for unique values of x.eval to reduce
+      ## potential computation. We use mclapply to return the list of integrals
+      ## evaluated on y.seq for all unique x.eval values (this is done in parallel
+      ## and can save substantial time)
+      x.eval.unique <- unique(x.eval)
+      int.f.seq.pre.neg <- numeric()
+      int.f.seq <- numeric()
+      int.f.seq.post <- numeric()
+      ## We test for only 1 unique value of x.eval to avoid parallel processing in
+      ## the outer mcmapply call and invoke fitting the mcmapply sequence of
+      ## f(y|x) values with proper.cores
+      proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
+        K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
+        if(degree == 0) {
+          f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+        } else {
+          X.poly <- poly(x,raw=poly.raw,degree=degree)
+          X <- cbind(1,X.poly)
+          X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
+          f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+        }
+        ## Compute integral of f.seq including any possible negative values
+        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        ## Set any possible negative f.seq values to 0
+        f.seq[f.seq < 0] <- 0
+        ## Compute integral of f.seq after setting any possible negative values to 0
+        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        ## Compute integral of f.seq after setting any possible negative values to 0
+        ## and correcting to ensure final estimate integrates to 1
+        int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
+        return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
+                    int.f.seq=int.f.seq[j],
+                    int.f.seq.post=int.f.seq.post[j]))
+      },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
+      ## Now gather the results, correct for negative entries then divide elements
+      ## of f.xy by the corresponding integral (one for each x.eval.unique) to
+      ## ensure the estimate is proper
+      if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+                                          degree,
+                                          ", j = ",
+                                          length(isTRUE(f.yx < 0)),
+                                          " element(s), h.y = ",
+                                          round(h[1],5),
+                                          ", h.x = ",
+                                          round(h[2],5),
+                                          "]",
+                                          immediate. = TRUE)
+      f.yx[f.yx < 0] <- 0
+      int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
+      int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
+      int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
+      f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
+      ## As a summary measure report the mean of the integrals
+      int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
+      int.f.seq <- mean(int.f.seq)
+      int.f.seq.post <- mean(int.f.seq.post)
+      if(progress) cat("\rComputed integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
+    } else {
+      int.f.seq.pre.neg <- NA
+      int.f.seq <- NA
+      int.f.seq.post <- NA
+      if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+                                          degree,
+                                          ", ", 
+                                          length(isTRUE(f.yx < 0)),
+                                          " element(s), h.y = ",
+                                          round(h[1],5),
+                                          ", h.x = ",
+                                          round(h[2],5),
+                                          "]",
+                                          immediate. = TRUE)
+    }
   } else {
-    ## Choice of raw or orthogonal polynomials
-    X.poly <- poly(x,raw=poly.raw,degree=degree)
-    X <- cbind(1,X.poly)
-    ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-    ## regression to estimate \hat f(y|x) rather than the intercept term from
-    ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-    f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
-  }
-  if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
-  ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
-  ## could be < # proper.cores allocated)
-  if(proper) {
-    if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
-    ## Create a sequence of values along an appropriate grid to compute the integral.
-    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
-    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
-    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
-    ## Note that we have a conditional density f(y|x) with potentially repeated
-    ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
-    ## (avoid unnecessary computation, particularly when x.eval contains a
-    ## constant or x.eval is taken from expand.grid() and contains a repeated
-    ## sequence of identical values). Test for unique values of x.eval to reduce
-    ## potential computation. We use mclapply to return the list of integrals
-    ## evaluated on y.seq for all unique x.eval values (this is done in parallel
-    ## and can save substantial time)
-    x.eval.unique <- unique(x.eval)
-    int.f.seq.pre.neg <- numeric()
-    int.f.seq <- numeric()
-    int.f.seq.post <- numeric()
-    ## We test for only 1 unique value of x.eval to avoid parallel processing in
-    ## the outer mcmapply call and invoke fitting the mcmapply sequence of
-    ## f(y|x) values with proper.cores
-    proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
-      K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
-      if(degree == 0) {
-        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
-      } else {
-        X.poly <- poly(x,raw=poly.raw,degree=degree)
-        X <- cbind(1,X.poly)
-        X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
-      }
-      ## Compute integral of f.seq including any possible negative values
-      int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-      ## Set any possible negative f.seq values to 0
-      f.seq[f.seq < 0] <- 0
-      ## Compute integral of f.seq after setting any possible negative values to 0
-      int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
-      ## Compute integral of f.seq after setting any possible negative values to 0
-      ## and correcting to ensure final estimate integrates to 1
-      int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
-      return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
-                  int.f.seq=int.f.seq[j],
-                  int.f.seq.post=int.f.seq.post[j]))
-    },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
-    ## Now gather the results, correct for negative entries then divide elements
-    ## of f.xy by the corresponding integral (one for each x.eval.unique) to
-    ## ensure the estimate is proper
-    if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
-                                        degree,
-                                        ", j = ",
-                                        length(isTRUE(f.yx < 0)),
-                                        " element(s), h.y = ",
-                                        round(h[1],5),
-                                        ", h.x = ",
-                                        round(h[2],5),
-                                        "]",
-                                        immediate. = TRUE)
-    f.yx[f.yx < 0] <- 0
-    int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
-    int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
-    int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
-    f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
-    ## As a summary measure report the mean of the integrals
-    int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
-    int.f.seq <- mean(int.f.seq)
-    int.f.seq.post <- mean(int.f.seq.post)
-    if(progress) cat("\rComputed integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
-  } else {
+    f.yx <- NA
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
-    if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
-                                        degree,
-                                        ", ", 
-                                        length(isTRUE(f.yx < 0)),
-                                        " element(s), h.y = ",
-                                        round(h[1],5),
-                                        ", h.x = ",
-                                        round(h[2],5),
-                                        "]",
-                                        immediate. = TRUE)
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
                       cv=cv,
+                      cv.only=cv.only,
                       degree.mat=degree.mat,
                       degree.max=degree.max,
                       degree.min=degree.min,
@@ -519,7 +530,7 @@ bkcde.default <- function(h=NULL,
                       proper.cores=proper.cores,
                       proper=proper,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
-                      secs.estimate=as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs")),
+                      secs.estimate=ifelse(cv.only,NA,as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))),
                       secs.optim.mat=secs.optim.mat,
                       value.mat=value.mat,
                       value.vec=value.vec,
@@ -1051,10 +1062,15 @@ summary.bkcde <- function(object, ...) {
   cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
   cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
-  if(object$optimize) {
+  if(object$optimize & !object$cv.only) {
     cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
     cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
     cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
+        " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+  } else if(object$optimize & object$cv.only) {
+    cat("Optimization and time: ",formatC(sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
+    cat("Optimization time per core: ",formatC((sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
+    cat("Parallel efficiency: ",formatC(object$secs.elapsed/(sum(object$secs.optim.mat)),format="f",digits=2),
         " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
   }
   cat("\n")

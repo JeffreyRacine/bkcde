@@ -23,6 +23,7 @@ bkcde(...)
       y.ub = NULL, 
       bwscaling = FALSE,
       cv = c("full","sub"),
+      cv.only = FALSE,
       degree.max = 3, 
       degree.min = 0, 
       degree = NULL, 
@@ -78,6 +79,9 @@ bkcde(...)
 }
   \item{cv}{
   the type of cross-validation to use. The default is "full"
+  }
+  \item{cv.only}{
+  a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified. The default is FALSE
   }
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
@@ -278,7 +282,7 @@ n <- 1e+06
 n.grid <- 50
 x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",n.sub=250,resamples=10,progress=TRUE)
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",cv.only=TRUE,n.sub=250,resamples=10,progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
