@@ -329,7 +329,7 @@ bkcde.default <- function(h=NULL,
                              penalty.cutoff=penalty.cutoff,
                              penalty.method=penalty.method,
                              poly.raw=poly.raw,
-                             progress=progress,
+                             verbose=verbose,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
@@ -364,7 +364,7 @@ bkcde.default <- function(h=NULL,
                       penalty.cutoff=penalty.cutoff,
                       penalty.method=penalty.method,
                       poly.raw=poly.raw,
-                      verbose=verbose,
+                      progress=progress,
                       ...)
     h <- optimal$h.median
     degree <- optimal$degree
