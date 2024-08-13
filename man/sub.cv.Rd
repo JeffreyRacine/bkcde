@@ -103,7 +103,7 @@ y <- rbeta(n,s1+x,s2+x)
 ## the call to bkcde()
 scv.out <- sub.cv(x=x,y=y)
 ## We set proper=FALSE as the numerical integration involved when proper=TRUE can add 
-## unecessarily to the computation time for this DGP
+## unnecessarily to the computation time for this DGP
 f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
 ## Create a 3D plot of the estimate and the true density
 par(mfrow=c(1,2),cex=.8)
@@ -166,6 +166,7 @@ plot(f.yx,
      proper=FALSE,
      expand=0.75)
 summary(f.yx)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
