@@ -105,7 +105,7 @@ bkcde(...)
   the number of points to use for numerical integration. The default is 1000
 }
 \item{n.sub}{
-  the number of observations to use when \code{cv="sub"}. The default is 100
+  the number of observations to use when \code{cv="sub"}. The default is 300
   }
   \item{nmulti}{
   the number of multi-starts to use for optimization. The default is 3

@@ -130,6 +130,42 @@ persp(x.seq,y.seq,
       main=paste("True Density (n = ",n,")",sep=""))
 ## summary() for the bkcde() results
 summary(f.yx)
+\dontrun{
+## Example with a million observations from a bivariate normal distribution with 
+## a nonlinear mean and heteroskedasticity, calling sub.cv() from within bkcde() 
+## via cv="sub"
+set.seed(42)
+n <- 1e+06
+n.grid <- 50
+x <- runif(n,-2,2)
+y <- rnorm(n,mean=x^2,sd=1+abs(x))
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
+par(mfrow=c(1,2),cex=.75)
+x.seq <- sort(unique(f.yx$x.eval))
+y.seq <- sort(unique(f.yx$y.eval))
+dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=f.yx$x.eval^2,sd=1+abs(f.yx$x.eval)/2),n.grid,n.grid)
+persp(y=y.seq,
+      x=x.seq,
+      z=dgp.mat,
+      xlab="X",
+      ylab="Y",
+      zlab="f(y|x)",
+      zlim=range(dgp.mat,f.yx$f),
+      theta=120,
+      phi=45,
+      main="True",
+      ticktype="detailed",
+      expand=0.75)
+plot(f.yx,
+     zlim=range(dgp.mat,f.yx$f),
+     theta=120,
+     phi=45,
+     plot.3D.n.grid=n.grid,
+     main="Estimate",
+     progress=TRUE,
+     proper=FALSE,
+     expand=0.75)
+summary(f.yx)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory (show via RShowDoc("KEYWORDS")):
