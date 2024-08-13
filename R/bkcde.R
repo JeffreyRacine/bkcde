@@ -329,7 +329,7 @@ bkcde.default <- function(h=NULL,
                              penalty.cutoff=penalty.cutoff,
                              penalty.method=penalty.method,
                              poly.raw=poly.raw,
-                             verbose=verbose,
+                             progress=progress,
                              ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
