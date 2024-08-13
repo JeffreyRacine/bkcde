@@ -1110,10 +1110,10 @@ find_mode <- function(x) {
 ## the matrix of bandwidths, the vector of degrees, etc.
 
 sub.cv <- function(x, y, 
-                   n.sub = 500, 
+                   n.sub = 250, 
                    progress = FALSE,
                    replace = FALSE,
-                   resamples = 25, 
+                   resamples = 10, 
                    ...) {
   if(!is.numeric(x)) stop("x must be numeric in sub.cv()")
   if(!is.numeric(y)) stop("y must be numeric in sub.cv()")
@@ -1128,7 +1128,7 @@ sub.cv <- function(x, y,
   if(n.sub==length(y) & replace==FALSE & resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
   if(resamples < 1) stop("resamples must be at least 1 in sub.cv()")
   n <- length(y)
-  h.mat <- matrix(NA,nrow=resamples,ncol=2)
+  sf.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
   cv.vec <- numeric()
   if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
@@ -1143,15 +1143,14 @@ sub.cv <- function(x, y,
     ## set proper=FALSE. We retrieve the "scale factors" after removing scale
     ## and sample size factors.
     bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,cv.only=TRUE,...)
-    h.mat[j,] <- bkcde.out$h/(EssDee(cbind(y[ii],x[ii]))*n.sub^(-1/6))
+    sf.mat[j,] <- bkcde.out$h/(EssDee(cbind(y[ii],x[ii]))*n.sub^(-1/6))
     degree.vec[j] <- bkcde.out$degree
     cv.vec[j] <- bkcde.out$value
     if(progress) pbb$tick()
   }
-  scale.factor.mat <- h.mat
   ## Compute "typical" column elements of h.mat after rescaling for larger
   ## sample size and scale of data.
-  h.mat <- sweep(h.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
+  h.mat <- sweep(sf.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## We use robust "typical" measures of location for h and degree since,
   ## importantly, bandwidth properties differ with degree of polynomial (rates
   ## and values) and so it is not sensible to unconditionally return e.g. the
@@ -1179,7 +1178,7 @@ sub.cv <- function(x, y,
               h.mean=h.mean,
               h.median=h.median,
               h.ml=h.ml,
-              scale.factor.mat=scale.factor.mat))
+              sf.mat=sf.mat))
   
 }
 

@@ -9,10 +9,10 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 }
 \usage{
 sub.cv(x, y, 
-       n.sub = 500, 
+       n.sub = 250, 
        progress = FALSE,
        replace = FALSE,
-       resamples = 25, 
+       resamples = 10, 
        ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -68,7 +68,7 @@ A matrix containing the optimal bandwidths for the x and y variables for each re
 \item{cv.vec}{
 A numeric vector containing the cross-validated likelihood values for each resample.
 }
-\item{scale.factor.mat}{
+\item{sf.mat}{
 A matrix containing the scale factors of the bandwidths for the y and x variables (column 1 for y, column 2 for x).
 }
 }
@@ -101,7 +101,7 @@ x <- runif(n,1,4)
 y <- rbeta(n,s1+x,s2+x)
 ## Compute the sub-sampled bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
-scv.out <- sub.cv(x=x,y=y,n.sub=250,resamples=10)
+scv.out <- sub.cv(x=x,y=y)
 ## We set proper=FALSE as the numerical integration involved when proper=TRUE can add 
 ## unecessarily to the computation time for this DGP
 f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)

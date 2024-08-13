@@ -6,7 +6,7 @@ library(bkcde)
 library(progress)
 
 n <- scan("n.dat",quiet=TRUE)
-n.sub <- seq(100,400,by=100)
+n.sub <- seq(100,500,by=100)
 if(n <= n.sub[1]) stop("n must be greater than ",n.sub[1])
 n.sub <- n.sub[n.sub<n]
 M <- scan("M.dat",quiet=TRUE)
@@ -21,6 +21,7 @@ plot.pdf <- scan("plot_pdf.dat",logical(),quiet=TRUE)
 progress.bar <- scan("progress_bar.dat",logical(),quiet=TRUE)
 
 rmse.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
+rmse.unadjusted.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 degree.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 h.x.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 h.y.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
@@ -28,9 +29,10 @@ sf.x.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 sf.y.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 secs.mat <- matrix(numeric(),nrow=M,ncol=length(n.sub)+1)
 
-if(file.exists("rmse.out") && nrow(read.table("rmse.out",header=TRUE)) > 0) {
+if(file.exists("rmse.out") && nrow(read.table("rmse.out",header=FALSE)) > 0) {
   m <- nrow(read.table("rmse.out",header=FALSE))
   rmse.mat[1:m,] <- data.matrix(read.table("rmse.out",header=FALSE))
+  rmse.unadjusted.mat[1:m,] <- data.matrix(read.table("rmse_unadjusted.out",header=FALSE))
   degree.mat[1:m,] <- data.matrix(read.table("degree.out",header=FALSE))
   h.x.mat[1:m,] <- data.matrix(read.table("h.x.out",header=FALSE))
   h.y.mat[1:m,] <- data.matrix(read.table("h.y.out",header=FALSE))
@@ -56,8 +58,10 @@ for(m in m.start:M) {
   if(!progress.bar) cat("\r",m," of ",M,"     ")
   
   if(true.dgp=="normal") {
-    x <- runif(n,-0.5,0.5)
-    y <- rnorm(n,mean=x)
+    # x <- runif(n,-0.5,0.5)
+    # y <- rnorm(n,mean=x)
+    x <- runif(n,-2,2)
+    y <- rnorm(n,mean=x^2,sd=1+abs(x))
     if(bounds=="empirical") {
       y.lb <- min(y)
       y.ub <- max(y)
@@ -90,12 +94,14 @@ for(m in m.start:M) {
                      cv="full")
   
   if(true.dgp=="normal") {
-    dgp <- dnorm(f.yx.full$y.eval,mean=f.yx.full$x.eval)
+    # dgp <- dnorm(f.yx.full$y.eval,mean=f.yx.full$x.eval)
+    dgp <- dnorm(f.yx.full$y.eval,mean=f.yx.full$x.eval^2,sd=1+abs(f.yx.full$x.eval))
   } else if(true.dgp=="beta") {
     dgp <- dbeta(f.yx.full$y.eval,s1+f.yx.full$x.eval,s2+f.yx.full$x.eval)
   }
   
   rmse.mat[m,1] <- sqrt(mean((f.yx.full$f-dgp)^2))
+  rmse.unadjusted.mat[m,1] <- sqrt(mean((f.yx.full$f.unadjusted-dgp)^2))
   degree.mat[m,1] <- f.yx.full$degree
   h.x.mat[m,1] <- f.yx.full$h[2]
   h.y.mat[m,1] <- f.yx.full$h[1]
@@ -117,6 +123,7 @@ for(m in m.start:M) {
                       n.sub=n.sub[j], 
                       resamples=resamples)
     rmse.mat[m,j+1] <- sqrt(mean((f.yx.sub$f-dgp)^2))
+    rmse.unadjusted.mat[m,j+1] <- sqrt(mean((f.yx.sub$f.unadjusted-dgp)^2))
     degree.mat[m,j+1] <- f.yx.sub$degree
     h.x.mat[m,j+1] <- f.yx.sub$h[2]
     h.y.mat[m,j+1] <- f.yx.sub$h[1]
@@ -126,6 +133,7 @@ for(m in m.start:M) {
   }
   
   write(rmse.mat[m,],file="rmse.out",ncolumns=length(n.sub)+1,append=TRUE)
+  write(rmse.unadjusted.mat[m,],file="rmse_unadjusted.out",ncolumns=length(n.sub)+1,append=TRUE)
   write(degree.mat[m,],file="degree.out",ncolumns=length(n.sub)+1,append=TRUE)
   write(h.x.mat[m,],file="h.x.out",ncolumns=length(n.sub)+1,append=TRUE)
   write(h.y.mat[m,],file="h.y.out",ncolumns=length(n.sub)+1,append=TRUE)
@@ -135,6 +143,9 @@ for(m in m.start:M) {
   
   write(apply(rmse.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_rmse.out")
   write(apply(rmse.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_rmse.out")
+  
+  write(apply(rmse.unadjusted.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_rmse_unadjusted.out")
+  write(apply(rmse.unadjusted.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_rmse_unadjusted.out")
   
   write(apply(degree.mat[1:m,,drop=FALSE],2,mean),ncolumns=length(n.sub)+1,file="mean_degree.out")
   write(apply(degree.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_degree.out")
@@ -155,17 +166,36 @@ for(m in m.start:M) {
   write(apply(secs.mat[1:m,,drop=FALSE],2,median),ncolumns=length(n.sub)+1,file="median_secs.out")
   
   colnames(rmse.mat) <- c(n,n.sub)
-  if(plot.pdf) pdf(file="rmse.pdf",pointsize = 12)
-  par(mfrow=c(1,1),cex=.8)
+  if(plot.pdf) {
+    pdf(file="rmse.pdf",pointsize = 12)
+    par(mfrow=c(1,1),cex=.8)
+  } else {
+    par(mfrow=c(1,2),cex=.6)
+  }
   boxplot(rmse.mat[1:m,,drop=FALSE],
           outline=FALSE,
           notch=TRUE,
-          ylab="RMSE",
+          ylab="Proper RMSE",
           xlab="Sample Size (n on left then n.sub)",
           main=c(paste(true.dgp," (",bounds,", m = ",m," of ",M,", res = ",resamples,", nmul = ",nmulti,", d.max = ",degree.max,")",sep=""),
                  paste(round(apply(rmse.mat[1:m,,drop=FALSE],2,mean),4),collapse=", ")),
           sub=paste(round(apply(rmse.mat[1:m,,drop=FALSE],2,median),4),collapse=", "),
           names=c(n,n.sub))  
+  if(plot.pdf) dev.off()
+  
+  if(plot.pdf) {
+    pdf(file="rmse_unadjusted.pdf",pointsize = 12)
+    par(mfrow=c(1,1),cex=.8)
+  }
+  boxplot(rmse.unadjusted.mat[1:m,,drop=FALSE],
+          outline=FALSE,
+          notch=TRUE,
+          ylab="Unadjusted RMSE",
+          xlab="Sample Size (n on left then n.sub)",
+          main=c(paste(true.dgp," (",bounds,", m = ",m," of ",M,", res = ",resamples,", nmul = ",nmulti,", d.max = ",degree.max,")",sep=""),
+                 paste(round(apply(rmse.unadjusted.mat[1:m,,drop=FALSE],2,mean),4),collapse=", ")),
+          sub=paste(round(apply(rmse.unadjusted.mat[1:m,,drop=FALSE],2,median),4),collapse=", "),
+          names=c(n,n.sub))
   if(plot.pdf) dev.off()
   
   if(progress.bar) pbb$tick()
