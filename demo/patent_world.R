@@ -16,6 +16,7 @@ y <- patent
 f.yx <- bkcde(x=x,y=y)
 
 ## Estimator of Hall, Racine & Li (polynomial order 0 conditional density estimate)
+## with bandwidth selection via likelihood cross-validation
 f.np <- npcdens(txdat=x,exdat=rep(1987,100),tydat=y,eydat=seq(min(y),100,length=100))
 
 ## In the following plots note that the data has a very long tail (right skewed)
@@ -40,3 +41,5 @@ plot(f.yx,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xl
 plot(f.yx,plot.3D=FALSE,x.eval=1987,plot.2D.y.grid=seq(min(y),100,length=100),xlim=c(0,100),ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
 
 plot(f.yx,plot.3D=TRUE,plot.3D.x.grid=seq(min(x),max(x),length=25),plot.3D.y.grid=seq(min(y),100,length=25),proper=FALSE,ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
+
+summary(f.yx)

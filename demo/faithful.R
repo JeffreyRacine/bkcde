@@ -5,11 +5,16 @@ x <- faithful$waiting
 y <- faithful$eruptions
 f.yx <- bkcde(x=x,y=y)
 
+## Create a 2x2 plot of the npcdens() and bkcde() figures
+
 par(mfrow=c(2,2),cex=.6)
+
 plot(y,x,ylab="waiting",xlab="eruptions",col = ifelse(y < 3,'black','red'))
 plot(f.yx,plot.3D.n.grid=50,theta=30,phi=55,xlab="waiting",ylab="eruptions",expand=.75)
+
 ## Plot two 2D slices for different values of x (waiting = 50 and 85, the
 ## approximate centers of each mode)
+
 plot(f.yx,plot.3D=FALSE,x.eval=50,xlab="eruptions")
 par(new=TRUE)
 plot(f.yx,plot.3D=FALSE,x.eval=85,lty=2,col=2,sub="",xlab="",axes=FALSE)
