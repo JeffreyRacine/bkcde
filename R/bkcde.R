@@ -239,7 +239,7 @@ bkcde.default <- function(h=NULL,
                           ksum.cores=1,
                           n.grid=10,
                           n.integrate=1000,
-                          n.sub=100,
+                          n.sub=300,
                           nmulti=3,
                           optim.degree.cores=NULL,
                           optim.nmulti.cores=NULL,
@@ -1110,7 +1110,7 @@ find_mode <- function(x) {
 ## the matrix of bandwidths, the vector of degrees, etc.
 
 sub.cv <- function(x, y, 
-                   n.sub = 250, 
+                   n.sub = 300, 
                    progress = FALSE,
                    replace = FALSE,
                    resamples = 10, 

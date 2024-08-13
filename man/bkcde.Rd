@@ -31,7 +31,7 @@ bkcde(...)
       ksum.cores = 1, 
       n.grid = 10,
       n.integrate = 1000, 
-      n.sub = 100,
+      n.sub = 300,
       nmulti = 3, 
       optim.degree.cores = NULL, 
       optim.nmulti.cores = NULL, 
@@ -288,7 +288,7 @@ x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
 ## Disable proper=TRUE given the large sample size as we really only need the 
 ## bandwidths, manually re-enable for plot() though...
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,n.sub=250,resamples=10,progress=TRUE)
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))

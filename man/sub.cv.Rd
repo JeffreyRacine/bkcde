@@ -9,7 +9,7 @@ This function optimizes the bandwidth vector and polynomial degree for the bkcde
 }
 \usage{
 sub.cv(x, y, 
-       n.sub = 250, 
+       n.sub = 300, 
        progress = FALSE,
        replace = FALSE,
        resamples = 10, 
