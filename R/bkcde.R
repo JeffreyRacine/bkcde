@@ -348,7 +348,7 @@ bkcde.default <- function(h=NULL,
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else if(is.null(h) & cv == "sub") { 
     ## Code recursion in R is a thing of beauty sub.cv() calls bkcde()...
-    if(progress) cat("\rSub-sample nested optimization running (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, sub-sample size = ",n.sub,")",sep="")
+    if(progress) cat("\rSub-sample nested optimization running (",degree.max-degree.min+1," models, ",nmulti," multistarts per model, sub-sample size = ",n.sub,")\n",sep="")
     optimal <- sub.cv(x=x,
                       y=y,
                       n.sub=n.sub,
