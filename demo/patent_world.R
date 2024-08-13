@@ -2,13 +2,18 @@ library(bkcde)
 suppressPackageStartupMessages(library(np))
 options(np.messages=FALSE)
 suppressPackageStartupMessages(library(pglm))
+
+## Annual observations of 181 firms from 1983 to 1991, number of European patent
+## applications (count), 1629 observations. 
+
+data(PatentsRD)
+attach(PatentsRD)
+
 ## Patent data often has a preponderance of zeros and "overdispersion". Since
 ## the data has a boundary at zero, a zero-inflated negative binomial model is
 ## often used. Instead we consider a kernel density estimation approach that
 ## adapts to the boundary automatically and also chooses the polynomial order in
 ## a data-driven fashion.
-data(PatentsRD)
-attach(PatentsRD)
 
 x <- as.integer(as.character(year))
 y <- patent

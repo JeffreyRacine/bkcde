@@ -1,7 +1,9 @@
 library(bkcde)
 library(np)
 
-## Take the cps71 data from the R package np (see ?cps71 for details)
+## Canadian cross-section wage data consisting of a random sample taken from the
+## 1971 Canadian Census Public Use Tapes for male individuals having common
+## education (grade 13). There are 205 observations in total.
 
 data(cps71)
 x <- cps71$age

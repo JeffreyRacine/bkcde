@@ -1,6 +1,11 @@
 data(faithful)
 library(bkcde)
 
+## A data frame with 272 observations on 2 variables, waiting and eruptions (in
+## minutes), the waiting time between eruptions and the duration of the eruption
+## for the Old Faithful geyser in Yellowstone National Park, Wyoming, USA. This
+## is a starkly bimodal bivariate distribution.
+
 x <- faithful$waiting
 y <- faithful$eruptions
 f.yx <- bkcde(x=x,y=y)
