@@ -143,7 +143,7 @@ f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
-dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)/2),n.grid,n.grid)
+dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
 persp(y=y.seq,
       x=x.seq,
       z=dgp.mat,
