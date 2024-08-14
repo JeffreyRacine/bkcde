@@ -140,20 +140,20 @@ n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
 f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
-par(mfrow=c(1,2),cex=.75)
+par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
 dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*sin(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
 persp(y=y.seq,
       x=x.seq,
       z=dgp.mat,
-      xlab="X",
-      ylab="Y",
+      xlab="x",
+      ylab="y",
       zlab="f(y|x)",
       zlim=range(dgp.mat,f.yx$f),
       theta=120,
       phi=45,
-      main="True",
+      main="True Conditional Density",
       ticktype="detailed",
       expand=0.75)
 plot(f.yx,
@@ -161,11 +161,17 @@ plot(f.yx,
      theta=120,
      phi=45,
      plot.3D.n.grid=n.grid,
-     main="Estimate",
+     main="Estimated Conditional Density",
      progress=TRUE,
      proper=FALSE,
      expand=0.75)
 summary(f.yx)
+## Plot the estimated conditional mean and the true conditional mean
+x.seq <- sort(unique(f.yx$x.eval))
+plot(x,y,cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
+lines(x.seq,2*sin(4*pi*x.seq))
+plot(x,y,cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
+lines(x.seq,f.yx$E.yx)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
