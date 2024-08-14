@@ -396,6 +396,7 @@ bkcde.default <- function(h=NULL,
     secs.optim.mat <- NULL
   }
   f.yx.unadjusted <- NA
+  E.yx <- NA
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
@@ -436,6 +437,7 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- numeric()
       int.f.seq <- numeric()
       int.f.seq.post <- numeric()
+      E.yx <- numeric()
       ## We test for only 1 unique value of x.eval to avoid parallel processing in
       ## the outer mcmapply call and invoke fitting the mcmapply sequence of
       ## f(y|x) values with proper.cores
@@ -458,9 +460,11 @@ bkcde.default <- function(h=NULL,
         ## Compute integral of f.seq after setting any possible negative values to 0
         ## and correcting to ensure final estimate integrates to 1
         int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
+        E.yx[j] <- integrate.trapezoidal(y.seq,y.seq*f.seq/int.f.seq[j])[length(y.seq)]
         return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                     int.f.seq=int.f.seq[j],
-                    int.f.seq.post=int.f.seq.post[j]))
+                    int.f.seq.post=int.f.seq.post[j],
+                    E.yx=E.yx[j]))
       },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
       ## Now gather the results, correct for negative entries then divide elements
       ## of f.xy by the corresponding integral (one for each x.eval.unique) to
@@ -479,6 +483,7 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
       int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
       int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
+      E.yx <- sapply(proper.out, function(x) x$E.yx)
       f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
       ## As a summary measure report the mean of the integrals
       int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
@@ -489,6 +494,7 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- NA
       int.f.seq <- NA
       int.f.seq.post <- NA
+      E.yx <- NA
       if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                           degree,
                                           ", ", 
@@ -515,6 +521,7 @@ bkcde.default <- function(h=NULL,
                       degree.max=degree.max,
                       degree.min=degree.min,
                       degree=degree,
+                      E.yx=E.yx,
                       fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
