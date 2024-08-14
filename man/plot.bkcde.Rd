@@ -141,7 +141,10 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
 }
 }
 \details{
-...
+When an object created by a call to \code{bkcde} is to be plotted, it was created using either the option \code{proper=TRUE} or \code{proper=FALSE}. This will be the default in the call to \code{plot.bkcde} unless the user specifies otherwise (in \code{plot.bkcde} the default is \code{proper=NULL}, i.e., a null value). If the user specifies \code{proper=TRUE} or \code{proper=FALSE} in the call to \code{plot.bkcde} this will override whichever was used in the call to \code{bkcde}. If the user specifies \code{ci=TRUE} in the call to \code{plot.bkcde}, the same rule applies.
+
+If \code{proper=TRUE} is specified in the call to \code{plot.bkcde} (or the call to \code{bkcde} and is not overwritten in the call to \code{plot.bkcde}) and \code{ci=FALSE} is specified in the call to \code{plot.bkcde}, then the option \code{plot.unadjusted=TRUE} can be used to plot the unadjusted density estimate along with the adjusted one. This is useful for comparing the two. However, if the option \code{ci=TRUE} is specified then the two density estimates are not plotted as the confidence intervals are based on the object corresponding to the value of \code{proper} used in the call to \code{bkcde} (or \code{plot.bkcde} if specified). The exception is when the option \code{ci=TRUE} is specified and \code{ci.preplot=TRUE} is used (default) along with \code{proper=TRUE}. In this case, the two density estimates are plotted first while the bootstrap confidence intervals are being constructed, however the subsequent plot containing the confidence intervals will only contain the density estimate corresponding to the value of \code{proper}.
+
 }
 \value{
 ...

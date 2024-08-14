@@ -814,15 +814,42 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,progress=progress,...)
+    # x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,progress=progress,...)
+    f.yx.plot <- bkcde(h=x$h,
+                       x=x$x,
+                       y=x$y,
+                       x.eval=x.plot.eval,
+                       y.eval=y.plot.eval,
+                       y.lb=x$y.lb,
+                       y.ub=x$y.ub,
+                       x.lb=x$x.lb,
+                       x.ub=x$x.ub,
+                       proper=proper,
+                       degree=x$degree,
+                       ksum.cores=ksum.cores,
+                       fitted.cores=fitted.cores,
+                       proper.cores=proper.cores,
+                       progress=progress,
+                       ...)
+    x.fitted <- f.yx.plot$f
+    x.fitted.unadjusted <- f.yx.plot$f.unadjusted
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
+    if(plot.unadjusted) predict.mat.unadjusted <- matrix(x.fitted.unadjusted,plot.3D.n.grid,plot.3D.n.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
     if(is.null(xlab)) xlab <- "x"
     if(is.null(ylab)) ylab <- "y"
     if(is.null(zlab)) zlab <- "f(y|x)"
     if(ci.preplot & plot.behavior != "data") {
-      persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
+      if(!plot.unadjusted) {
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
+      } else {
+        if(!is.null(zlim)) zlim <- range(predict.mat,predict.mat.unadjusted)
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat.unadjusted,xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="red",col=NA,lty=2,lwd=2,ylim=ylim,zlim=zlim,...) 
+        par(new = TRUE)
+        persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",border="black",col=NA,ylim=ylim,zlim=zlim,...)
+        legend("topleft",legend=c("Adjusted","Unadjusted"),lty=c(1,2),col=c(1,2),lwd=c(1,2),bty="n")
+      }
     }
   } else if(!plot.3D) {
     ## Plot 2D
@@ -846,6 +873,10 @@ plot.bkcde <- function(x,
                        x.ub=x$x.ub,
                        proper=proper,
                        degree=x$degree,
+                       ksum.cores=ksum.cores,
+                       fitted.cores=fitted.cores,
+                       proper.cores=proper.cores,
+                       progress=progress,
                        ...)
     x.fitted <- f.yx.plot$f
     x.fitted.unadjusted <- f.yx.plot$f.unadjusted
