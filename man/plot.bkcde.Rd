@@ -26,6 +26,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
      plot.3D.x.grid = NULL, 
      plot.3D.y.grid = NULL, 
      plot.behavior = c("plot", "plot-data", "data"), 
+     plot.unadjusted = FALSE,
      progress = FALSE, 
      proper = NULL, 
      proper.cores = NULL, 
@@ -95,6 +96,9 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
 }
   \item{plot.behavior}{
  behavior of plot
+}
+\item{plot.unadjusted}{
+ logical, whether to plot unadjusted density
 }
   \item{progress}{
  logical, whether to display progress when estimating and bootstrapping

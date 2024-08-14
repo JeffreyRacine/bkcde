@@ -745,6 +745,7 @@ plot.bkcde <- function(x,
                        plot.3D.x.grid = NULL,
                        plot.3D.y.grid = NULL,
                        plot.behavior = c("plot","plot-data","data"),
+                       plot.unadjusted = FALSE,
                        progress = FALSE,
                        proper = NULL,
                        proper.cores = NULL,
@@ -761,6 +762,9 @@ plot.bkcde <- function(x,
   if(!inherits(x,"bkcde")) stop("x must be of class bkcde in plot.bkcde()")
   if(x$cv.only) stop("x must be the output of bkcde() called with cv.only=FALSE in plot.bkcde()")
   if(!is.logical(ci)) stop("ci must be logical in plot.bkcde()")
+  if(!is.logical(ci.bias.correct)) stop("ci.bias.correct must be logical in plot.bkcde()")
+  if(!is.logical(ci.preplot)) stop("ci.preplot must be logical in plot.bkcde()")
+  if(!is.logical(plot.unadjusted)) stop("plot.unadjusted must be logical in plot.bkcde()")
   if(!is.logical(progress)) stop("progress must be logical in plot.bkcde()")
   if(!is.logical(ci.preplot)) stop("ci.preplot must be logical in plot.bkcde()")
   ## Note that the Bonferroni method places a restriction on the smallest number
@@ -785,6 +789,7 @@ plot.bkcde <- function(x,
   if(plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
   if(is.null(proper)) proper <- x$proper
+  if(!proper & plot.unadjusted) stop("plot.unadjusted=TRUE requires proper=TRUE in bkcde() or in plot.bkcde() (i.e., plot())")
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
   ## proper.cores and fitted.cores are used in the predict() function and only
@@ -829,20 +834,48 @@ plot.bkcde <- function(x,
       plot.2D.n.grid <- length(y.grid)
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
-    x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,progress=progress,...)
+    # x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,progress=progress,...)
+    f.yx.plot <- bkcde(h=x$h,
+                       x=x$x,
+                       y=x$y,
+                       x.eval=x.plot.eval,
+                       y.eval=y.plot.eval,
+                       y.lb=x$y.lb,
+                       y.ub=x$y.ub,
+                       x.lb=x$x.lb,
+                       x.ub=x$x.ub,
+                       proper=proper,
+                       degree=x$degree,
+                       ...)
+    x.fitted <- f.yx.plot$f
+    x.fitted.unadjusted <- f.yx.plot$f.unadjusted
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
     if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
     if(is.null(type)) type <- "l"
     if(ci.preplot & plot.behavior != "data") {
-      plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
-           sub=sub,
-           ylim=ylim,
-           ylab=ylab,
-           xlab=xlab,
-           type=type,
-           panel.first=grid(lty=1),
-           ...)
+      if(!plot.unadjusted) {
+        plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
+             sub=sub,
+             ylim=ylim,
+             ylab=ylab,
+             xlab=xlab,
+             type=type,
+             panel.first=grid(lty=1),
+             ...)
+      } else {
+        if(!is.null(ylim)) ylim <- range(x.fitted,x.fitted.unadjusted)
+        plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
+             sub=sub,
+             ylim=ylim,
+             ylab=ylab,
+             xlab=xlab,
+             type=type,
+             panel.first=grid(lty=1),
+             ...)        
+        lines(y.plot.eval[order(y.plot.eval)],x.fitted.unadjusted[order(y.plot.eval)],lty=2,col=2,lwd=2)
+        legend("topleft",legend=c("Adjusted","Unadjusted"),lty=c(1,2),col=c(1,2),lwd=c(1,2),bty="n")
+      }
     }
   }
   if(ci) {
