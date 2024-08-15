@@ -863,7 +863,7 @@ plot.bkcde <- function(x,
       if(!plot.unadjusted) {
         persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
       } else {
-        if(!is.null(zlim)) zlim <- range(predict.mat,predict.mat.unadjusted)
+        if(is.null(zlim)) zlim <- range(predict.mat,predict.mat.unadjusted)
         persp.lim(x=x.grid,y=y.grid,z=predict.mat.unadjusted,xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="red",col=NA,lty=2,lwd=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.grid,y=y.grid,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",border="black",col=NA,ylim=ylim,zlim=zlim,...)
@@ -918,7 +918,7 @@ plot.bkcde <- function(x,
              panel.first=grid(lty=1),
              ...)
       } else {
-        if(!is.null(ylim)) ylim <- range(x.fitted,x.fitted.unadjusted)
+        if(is.null(ylim)) ylim <- range(x.fitted,x.fitted.unadjusted)
         plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
              sub=sub,
              ylim=ylim,
