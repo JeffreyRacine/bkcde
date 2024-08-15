@@ -878,29 +878,24 @@ plot.bkcde <- function(x,
       plot.2D.n.grid <- length(y.grid)
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
-    if((plot.2D.n.grid != x$n.grid) || (!is.null(plot.proper) && plot.proper!=x$proper) || !all.equal(x.plot.eval,x$x.eval) || !all.equal(y.plot.eval,x$y.eval)) {
-      f.yx.plot <- bkcde(h=x$h,
-                         x=x$x,
-                         y=x$y,
-                         x.eval=x.plot.eval,
-                         y.eval=y.plot.eval,
-                         y.lb=x$y.lb,
-                         y.ub=x$y.ub,
-                         x.lb=x$x.lb,
-                         x.ub=x$x.ub,
-                         proper=proper,
-                         degree=x$degree,
-                         ksum.cores=ksum.cores,
-                         fitted.cores=fitted.cores,
-                         proper.cores=proper.cores,
-                         progress=progress,
-                         ...)
-      x.fitted <- f.yx.plot$f
-      x.fitted.unadjusted <- f.yx.plot$f.unadjusted
-    } else {
-      x.fitted <- x$f
-      x.fitted.unadjusted <- x$f.unadjusted
-    }
+    f.yx.plot <- bkcde(h=x$h,
+                       x=x$x,
+                       y=x$y,
+                       x.eval=x.plot.eval,
+                       y.eval=y.plot.eval,
+                       y.lb=x$y.lb,
+                       y.ub=x$y.ub,
+                       x.lb=x$x.lb,
+                       x.ub=x$x.ub,
+                       proper=proper,
+                       degree=x$degree,
+                       ksum.cores=ksum.cores,
+                       fitted.cores=fitted.cores,
+                       proper.cores=proper.cores,
+                       progress=progress,
+                       ...)
+    x.fitted <- f.yx.plot$f
+    x.fitted.unadjusted <- f.yx.plot$f.unadjusted
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
     if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
