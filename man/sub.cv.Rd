@@ -177,7 +177,7 @@ n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
 f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
-par(mfrow=c(1,2),cex=.75)
+par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
 dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*sin(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
