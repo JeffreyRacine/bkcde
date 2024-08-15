@@ -163,12 +163,13 @@ plot(f.yx,
      plot.3D.n.grid=n.grid,
      main="Estimated Conditional Density",
      progress=TRUE,
-     proper=FALSE,
      expand=0.75)
 summary(f.yx)
 ## Plot the estimated conditional mean and the true conditional mean WHEN you call 
-## bkcde() with option proper=TRUE (also set par(mfrow=c(2,2),cex=.75) and replot
-## the above)
+## bkcde() with option proper=TRUE (first i) modify the above call to par() to read 
+## par(mfrow=c(2,2),cex=.75), and ii) replot the above two figures before uncommenting 
+## then running the following code - note we only plot the first 10000 observations
+## to provide a more readable figure)
 # x.seq <- sort(unique(f.yx$x.eval))
 # ii <- 1:10000
 # plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
