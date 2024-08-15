@@ -168,7 +168,7 @@ Note that the default number of bootstrap replications, grid size, and level of 
 library(bkcde)
 ## Example 1 - cross-validated bandwidths and polynomial order
 set.seed(42)
-n <- 250
+n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
