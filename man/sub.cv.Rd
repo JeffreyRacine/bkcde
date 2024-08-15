@@ -133,7 +133,7 @@ summary(f.yx)
 \dontrun{
 ## Example with a million observations from a bivariate normal distribution with 
 ## a nonlinear mean and heteroskedasticity, calling sub.cv() from within bkcde() 
-## via cv="sub"
+## via cv="sub" (note proper=FALSE for computational efficiency)
 set.seed(42)
 n <- 1e+06
 ## Override default 10 x 10 grid for the 3D plots, use 50 x 50
@@ -165,17 +165,48 @@ plot(f.yx,
      progress=TRUE,
      expand=0.75)
 summary(f.yx)
-## Plot the estimated conditional mean and the true conditional mean WHEN you call 
-## bkcde() with option proper=TRUE (first i) modify the above call to par() to read 
-## par(mfrow=c(2,2),cex=.75), and ii) replot the above two figures before uncommenting 
-## then running the following code - note we only plot the first 10000 observations
-## to provide a more readable figure)
-# x.seq <- sort(unique(f.yx$x.eval))
-# ii <- 1:10000
-# plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
-# lines(x.seq,2*sin(4*pi*x.seq))
-# plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
-# lines(x.seq,f.yx$E.yx)
+
+## Example with a million observations from a bivariate normal distribution with 
+## a nonlinear mean and heteroskedasticity, calling sub.cv() from within bkcde() 
+## via cv="sub", and since proper=TRUE we can extract E(Y|x) from the bkcde() object
+## and compare it to the true conditional mean
+set.seed(42)
+n <- 1e+06
+## Override default 10 x 10 grid for the 3D plots, use 50 x 50
+n.grid <- 50
+x <- runif(n,0,1)
+y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
+par(mfrow=c(1,2),cex=.75)
+x.seq <- sort(unique(f.yx$x.eval))
+y.seq <- sort(unique(f.yx$y.eval))
+dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*sin(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
+persp(y=y.seq,
+      x=x.seq,
+      z=dgp.mat,
+      xlab="x",
+      ylab="y",
+      zlab="f(y|x)",
+      zlim=range(dgp.mat,f.yx$f),
+      theta=120,
+      phi=45,
+      main="True Conditional Density",
+      ticktype="detailed",
+      expand=0.75)
+plot(f.yx,
+     zlim=range(dgp.mat,f.yx$f),
+     theta=120,
+     phi=45,
+     main="Estimated Conditional Density",
+     progress=TRUE,
+     expand=0.75)
+summary(f.yx)
+x.seq <- sort(unique(f.yx$x.eval))
+ii <- 1:10000
+plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
+lines(x.seq,2*sin(4*pi*x.seq))
+plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
+lines(x.seq,f.yx$E.yx)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
