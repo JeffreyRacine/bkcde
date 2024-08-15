@@ -145,6 +145,35 @@ When an object created by a call to \code{bkcde} is to be plotted, it was create
 
 If \code{proper=TRUE} is specified in the call to \code{plot.bkcde} (or the call to \code{bkcde} and is not overwritten in the call to \code{plot.bkcde}) and \code{ci=FALSE} is specified in the call to \code{plot.bkcde}, then the option \code{plot.unadjusted=TRUE} can be used to plot the unadjusted density estimate along with the adjusted one. This is useful for comparing the two. However, if the option \code{ci=TRUE} is specified then the two density estimates are not plotted as the confidence intervals are based on the object corresponding to the value of \code{proper} used in the call to \code{bkcde} (or \code{plot.bkcde} if specified). The exception is when the option \code{ci=TRUE} is specified and \code{ci.preplot=TRUE} is used (default) along with \code{proper=TRUE}. In this case, the two density estimates are plotted first while the bootstrap confidence intervals are being constructed, however the subsequent plot containing the confidence intervals will only contain the density estimate corresponding to the value of \code{proper}.
 
+\code{plot.bkcde} tries to avoid recomputing unnecessary objects by assessing what is being plotted and what is already available in the \code{bkcde} object. For example, if the user is plotting a 3D plot (default) and does not change options manually in the plot call (e.g., \code{plot.3D.n.grid}, \code{proper}, etc.) then the values used in the call to \code{bkcde} will be used directly. However, if the user changes the number of grid points for the 3D plot, then the estimate will be recomputed using the new grid points. Similarly, if the user changes the value of \code{proper} in the call to \code{plot.bkcde} then the estimate be recomputed using the new value of \code{proper}. This is done to avoid unnecessary recomputation and to speed up the plotting process, as the following example illustrates:
+
+\preformatted{
+  set.seed(42)
+  n <- 1e+04
+  x <- runif(n,-.25,.25)
+  y <- rbeta(n,1+x,1.5+x)
+  f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, n.grid=25)
+  plot(f.yx)
+}
+
+For 2D objects (not the default), the same rules apply provided that the values of \code{x.eval} and \code{y.eval} are those appropriate for a 2D object (i.e., all elements of \code{x.eval} must be identical), and \code{n.grid} is set to a value appropriate for a 2D plot, i.e., \code{n.grid=length(x.eval)}. The following example illustrates this:
+
+\preformatted{
+  set.seed(42)
+  n <- 1e+04
+  x <- runif(n,-.25,.25)
+  y <- rbeta(n,1+x,1.5+x)
+  x.eval <- rep(0,100)
+  y.eval <- seq(min(y),max(y),length=100)
+  f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, 
+                x.eval=x.eval, y.eval=y.eval, 
+                n.grid = length(x.eval))
+  plot(f.yx,plot.3D=FALSE)
+}
+  
+Otherwise, \code{plot.bkcde} will need to recompute the estimates on the fly which can be time consuming (see the option \code{progress} in such cases if you wish to be informed of which stage computation is at - this is particularly helpful when \code{ci=TRUE} which invokes bootstrapping that can be computationally costly, particularly for larger sample sizes). 
+
+
 }
 \value{
 ...

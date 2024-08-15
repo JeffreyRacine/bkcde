@@ -136,6 +136,7 @@ summary(f.yx)
 ## via cv="sub"
 set.seed(42)
 n <- 1e+06
+## Override default 10 x 10 grid for the 3D plots, use 50 x 50
 n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
@@ -160,7 +161,6 @@ plot(f.yx,
      zlim=range(dgp.mat,f.yx$f),
      theta=120,
      phi=45,
-     plot.3D.n.grid=n.grid,
      main="Estimated Conditional Density",
      progress=TRUE,
      expand=0.75)
