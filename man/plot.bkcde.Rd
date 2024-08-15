@@ -19,10 +19,10 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
      fitted.cores = NULL,
      ksum.cores = NULL, 
      phi = NULL, 
-     plot.2D.n.grid = 100, 
+     plot.2D.n.grid = NULL, 
      plot.2D.y.grid = NULL, 
      plot.3D = TRUE, 
-     plot.3D.n.grid = 10, 
+     plot.3D.n.grid = NULL, 
      plot.3D.x.grid = NULL, 
      plot.3D.y.grid = NULL, 
      plot.behavior = c("plot", "plot-data", "data"), 
@@ -77,7 +77,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
  phi angle for 3D plot
 }
   \item{plot.2D.n.grid}{
- number of grid points for 2D plot
+ number of grid points for 2D plot (if \code{NULL} then the number of 2D grid points is pulled from the \code{bkcde} object being plotted)
 }
   \item{plot.2D.y.grid}{
  y grid points for 2D plot
@@ -86,7 +86,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
  logical, whether to plot in 3D
 }
   \item{plot.3D.n.grid}{
- number of grid points for 3D plot
+ number of grid points for 3D plot (if \code{NULL} then the number of 3D grid points is pulled from the \code{bkcde} object being plotted)
 }
   \item{plot.3D.x.grid}{
  x grid points for 3D plot

@@ -749,7 +749,7 @@ plot.bkcde <- function(x,
                        plot.2D.n.grid = 100,
                        plot.2D.y.grid = NULL,
                        plot.3D = TRUE,
-                       plot.3D.n.grid = 10,
+                       plot.3D.n.grid = NULL,
                        plot.3D.x.grid = NULL,
                        plot.3D.y.grid = NULL,
                        plot.behavior = c("plot","plot-data","data"),
@@ -793,8 +793,10 @@ plot.bkcde <- function(x,
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
-  if(plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
-  if(plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
+  if(!is.null(plot.2D.n.grid) && plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
+  if(!is.null(plot.3D.n.grid) && plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
+  if(is.null(plot.3D.n.grid)) plot.3D.n.grid <- x$n.grid
+  if(is.null(plot.2D.n.grid)) plot.2D.n.grid <- x$n.grid
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
   if(is.null(proper)) {
     plot.proper <- NULL
