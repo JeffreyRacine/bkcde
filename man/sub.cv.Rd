@@ -170,9 +170,10 @@ summary(f.yx)
 ## bkcde() with option proper=TRUE (also set par(mfrow=c(2,2),cex=.75) and replot
 ## the above)
 # x.seq <- sort(unique(f.yx$x.eval))
-# plot(x,y,cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
+# ii <- 1:10000
+# plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
 # lines(x.seq,2*sin(4*pi*x.seq))
-# plot(x,y,cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
+# plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
 # lines(x.seq,f.yx$E.yx)
 }
 }

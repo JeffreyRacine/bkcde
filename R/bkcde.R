@@ -534,6 +534,7 @@ bkcde.default <- function(h=NULL,
                       h.y.init.mat=h.y.init.mat,
                       h.sf=h/(EssDee(cbind(y,x))*length(y)^(-1/6)),
                       ksum.cores=ksum.cores,
+                      n.grid=n.grid,
                       optim.degree.cores=optim.degree.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optimize=optimize,
@@ -795,7 +796,12 @@ plot.bkcde <- function(x,
   if(plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
   if(plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
-  if(is.null(proper)) proper <- x$proper
+  if(is.null(proper)) {
+    plot.proper <- NULL
+    proper <- x$proper
+  } else {
+    plot.proper <- proper
+  }
   if(!proper & plot.unadjusted) stop("plot.unadjusted=TRUE requires proper=TRUE in bkcde() or in plot.bkcde() (i.e., plot())")
   if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
@@ -821,25 +827,29 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
-    # x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,fitted.cores=fitted.cores,proper.cores=proper.cores,progress=progress,...)
-    f.yx.plot <- bkcde(h=x$h,
-                       x=x$x,
-                       y=x$y,
-                       x.eval=x.plot.eval,
-                       y.eval=y.plot.eval,
-                       y.lb=x$y.lb,
-                       y.ub=x$y.ub,
-                       x.lb=x$x.lb,
-                       x.ub=x$x.ub,
-                       proper=proper,
-                       degree=x$degree,
-                       ksum.cores=ksum.cores,
-                       fitted.cores=fitted.cores,
-                       proper.cores=proper.cores,
-                       progress=progress,
-                       ...)
-    x.fitted <- f.yx.plot$f
-    x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+    if((plot.3D.n.grid != x$n.grid) || (!is.null(plot.proper) && plot.proper!=x$proper) || !all.equal(x.plot.eval,x$x.eval) || !all.equal(y.plot.eval,x$y.eval)) {
+      f.yx.plot <- bkcde(h=x$h,
+                         x=x$x,
+                         y=x$y,
+                         x.eval=x.plot.eval,
+                         y.eval=y.plot.eval,
+                         y.lb=x$y.lb,
+                         y.ub=x$y.ub,
+                         x.lb=x$x.lb,
+                         x.ub=x$x.ub,
+                         proper=proper,
+                         degree=x$degree,
+                         ksum.cores=ksum.cores,
+                         fitted.cores=fitted.cores,
+                         proper.cores=proper.cores,
+                         progress=progress,
+                         ...)
+      x.fitted <- f.yx.plot$f
+      x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+    } else {
+      x.fitted <- x$f
+      x.fitted.unadjusted <- x$f.unadjusted
+    }
     predict.mat <- matrix(x.fitted,plot.3D.n.grid,plot.3D.n.grid)
     if(plot.unadjusted) predict.mat.unadjusted <- matrix(x.fitted.unadjusted,plot.3D.n.grid,plot.3D.n.grid)
     if(is.null(theta)) theta <- 120
@@ -868,25 +878,29 @@ plot.bkcde <- function(x,
       plot.2D.n.grid <- length(y.grid)
     }
     x.plot.eval <- x.grid <- rep(x.eval,length(y.plot.eval))
-    # x.fitted <- predict(x,newdata=data.frame(x=x.plot.eval,y=y.plot.eval),proper=proper,ksum.cores=ksum.cores,progress=progress,...)
-    f.yx.plot <- bkcde(h=x$h,
-                       x=x$x,
-                       y=x$y,
-                       x.eval=x.plot.eval,
-                       y.eval=y.plot.eval,
-                       y.lb=x$y.lb,
-                       y.ub=x$y.ub,
-                       x.lb=x$x.lb,
-                       x.ub=x$x.ub,
-                       proper=proper,
-                       degree=x$degree,
-                       ksum.cores=ksum.cores,
-                       fitted.cores=fitted.cores,
-                       proper.cores=proper.cores,
-                       progress=progress,
-                       ...)
-    x.fitted <- f.yx.plot$f
-    x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+    if((plot.2D.n.grid != x$n.grid) || (!is.null(plot.proper) && plot.proper!=x$proper) || !all.equal(x.plot.eval,x$x.eval) || !all.equal(y.plot.eval,x$y.eval)) {
+      f.yx.plot <- bkcde(h=x$h,
+                         x=x$x,
+                         y=x$y,
+                         x.eval=x.plot.eval,
+                         y.eval=y.plot.eval,
+                         y.lb=x$y.lb,
+                         y.ub=x$y.ub,
+                         x.lb=x$x.lb,
+                         x.ub=x$x.ub,
+                         proper=proper,
+                         degree=x$degree,
+                         ksum.cores=ksum.cores,
+                         fitted.cores=fitted.cores,
+                         proper.cores=proper.cores,
+                         progress=progress,
+                         ...)
+      x.fitted <- f.yx.plot$f
+      x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+    } else {
+      x.fitted <- x$f
+      x.fitted.unadjusted <- x$f.unadjusted
+    }
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
     if(is.null(xlab)) xlab <- paste("y|x=",round(x.eval,digits=2),sep="")
