@@ -109,7 +109,7 @@ f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.gr
 par(mfrow=c(1,2),cex=.8)
 options(scipen=9)
 plot(f.yx,
-     plot.3D.n.grid=n.grid,
+     n.grid=n.grid,
      theta=120,
      phi=45,
      shade=0.5,
