@@ -173,6 +173,33 @@ For 2D objects (not the default), the same rules apply provided that the values 
   
 Otherwise, \code{plot.bkcde} will need to recompute the estimates on the fly which can be time consuming (see the option \code{progress} in such cases if you wish to be informed of which stage computation is at - this is particularly helpful when \code{ci=TRUE} which invokes bootstrapping that can be computationally costly, particularly for larger sample sizes). 
 
+For those interested in alternative plotting frameworks, you might consider using RGL (OpenGL) to create interactive 3D plots that you can rotate, zoom and otherwise manipulate dynamically using your mouse or cursor. The \pkg{rgl} package must be installed to use the following code (click on the object with your mouse and drag to rotate, use the mouse wheel to zoom in and out, and use the right mouse button to pan):
+
+\preformatted{
+  library(rgl)
+  set.seed(42)
+  n <- 1e+06
+  x <- runif(n,0,1)
+  y <- rnorm(n,sin(2*pi*x))
+  f.yx <- bkcde(x=x,y=y,cv="sub",n.grid=50,proper=FALSE,progress=TRUE)
+  z <- matrix(f.yx$f,50,50)
+  open3d()
+  par3d(windowRect=c(900,100,900+640,100+640))
+  view3d(theta = 0, phi = -70, fov = 80)
+  persp3d(x=sort(unique(f.yx$x.eval)),
+          y=sort(unique(f.yx$y.eval)),
+          z=z,
+          xlab="x",
+          ylab="y",
+          zlab="f(y|x)",
+          ticktype="detailed",      
+          border="red",
+          color=topo.colors(1000)[(1000-1)*(z-min(z))/(max(z)-min(z))+1],
+          alpha=.7,
+          back="lines")
+  grid3d(c("x", "y+", "z"))
+}
+
 
 }
 \value{

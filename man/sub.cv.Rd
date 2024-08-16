@@ -207,35 +207,6 @@ plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional
 lines(x.seq,2*sin(4*pi*x.seq))
 plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
 lines(x.seq,f.yx$E.yx)
-
-## Using RGL to create interactive 3D plots that you can rotate, zoom
-## and so forth. The `rgl' package must be installed to use this code.
-library(rgl)
-num.colors <- 1000
-colorlut <- topo.colors(num.colors) 
-x.seq <- sort(unique(f.yx$x.eval))
-y.seq <- sort(unique(f.yx$y.eval))
-z <- matrix(f.yx$f,n.grid,n.grid)
-col <- colorlut[ (num.colors-1)*(z-min(z))/(max(z)-min(z)) + 1 ]
-## Open an rgl 3d window and use `persp3d()', a high-level function
-## for 3D surfaces (and define the size of the window to be
-## 640x640). The function par3d() passes in a window size (the default
-## is 256x256 which is quite small), the function view3d()
-## allows you to modify the `field of view' to get more of a
-## `perspective' feel to the plot, while the function grid3d() adds a
-## grid to the plot.
-open3d()
-par3d(windowRect=c(900,100,900+640,100+640))
-view3d(theta = 0, phi = -70, fov = 80)
-persp3d(x=x.seq,y=y.seq,z=z,
-        xlab="X1",ylab="X2",zlab="Y",
-        ticktype="detailed",      
-        border="red",
-        color=col,
-        alpha=.7,
-        back="lines",
-        main="Conditional Mean")
-grid3d(c("x", "y+", "z"))
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
