@@ -102,9 +102,7 @@ y <- rbeta(n,s1+x,s2+x)
 ## Compute the sub-sampled bandwidth vector and polynomial degree then use them in 
 ## the call to bkcde()
 scv.out <- sub.cv(x=x,y=y)
-## We set proper=FALSE as the numerical integration involved when proper=TRUE can add 
-## unnecessarily to the computation time for this DGP
-f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,proper=FALSE,n.grid=n.grid)
+f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,n.grid=n.grid)
 ## Create a 3D plot of the estimate and the true density
 par(mfrow=c(1,2),cex=.8)
 options(scipen=9)
@@ -140,7 +138,7 @@ n <- 1e+06
 n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
@@ -176,7 +174,7 @@ n <- 1e+06
 n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=TRUE,progress=TRUE)
 par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))

@@ -140,7 +140,7 @@ If \code{proper=TRUE} is specified in the call to \code{plot.bkcde} (or the call
   n <- 1e+04
   x <- runif(n,-.25,.25)
   y <- rbeta(n,1+x,1.5+x)
-  f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, n.grid=25)
+  f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, n.grid=25, proper=TRUE)
   plot(f.yx)
 }
 
@@ -155,7 +155,7 @@ For 2D objects (not the default), the same rules apply provided that the values 
   y.eval <- seq(min(y),max(y),length=100)
   f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, 
                 x.eval=x.eval, y.eval=y.eval, 
-                n.grid = length(x.eval))
+                n.grid = length(x.eval),proper=TRUE)
   plot(f.yx,persp=FALSE)
 }
   
@@ -169,7 +169,7 @@ For those interested in alternative plotting frameworks, you might consider usin
   n <- 1e+06
   x <- runif(n,0,1)
   y <- rnorm(n,sin(2*pi*x))
-  f.yx <- bkcde(x=x,y=y,cv="sub",n.grid=50,proper=FALSE,progress=TRUE)
+  f.yx <- bkcde(x=x,y=y,cv="sub",n.grid=50,progress=TRUE)
   z <- matrix(f.yx$f,50,50)
   open3d()
   par3d(windowRect=c(900,100,900+640,100+640))
@@ -215,7 +215,7 @@ set.seed(42)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y, proper=FALSE)
+f.yx <- bkcde(x=x, y=y)
 foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
 plot(f.yx,ci=TRUE,persp=TRUE,proper=FALSE,ci.method="Simultaneous")
 \dontrun{
@@ -223,7 +223,7 @@ plot(f.yx,ci=TRUE,persp=TRUE,proper=FALSE,ci.method="Simultaneous")
 n <- 100000
 x <- rnorm(n)
 y <- rnorm(n,mean=x)
-f.yx.large <- bkcde(h=c(0.5,1),degree=0,x=x,y=y,proper=FALSE)
+f.yx.large <- bkcde(h=c(0.5,1),degree=0,x=x,y=y)
 plot(f.yx.large,n.grid=50)
 summary(f.yx.large)
 }

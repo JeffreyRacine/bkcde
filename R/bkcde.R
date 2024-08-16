@@ -237,7 +237,7 @@ bkcde.default <- function(h=NULL,
                           degree=NULL,
                           fitted.cores=12,
                           ksum.cores=1,
-                          n.grid=10,
+                          n.grid=25,
                           n.integrate=1000,
                           n.sub=300,
                           nmulti=3,
@@ -248,7 +248,7 @@ bkcde.default <- function(h=NULL,
                           poly.raw=FALSE,
                           progress=FALSE,
                           proper.cores=12,
-                          proper=TRUE,
+                          proper=FALSE,
                           resamples=10,
                           verbose=FALSE,
                           ...) {
@@ -495,16 +495,16 @@ bkcde.default <- function(h=NULL,
       int.f.seq <- NA
       int.f.seq.post <- NA
       E.yx <- NA
-      if(verbose & any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
-                                          degree,
-                                          ", ", 
-                                          length(isTRUE(f.yx < 0)),
-                                          " element(s), h.y = ",
-                                          round(h[1],5),
-                                          ", h.x = ",
-                                          round(h[2],5),
-                                          "]",
-                                          immediate. = TRUE)
+      warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+              degree,
+              ", ", 
+              length(isTRUE(f.yx < 0)),
+              " element(s), h.y = ",
+              round(h[1],5),
+              ", h.x = ",
+              round(h[2],5),
+              "]",
+              immediate. = TRUE)
     }
   } else {
     f.yx <- NA
@@ -793,9 +793,9 @@ plot.bkcde <- function(x,
   if(persp & is.null(n.grid)) {
     n.grid <- x$n.grid
   } else if(is.null(n.grid)) {
-    ## Default for 2D grid is x$n.grid^10 (100) corresponding to default for 3D
-    ## which is 10x10 grid
-    n.grid <- x$n.grid*10
+    ## Default for 2D grid is x$n.grid*25 (100) corresponding to default for 3D
+    ## which is 25x25 grid
+    n.grid <- x$n.grid*5
   }
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
   if(is.null(proper)) {

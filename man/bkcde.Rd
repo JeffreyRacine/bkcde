@@ -29,7 +29,7 @@ bkcde(...)
       degree = NULL, 
       fitted.cores = 12,
       ksum.cores = 1, 
-      n.grid = 10,
+      n.grid = 25,
       n.integrate = 1000, 
       n.sub = 300,
       nmulti = 3, 
@@ -40,7 +40,7 @@ bkcde(...)
       poly.raw = FALSE, 
       progress = FALSE,
       proper.cores = 12, 
-      proper = TRUE, 
+      proper = FALSE, 
       resamples = 10,
       verbose = FALSE, 
       ...)
@@ -99,7 +99,7 @@ bkcde(...)
   the number of cores to use for the kernel sum. The default is 1
 }
   \item{n.grid}{
-  the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 10
+  the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
   }
   \item{n.integrate}{
   the number of points to use for numerical integration. The default is 1000
@@ -132,7 +132,7 @@ bkcde(...)
   the number of cores to use for the proper normalization. The default is 12
 }
   \item{proper}{
-  a logical value indicating whether to use proper normalization. The default is TRUE
+  a logical value indicating whether to use proper normalization. The default is FALSE and a warning is issued if any negative values are found in the estimate
 }
 \item{resamples}{
   the number of resamples to use for cross-validation when \code{cv="sub"}. The default is 10
@@ -145,7 +145,9 @@ bkcde(...)
 }
 }
 \details{
-When \code{proper=TRUE}, for each unique value of \code{x} in \code{x.eval} the conditional density is normalized so that a) the integral of the conditional density returned is equal to 1 and b) the conditional density returned is non-negative (it may be so regardless of whether \code{proper=TRUE} or \code{proper=FALSE}, and if polynomial \code{degree=0} the estimate is guaranteed to be non-negative, while if \code{y.lb=-Inf} and \code{y.ub=Inf} the estimate is guaranteed to integrate to 1 over its support regardless of the polynomial degree). To render an estimate proper, a sequence of uniformly spaced points for \code{y} of length \code{n.integrate=1000} is created (the grid size can be changed by the user) . When finite bounds for \code{y} exist the sequence extends across this range. Otherwise, the function \code{\link{extendrange}} is invoked with argument \code{f=10} to generate the sequence (\code{f} denotes the fraction by which the range is extended; see \code{\link{extendrange}} for further details) . For each unique value of \code{x} in \code{x.eval} the conditional density is estimated on the uniform grid, negative values set to zero, and the integral of the conditional density is re-computed and used to normalize the density returned. Summaries of the integrals prior to and after normalization are returned in the output object and can be accessed using the \code{summary} function. Note that when a large number of unique values of \code{x} are used for \code{x.eval} (e.g., all sample realizations in a large sample) this procedure can involve significant compute overhead. It can be disabled at any time, and when constructing confidence intervals the user can choose to use the raw estimate or the proper estimate (which may be indistinguishable). The \code{proper} argument is set to \code{TRUE} by default. The argument \code{progress} can be set to obtain more granular details of progress (set to \code{TRUE} to print progress). The argument \code{verbose} can additionally be set to obtain even more granular details (set to \code{TRUE} to print warnings and other low-level messages). 
+A few words on computational cost and rendering the resultant estimate proper are in order.
+
+When \code{proper=TRUE}, for each unique value of \code{x} in \code{x.eval} the conditional density is normalized so that a) the integral of the conditional density returned is equal to 1 and b) the conditional density returned is non-negative (it may be so regardless of whether \code{proper=TRUE} or \code{proper=FALSE}, and if polynomial \code{degree=0} the estimate is guaranteed to be non-negative, while if \code{y.lb=-Inf} and \code{y.ub=Inf} the estimate is guaranteed to integrate to 1 over its support regardless of the polynomial degree). To render an estimate proper, a sequence of uniformly spaced points for \code{y} of length \code{n.integrate=1000} is created (the grid size can be changed by the user). When finite bounds for \code{y} exist the sequence extends across this range. Otherwise, the function \code{\link{extendrange}} is invoked with argument \code{f=10} to generate the sequence (\code{f} denotes the fraction by which the range is extended; see \code{\link{extendrange}} for further details) . For each unique value of \code{x} in \code{x.eval} the conditional density is estimated on the uniform grid, negative values set to zero, and the integral of the conditional density is re-computed and used to normalize the density returned. Summaries of the integrals prior to and after normalization are returned in the output object and can be accessed using the \code{summary} function. Note that when a large number of unique values of \code{x} are used for \code{x.eval} (e.g., all sample realizations in a large sample) this procedure can involve significant compute overhead. The setting for \code{proper} can be toggled on or off at any time, and when constructing confidence intervals the user can choose to use the raw estimate or the proper estimate (which may be indistinguishable). The \code{proper} argument is set to \code{FALSE} by default, though a warning is issued should any negative density values be produced (though integration to one is of course not guaranteed and the user ought to confirm that results with and without \code{proper=FALSE} are comparable). The argument \code{progress} can be set to obtain more granular details of progress (set to \code{TRUE} to print progress). The argument \code{verbose} can additionally be set to obtain even more granular details (set to \code{TRUE} to print warnings and other low-level messages). 
 }
 \value{
 \item{convergence.mat}{
@@ -271,7 +273,7 @@ set.seed(42)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y, proper=FALSE)
+f.yx <- bkcde(x=x, y=y)
 par(mfrow=c(2,2),cex=.75)
 plot(f.yx,persp=FALSE,ci=TRUE,ci.preplot=TRUE)
 plot(f.yx,persp=TRUE,ci=TRUE,ci.preplot=TRUE,expand=1.75)
@@ -286,9 +288,9 @@ n <- 1e+05
 n.grid <- 50
 x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
-## Disable proper=TRUE given the large sample size as we really only need the 
-## bandwidths, manually re-enable for plot() though...
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=FALSE,progress=TRUE)
+## The default proper=FALSE is fine given the large sample size as we really only 
+## need the bandwidths, but we manually set to TRUE for plot()...
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))

@@ -55,7 +55,7 @@ options(digits=3)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y)
+f.yx <- bkcde(x=x, y=y, proper=TRUE)
 x.eval <- c(0,.1)
 y.eval <- c(.25,0.5)
 ## Predicted density values
