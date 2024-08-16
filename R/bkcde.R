@@ -266,7 +266,7 @@ bkcde.default <- function(h=NULL,
   if(!is.null(y.eval) & is.null(x.eval)) stop("must provide x.eval in bkcde() when y.eval is not NULL")
   ## We set x.eval and y.eval to short sequences if they are not provided to
   ## avoid excessive computation with large samples when only x and y are
-  ## provided (essentially what would be the default for plot.3D.n.grid in
+  ## provided (essentially what would be the default for n.grid in
   ## plot.bkcde()). Of course these can be changed, and plot will override them
   ## if desired, as will predict.bkcde().
   optimize <- ifelse(is.null(h),TRUE,FALSE)
@@ -724,7 +724,7 @@ mclapply.progress <- function(...,progress=TRUE) {
 ## plot.bkcde() is used to plot the results of the boundary kernel estimate of
 ## f(y|x) along with bootstrap confidence intervals generated as either
 ## pointwise, Bonferroni, or simultaneous intervals. Both 2D and 3D plots can be
-## produced (plot.3D=TRUE or FALSE). A simple bootstrap mean correction is
+## produced (persp=TRUE or FALSE). A simple bootstrap mean correction is
 ## applied (there are likely better ways of doing this outside of a bootstrap
 ## procedure, leave this for future investigation). A handful of options are
 ## available, including returning the confidence intervals (pointwise,
