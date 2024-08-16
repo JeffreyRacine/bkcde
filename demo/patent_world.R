@@ -31,7 +31,7 @@ f.np <- npcdens(txdat=x,exdat=rep(1987,100),tydat=y,eydat=seq(min(y),100,length=
 ## same year (these use data for all years). We also plot the bkcde() 2D
 ## estimates for the year 1987 without, then with simultaneous confidence
 ## intervals. Finally, we plot the bkcde() estimate in 3D with and without
-## confidence intervals (all years
+## confidence intervals (all years)
 
 par(mfrow=c(2,2),cex=.7)
 

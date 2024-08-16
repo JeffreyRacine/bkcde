@@ -30,7 +30,7 @@ plot(np.out,view="fixed",theta=-50,phi=30,main="")
 plot(f.yx,proper=TRUE,plot.3D.n.grid=50,theta=-50,phi=30,col="cyan",main="")
 
 ## Now just look at the bkcde() figure, produce bootstrapped confidence
-## intervals and report progress (default theta and phi, note twp plots created
+## intervals and report progress (default theta and phi, note two plots created
 ## since ci.preplot = TRUE is the default)
 
 plot(f.yx,ci=TRUE,B=100,plot.3D.n.grid=50,progress=TRUE)
