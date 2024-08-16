@@ -866,7 +866,7 @@ plot.bkcde <- function(x,
     if(is.null(zlab)) zlab <- "f(y|x)"
     if(ci.preplot & plot.behavior != "data") {
       if(!plot.unadjusted) {
-        persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)    
+        persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,shade=.25,...)    
       } else {
         if(is.null(zlim)) zlim <- range(predict.mat,predict.mat.unadjusted)
         persp.lim(x=x.eval,y=y.eval,z=predict.mat.unadjusted,xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="red",col=NA,lty=2,lwd=2,ylim=ylim,zlim=zlim,...) 
