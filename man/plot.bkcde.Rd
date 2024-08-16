@@ -18,13 +18,9 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
      ci.preplot = TRUE,
      fitted.cores = NULL,
      ksum.cores = NULL, 
+     n.grid = NULL,
      persp = TRUE, 
      phi = NULL, 
-     plot.2D.n.grid = NULL, 
-     plot.2D.y.grid = NULL, 
-     plot.3D.n.grid = NULL, 
-     plot.3D.x.grid = NULL, 
-     plot.3D.y.grid = NULL, 
      plot.behavior = c("plot", "plot-data", "data"), 
      plot.unadjusted = FALSE,
      progress = FALSE, 
@@ -35,6 +31,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
      type = NULL, 
      x.eval = NULL, 
      xlab = NULL, 
+     y.eval = NULL,
      ylab = NULL, 
      ylim = NULL, 
      zlab = NULL, 
@@ -73,26 +70,14 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
   \item{ksum.cores}{
  number of cores to use for kernel sum
 }
+\item{n.grid}{
+ number of grid points
+ }
   \item{persp}{
  logical, whether to plot in 3D using \code{\link{persp}} or 2D using \code{\link{plot}}
 }
   \item{phi}{
  phi angle for 3D plot
-}
-  \item{plot.2D.n.grid}{
- number of grid points for 2D plot (if \code{NULL} then the number of 2D grid points is pulled from the \code{bkcde} object being plotted)
-}
-  \item{plot.2D.y.grid}{
- y grid points for 2D plot
-}
-  \item{plot.3D.n.grid}{
- number of grid points for 3D plot (if \code{NULL} then the number of 3D grid points is pulled from the \code{bkcde} object being plotted)
-}
-  \item{plot.3D.x.grid}{
- x grid points for 3D plot
-}
-  \item{plot.3D.y.grid}{
- y grid points for 3D plot
 }
   \item{plot.behavior}{
  behavior of plot
@@ -119,11 +104,14 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
   (character) type of plot
 }
   \item{x.eval}{
- x value to evaluate at
+ x value(s) to evaluate at
 }
   \item{xlab}{
  x label
 }
+\item{y.eval}{
+ y value(s) to evaluate at
+ }
   \item{ylab}{
  y label
 }

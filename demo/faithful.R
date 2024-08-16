@@ -15,7 +15,7 @@ f.yx <- bkcde(x=x,y=y)
 par(mfrow=c(2,2),cex=.6)
 
 plot(y,x,ylab="waiting",xlab="eruptions",col = ifelse(y < 3,'black','red'))
-plot(f.yx,plot.3D.n.grid=50,theta=30,phi=55,xlab="waiting",ylab="eruptions",expand=.75)
+plot(f.yx,n.grid=50,theta=30,phi=55,xlab="waiting",ylab="eruptions",expand=.75)
 
 ## Plot two 2D slices for different values of x (waiting = 50 and 85, the
 ## approximate centers of each mode)
