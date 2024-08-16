@@ -795,6 +795,16 @@ plot.bkcde <- function(x,
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(!is.null(plot.2D.n.grid) && plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
   if(!is.null(plot.3D.n.grid) && plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
+  
+  # if(persp & !is.null(x.grid) & !is.null(y.grid) & length(x.grid) != length(y.grid)) stop("length of x.grid must be equal to length of y.grid in plot.bkcde()")
+  # if(!is.null(n.grid) && n.grid < 2) stop("n.grid must be at least 2 in plot.bkcde()")
+  # if(persp & is.null(n.grid)) {
+  #   n.grid <- x$n.grid
+  # } else {
+  #   ## Default for 2D grid is x$n.grid^10 (100) corresponding to default for 3D
+  #   ## which is 10x10 grid
+  #   n.grid <- x$n.grid*10
+  # }
   if(is.null(plot.3D.n.grid)) plot.3D.n.grid <- x$n.grid
   ## Default for 2D grid is x$n.grid^10 (100) corresponding to default for 3D
   ## which is 10x10 grid
