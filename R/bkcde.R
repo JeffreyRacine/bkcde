@@ -745,10 +745,10 @@ plot.bkcde <- function(x,
                        ci.preplot = TRUE,
                        fitted.cores = NULL,
                        ksum.cores = NULL,
+                       persp = TRUE,
                        phi = NULL,
                        plot.2D.n.grid = NULL,
                        plot.2D.y.grid = NULL,
-                       plot.3D = TRUE,
                        plot.3D.n.grid = NULL,
                        plot.3D.x.grid = NULL,
                        plot.3D.y.grid = NULL,
@@ -791,14 +791,14 @@ plot.bkcde <- function(x,
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
-  if(plot.3D & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when plot.3D = TRUE",immediate. = TRUE)
+  if(persp & !is.null(x.eval)) warning("x.eval passed but ignored in plot.bkcde() when persp = TRUE",immediate. = TRUE)
   if(!is.null(plot.3D.x.grid) & !is.null(plot.3D.y.grid) & length(plot.3D.x.grid) != length(plot.3D.y.grid)) stop("length of plot.3D.x.grid must be equal to length of plot.3D.y.grid in plot.bkcde()")
   if(!is.null(plot.2D.n.grid) && plot.2D.n.grid < 2) stop("plot.2D.n.grid must be at least 2 in plot.bkcde()")
   if(!is.null(plot.3D.n.grid) && plot.3D.n.grid < 2) stop("plot.3D.n.grid must be at least 2 in plot.bkcde()")
   if(is.null(plot.3D.n.grid)) plot.3D.n.grid <- x$n.grid
-  ## Default for 2D grid is x$n.grid^2 (100) corresponding to default for 3D
+  ## Default for 2D grid is x$n.grid^10 (100) corresponding to default for 3D
   ## which is 10x10 grid
-  if(is.null(plot.2D.n.grid)) plot.2D.n.grid <- x$n.grid^2
+  if(is.null(plot.2D.n.grid)) plot.2D.n.grid <- x$n.grid*10
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
   if(is.null(proper)) {
     plot.proper <- NULL
@@ -807,7 +807,7 @@ plot.bkcde <- function(x,
     plot.proper <- proper
   }
   if(!proper & plot.unadjusted) stop("plot.unadjusted=TRUE requires proper=TRUE in bkcde() or in plot.bkcde() (i.e., plot())")
-  if(!plot.3D & is.null(x.eval)) x.eval <- median(x$x.eval)
+  if(!persp & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
   ## proper.cores and fitted.cores are used in the predict() function and only
   ## in the bootstrap if ci=TRUE and ci.cores>1
@@ -816,7 +816,7 @@ plot.bkcde <- function(x,
   secs.start <- Sys.time()
   ## For the user, whether ci=TRUE or not get the estimate plotted asap
   ## otherwise they are faced with a blank screen
-  if(plot.3D) {
+  if(persp) {
     ## Plot 3D
     if(is.null(plot.3D.x.grid)) {
       x.grid <- seq(min(x$x.eval),max(x$x.eval),length=plot.3D.n.grid)
@@ -826,7 +826,7 @@ plot.bkcde <- function(x,
       y.grid <- plot.3D.y.grid
       plot.3D.n.grid <- length(x.grid)
     }
-    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot call persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR call plot() with plot.3D=FALSE OR call plot() and provide plot.3D.x.grid?)")
+    if(length(unique(x.grid))==1) stop("only one unique x.eval value, cannot call persp() in plot.bkcde() (perhaps call bkcde() with non-unique x.eval OR call plot() with persp=FALSE OR call plot() and provide plot.3D.x.grid?)")
     if(length(unique(y.grid))==1) stop("only one unique y.eval value, cannot call persp() in plot.bkcde() (perhaps call bkcde() with non-unique y.eval OR call plot() and provide plot.3D.y.grid?)")
     data.grid <- expand.grid(x.grid,y.grid)
     x.plot.eval <- data.grid$Var1
@@ -872,7 +872,7 @@ plot.bkcde <- function(x,
         legend("topleft",legend=c("Adjusted","Unadjusted"),lty=c(1,2),col=c(1,2),lwd=c(1,2),bty="n")
       }
     }
-  } else if(!plot.3D) {
+  } else if(!persp) {
     ## Plot 2D
     predict.mat <- NULL
     if(is.null(plot.2D.y.grid)) {
@@ -974,7 +974,7 @@ plot.bkcde <- function(x,
     if(is.null(ylim)) ylim <- NULL
   }
   if(plot.behavior != "data") {
-    if(plot.3D & ci) {
+    if(persp & ci) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
         if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
@@ -1079,7 +1079,7 @@ plot.bkcde <- function(x,
   } 
   if(plot.behavior != "plot") {
     ## Return in vector form for the user to plot as they wish (if
-    ## plot.3D=TRUE convert to matrix using x.grid & y.grid)
+    ## persp=TRUE convert to matrix using x.grid & y.grid)
     return(list(bias.vec=bias.vec,
                 ci.bf.lb=ci.bf.lb,
                 ci.bf.ub=ci.bf.ub,
