@@ -168,7 +168,7 @@ For 2D objects (not the default), the same rules apply provided that the values 
   f.yx <- bkcde(h=c(.5,.5), degree=1, x=x, y=y, 
                 x.eval=x.eval, y.eval=y.eval, 
                 n.grid = length(x.eval))
-  plot(f.yx,plot.3D=FALSE)
+  plot(f.yx,persp=FALSE)
 }
   
 Otherwise, \code{plot.bkcde} will need to recompute the estimates on the fly which can be time consuming (see the option \code{progress} in such cases if you wish to be informed of which stage computation is at - this is particularly helpful when \code{ci=TRUE} which invokes bootstrapping that can be computationally costly, particularly for larger sample sizes). 
@@ -229,7 +229,7 @@ x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
-plot(f.yx,ci=TRUE,plot.3D=TRUE,proper=FALSE,ci.method="Simultaneous")
+plot(f.yx,ci=TRUE,persp=TRUE,proper=FALSE,ci.method="Simultaneous")
 \dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000

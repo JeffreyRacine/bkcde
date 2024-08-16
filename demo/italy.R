@@ -15,7 +15,7 @@ f.yx <- bkcde(x=x,y=y)
 ## years.
 
 par(mfrow=c(1,2))
-plot(f.yx,plot.3D=FALSE,x.eval=1974,plot.2D.n.grid=500)
-plot(f.yx,plot.3D=TRUE,plot.3D.n.grid=50)
+plot(f.yx,persp=FALSE,x.eval=1974,plot.2D.n.grid=500)
+plot(f.yx,persp=TRUE,plot.3D.n.grid=50)
 
 summary(f.yx)

@@ -273,8 +273,8 @@ x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 par(mfrow=c(2,2),cex=.75)
-plot(f.yx,plot.3D=FALSE,ci=TRUE,ci.preplot=TRUE)
-plot(f.yx,plot.3D=TRUE,ci=TRUE,ci.preplot=TRUE,expand=1.75)
+plot(f.yx,persp=FALSE,ci=TRUE,ci.preplot=TRUE)
+plot(f.yx,persp=TRUE,ci=TRUE,ci.preplot=TRUE,expand=1.75)
 summary(f.yx)
 \dontrun{
 ## Example 2 - A nonlinear Gaussian conditional relationship with

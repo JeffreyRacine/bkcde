@@ -37,5 +37,5 @@ s2 <- 1.25
 y <- rbeta(n,s1+x,s2+x)
 f.yx <- bkcde(x=x, y=y, proper=FALSE)
 summary(f.yx)
-plot(f.yx,plot.3D=TRUE,ci=TRUE,proper=FALSE,ci.method="Bonferroni")
+plot(f.yx,persp=TRUE,ci=TRUE,proper=FALSE,ci.method="Bonferroni")
 }
