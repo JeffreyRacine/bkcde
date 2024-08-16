@@ -422,9 +422,9 @@ bkcde.default <- function(h=NULL,
       if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
       ## Create a sequence of values along an appropriate grid to compute the integral.
       if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-      if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=10)[2],length=n.integrate)
-      if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],y.ub,length=n.integrate)
-      if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=10)[1],extendrange(y,f=10)[2],length=n.integrate)
+      if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+      if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+      if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
       ## Note that we have a conditional density f(y|x) with potentially repeated
       ## x values, so for each unique x in x.eval we ensure f(y|x) is proper
       ## (avoid unnecessary computation, particularly when x.eval contains a

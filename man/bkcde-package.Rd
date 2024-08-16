@@ -35,7 +35,7 @@ x <- runif(n,-.25,.25)
 s1 <- 1
 s2 <- 1.25
 y <- rbeta(n,s1+x,s2+x)
-f.yx <- bkcde(x=x, y=y, proper=FALSE)
+f.yx <- bkcde(x=x, y=y)
 summary(f.yx)
 plot(f.yx,persp=TRUE,ci=TRUE,ci.method="Bonferroni")
 }
