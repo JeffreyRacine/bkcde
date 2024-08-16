@@ -472,8 +472,10 @@ bkcde.default <- function(h=NULL,
       if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
                                           degree,
                                           ", j = ",
-                                          length(isTRUE(f.yx < 0)),
-                                          " element(s), h.y = ",
+                                          length(f.yx[f.yx < 0]),
+                                          " element(s), min = ",
+                                          formatC(min(f.yx[f.yx < 0]),format="f",digits=6), 
+                                          ", h.y = ",
                                           round(h[1],5),
                                           ", h.x = ",
                                           round(h[2],5),
@@ -495,16 +497,18 @@ bkcde.default <- function(h=NULL,
       int.f.seq <- NA
       int.f.seq.post <- NA
       E.yx <- NA
-      warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
-              degree,
-              ", ", 
-              length(isTRUE(f.yx < 0)),
-              " element(s), h.y = ",
-              round(h[1],5),
-              ", h.x = ",
-              round(h[2],5),
-              "]",
-              immediate. = TRUE)
+      if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+                                degree,
+                                ", ", 
+                                length(f.yx[f.yx < 0]),
+                                " element(s), min = ",
+                                formatC(min(f.yx),format="f",digits=6), 
+                                ", h.y = ",
+                                round(h[1],5),
+                                ", h.x = ",
+                                round(h[2],5),
+                                "]",
+                                immediate. = TRUE)
     }
   } else {
     f.yx <- NA
