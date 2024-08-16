@@ -20,9 +20,9 @@ plot(f.yx,plot.3D.n.grid=50,theta=30,phi=55,xlab="waiting",ylab="eruptions",expa
 ## Plot two 2D slices for different values of x (waiting = 50 and 85, the
 ## approximate centers of each mode)
 
-plot(f.yx,plot.3D=FALSE,x.eval=50,xlab="eruptions",plot.2D.n.grid=100)
+plot(f.yx,plot.3D=FALSE,x.eval=50,xlab="eruptions")
 par(new=TRUE)
-plot(f.yx,plot.3D=FALSE,x.eval=85,lty=2,col=2,sub="",xlab="",,plot.2D.n.grid=100,axes=FALSE)
+plot(f.yx,plot.3D=FALSE,x.eval=85,lty=2,col=2,sub="",xlab="",axes=FALSE)
 legend("topright",legend=c("f(y|x=50)","f(y|x=85)"),lty=c(1,2),col=c(1,2),bty="n")
 
 summary(f.yx)
