@@ -81,6 +81,9 @@ bkcde(...)
   \item{cv}{
   the type of cross-validation to use. The default is "auto". The options are "full" (full sample cross-validation), "sub" (sub-sampled cross-validation), and "auto" (automatic selection of "full" or "sub" based on the sample size). When cv="auto" and the sample size is less than cv.auto.threshold, "full" cross-validation is used, otherwise "sub" cross-validation is used
   }
+  \item{cv.auto.threshold}{
+  the threshold sample size used to determine whether to use "full" or "sub" cross-validation when cv="auto". The default is 5000
+  }
   \item{cv.only}{
   a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE
   }
