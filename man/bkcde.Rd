@@ -265,7 +265,7 @@ Those in need of confidence intervals should use the \code{\link{plot.bkcde}} fu
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{sub.cv}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
+\code{\link{sub.cv}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}, \code{\link[np:npcdens]{npcdens}}, \code{\link[lpcde:lpcde]{lpcde}}
 }
 \examples{
 library(bkcde)
