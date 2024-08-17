@@ -28,7 +28,7 @@ bkcde(...)
       degree.max = 3, 
       degree.min = 0, 
       degree = NULL, 
-      fitted.cores = 12,
+      fitted.cores = detectCores(),
       ksum.cores = 1, 
       n.grid = 25,
       n.integrate = 1000, 
@@ -40,7 +40,7 @@ bkcde(...)
       penalty.method = c("smooth", "constant", "trim"), 
       poly.raw = FALSE, 
       progress = FALSE,
-      proper.cores = 12, 
+      proper.cores = detectCores(),
       proper = FALSE, 
       resamples = 10,
       verbose = FALSE, 
@@ -94,7 +94,7 @@ bkcde(...)
   the degree of the polynomial if specified manually. The default is NULL
 }
   \item{fitted.cores}{
-  the number of cores to use for the fitted values. The default is 12
+  the number of cores to use for the fitted values. The default is \code{detectCores()}
 }
   \item{ksum.cores}{
   the number of cores to use for the kernel sum. The default is 1
@@ -112,10 +112,10 @@ bkcde(...)
   the number of multi-starts to use for optimization. The default is 3
 }
   \item{optim.degree.cores}{
-  the number of cores to use for the optimization of the degree. The default is degree.max - degree.min + 1
+  manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
 }
   \item{optim.nmulti.cores}{
-  the number of cores to use for the optimization of the multi-starts. The default is nmulti
+  manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
 }
   \item{penalty.cutoff}{
   the cutoff value for the penalty used in the log likelihood function for negative density values. 
@@ -130,7 +130,7 @@ bkcde(...)
   a logical value indicating whether to print progress. The default is FALSE
 }
   \item{proper.cores}{
-  the number of cores to use for the proper normalization. The default is 12
+  the number of cores to use for the proper normalization. The default is \code{detectCores()}
 }
   \item{proper}{
   a logical value indicating whether to use proper normalization. The default is FALSE and a warning is issued if any negative values are detected in the estimate
