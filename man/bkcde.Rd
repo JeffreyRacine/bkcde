@@ -22,7 +22,8 @@ bkcde(...)
       x.ub = NULL, 
       y.ub = NULL, 
       bwscaling = FALSE,
-      cv = c("full","sub"),
+      cv = c("full","sub","auto"),
+      cv.auto.threshold = 5000,
       cv.only = FALSE,
       degree.max = 3, 
       degree.min = 0, 
@@ -78,7 +79,7 @@ bkcde(...)
   a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} 
 }
   \item{cv}{
-  the type of cross-validation to use. The default is "full"
+  the type of cross-validation to use. The default is "full". The options are "full" (full sample cross-validation), "sub" (sub-sampled cross-validation), and "auto" (automatic selection of "full" or "sub" based on the sample size). If cv="auto" and the sample size is less than cv.auto.threshold, "full" cross-validation is used, otherwise "sub" cross-validation is used
   }
   \item{cv.only}{
   a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE

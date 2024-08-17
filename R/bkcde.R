@@ -230,7 +230,8 @@ bkcde.default <- function(h=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
                           bwscaling = FALSE,
-                          cv=c("full","sub"),
+                          cv=c("full","sub","auto"),
+                          cv.auto.threshold=5000,
                           cv.only=FALSE,
                           degree.max=3,
                           degree.min=0,
@@ -301,10 +302,21 @@ bkcde.default <- function(h=NULL,
   if(fitted.cores < 1) stop("fitted.cores must be at least 1 in bkcde()")
   if(!is.null(optim.degree.cores) && optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
   if(!is.null(optim.nmulti.cores) && optim.nmulti.cores < 1) stop("optim.nmulti.cores must be at least 1 in bkcde()")
-  if(is.null(optim.degree.cores)) optim.degree.cores <- degree.max-degree.min+1
-  if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- nmulti
+  ## This chunk of code is to determine the number of cores to use for the
+  ## optimization based on the number of models and the number of multistarts and
+  ## the number of cores available via detectCores() in the parallel package. If
+  ## neither optim.degree.cores nor optim.nmulti.cores is set, this tries to
+  ## balance the load between the two, attempting to make full use of the
+  ## available cores.
+  nmodels <- degree.max-degree.min+1
+  combn.out <- combn(max(nmodels,nmulti),2)
+  combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores())]
+  combn.out <- combn.out[,ncol(combn.out)]
+  if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
+  if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   penalty.method <- match.arg(penalty.method)
   cv <- match.arg(cv)
+  if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
   if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
@@ -539,11 +551,13 @@ bkcde.default <- function(h=NULL,
                       h.sf=h/(EssDee(cbind(y,x))*length(y)^(-1/6)),
                       ksum.cores=ksum.cores,
                       n.grid=n.grid,
+                      n.sub=n.sub,
                       optim.degree.cores=optim.degree.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optimize=optimize,
                       proper.cores=proper.cores,
                       proper=proper,
+                      resamples=resamples,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=ifelse(cv.only,NA,as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))),
                       secs.optim.mat=secs.optim.mat,
@@ -1151,6 +1165,10 @@ summary.bkcde <- function(object, ...) {
   if(!is.na(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
   if(object$optimize) {
     cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
+    if(object$cv=="sub") {
+      cat("Number of sub-cv resamples: ",object$resamples,"\n",sep="")
+      cat("Sample size of sub-cv resamples: ",object$n.sub,"\n",sep="")
+    }
     cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
     cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
     cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")

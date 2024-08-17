@@ -173,7 +173,7 @@ For those interested in alternative plotting frameworks, you might consider usin
   z <- matrix(f.yx$f,50,50)
   open3d()
   par3d(windowRect=c(900,100,900+640,100+640))
-  view3d(theta = 0, phi = -70, fov = 80)
+  view3d(theta = 120, phi = 45, fov = 80)
   persp3d(x=sort(unique(f.yx$x.eval)),
           y=sort(unique(f.yx$y.eval)),
           z=z,
