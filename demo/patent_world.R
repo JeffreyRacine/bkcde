@@ -45,6 +45,6 @@ plot(f.yx,persp=FALSE,x.eval=1987,y.eval=seq(min(y),100,length=100),xlim=c(0,100
 
 plot(f.yx,persp=FALSE,x.eval=1987,y.eval=seq(min(y),100,length=100),xlim=c(0,100),ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
 
-plot(f.yx,persp=TRUE,x.eval=seq(min(x),max(x),length=25),y.eval=seq(min(y),100,length=25),proper=FALSE,ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
+plot(f.yx,x.eval=seq(min(x),max(x),length=25),y.eval=seq(min(y),100,length=25),proper=FALSE,ci=TRUE,ci.method="Simultaneous",ci.preplot=FALSE,B=1000)
 
 summary(f.yx)

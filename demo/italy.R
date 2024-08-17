@@ -16,6 +16,6 @@ f.yx <- bkcde(x=x,y=y)
 
 par(mfrow=c(1,2))
 plot(f.yx,persp=FALSE,x.eval=1974,n.grid=500)
-plot(f.yx,persp=TRUE,n.grid=50)
+plot(f.yx,n.grid=50)
 
 summary(f.yx)

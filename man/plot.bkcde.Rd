@@ -74,7 +74,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
  number of grid points
  }
   \item{persp}{
- logical, whether to plot in 3D using \code{\link{persp}} or 2D using \code{\link{plot}}
+ logical, whether to plot in 3D using \code{\link{persp}} (default) or 2D using \code{\link{plot}}
 }
   \item{phi}{
  phi angle for 3D plot
@@ -217,7 +217,7 @@ x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y)
 foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
-plot(f.yx,ci=TRUE,persp=TRUE,proper=FALSE,ci.method="Simultaneous")
+plot(f.yx,ci=TRUE,proper=FALSE,ci.method="Simultaneous")
 \dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000
