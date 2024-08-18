@@ -110,7 +110,6 @@ plot(f.yx,
      n.grid=n.grid,
      theta=120,
      phi=45,
-     shade=0.5,
      expand=1.25,
      main=paste("Estimate (n = ",n,")",sep=""))
 x.seq <- sort(unique(f.yx$x.eval))
@@ -123,7 +122,7 @@ persp(x.seq,y.seq,
       xlab="x",
       ylab="y",
       zlab="f(y|x)",
-      shade=0.5,
+      shade=0.25,
       expand=1.25,
       main=paste("True Density (n = ",n,")",sep=""))
 ## summary() for the bkcde() results

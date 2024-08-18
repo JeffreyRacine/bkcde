@@ -79,7 +79,7 @@ bkcde(...)
   a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} 
 }
   \item{cv}{
-  the type of cross-validation to use. The default is "auto". The options are "full" (full sample cross-validation), "sub" (sub-sampled cross-validation), and "auto" (automatic selection of "full" or "sub" based on the sample size). When cv="auto" and the sample size is less than cv.auto.threshold, "full" cross-validation is used, otherwise "sub" cross-validation is used
+  the type of cross-validation to use. The default is "auto". The options are "full" (full sample cross-validation), "sub" (sub-sampled cross-validation via \code{\link{sub.cv}}), and "auto" (automatic selection of "full" or "sub" based on the sample size). When cv="auto" and the sample size is less than cv.auto.threshold, "full" cross-validation is used, otherwise "sub" cross-validation is used
   }
   \item{cv.auto.threshold}{
   the threshold sample size used to determine whether to use "full" or "sub" cross-validation when cv="auto". The default is 5000
