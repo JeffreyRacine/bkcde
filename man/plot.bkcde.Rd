@@ -17,7 +17,6 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
      ci.method = c("Pointwise", "Bonferroni", "Simultaneous", "all"), 
      ci.preplot = TRUE,
      fitted.cores = NULL,
-     ksum.cores = NULL, 
      n.grid = NULL,
      persp = TRUE, 
      phi = NULL, 
@@ -67,9 +66,6 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
 \item{fitted.cores}{
  number of cores to use for fitted values
  }
-  \item{ksum.cores}{
- number of cores to use for kernel sum
-}
 \item{n.grid}{
  number of grid points
  }

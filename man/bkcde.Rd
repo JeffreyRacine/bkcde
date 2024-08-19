@@ -29,12 +29,12 @@ bkcde(...)
       degree.min = 0, 
       degree = NULL, 
       fitted.cores = detectCores(),
-      ksum.cores = 1, 
       n.grid = 25,
       n.integrate = 1000, 
       n.sub = 300,
       nmulti = 3, 
       optim.degree.cores = NULL, 
+      optim.ksum.cores = 1, 
       optim.nmulti.cores = NULL, 
       penalty.cutoff = .Machine$double.xmin, 
       penalty.method = c("smooth", "constant", "trim"), 
@@ -99,9 +99,6 @@ bkcde(...)
   \item{fitted.cores}{
   the number of cores to use for the fitted values. The default is \code{detectCores()}
 }
-  \item{ksum.cores}{
-  the number of cores to use for the kernel sum. The default is 1
-}
   \item{n.grid}{
   the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
   }
@@ -116,6 +113,9 @@ bkcde(...)
 }
   \item{optim.degree.cores}{
   manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
+}
+  \item{optim.ksum.cores}{
+  the number of cores to use for the kernel sum when conducting optimization. The default is 1
 }
   \item{optim.nmulti.cores}{
   manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
@@ -198,7 +198,7 @@ a matrix of bandwidths for each multi-start
 \item{h}{
 a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable
 }
-\item{ksum.cores}{
+\item{optim.ksum.cores}{
 the number of cores to use for the kernel sum
 }
 \item{optim.degree.cores}{

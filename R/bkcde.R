@@ -6,7 +6,7 @@
 
 ## mclapply() and mcmapply() from the parallel package are used throughout
 ## instead of lapply() and mapply() to allow for multi-core computing, and when
-## ksum.cores, optim.degree.cores, or optim.nmulti.cores are set to a value greater than 1,
+## optim.ksum.cores, optim.degree.cores, or optim.nmulti.cores are set to a value greater than 1,
 ## the number of cores used in the parallel processing is set to the value of
 ## the respective argument.  But when these are set to 1, the number of cores
 ## used in the parallel processing is set to 1, i.e., serial processing occurs
@@ -170,7 +170,7 @@ bkcde.loo <- function(h=NULL,
                       x.ub=NULL,
                       poly.raw=FALSE,
                       degree=NULL,
-                      ksum.cores=1,
+                      optim.ksum.cores=1,
                       penalty.method=NULL,
                       penalty.cutoff=NULL,
                       verbose=FALSE) {
@@ -181,16 +181,16 @@ bkcde.loo <- function(h=NULL,
   if(is.null(y)) stop("must provide y in bkcde.loo()")
   if(is.null(degree)) stop("must provide degree in bkcde.loo()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
-  if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde.loo()")
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.loo()")
   if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.loo()")
   if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.loo()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
   if(degree==0) {
-    f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=ksum.cores))
+    f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
   } else {
     X.poly <- poly(x,raw=poly.raw,degree=degree)
     X <- cbind(1,X.poly)
-    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=ksum.cores))
+    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
   }
   return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
 }
@@ -212,7 +212,7 @@ bkcde.loo <- function(h=NULL,
 ## function returns a list of class "bkcde" with the following components:
 ## convergence.mat, convergence.vec, convergence, cv, degree.mat, degree.max,
 ## degree.min, degree, fitted.cores, f.yx.integral.post, f.yx.integral.pre.neg,
-## f.yx.integral, f, h.mat, h, ksum.cores, optim.degree.cores,
+## f.yx.integral, f, h.mat, h, optim.ksum.cores, optim.degree.cores,
 ## optim.nmulti.cores, optimize, proper.cores, proper, secs.elapsed,
 ## secs.estimate, secs.optim.mat, value.mat, value.vec, value, x.eval, x.lb,
 ## x.ub, x, y.eval, y.lb, y.ub, y. S3 methods for the class "bkcde" include
@@ -237,12 +237,12 @@ bkcde.default <- function(h=NULL,
                           degree.min=0,
                           degree=NULL,
                           fitted.cores=detectCores(),
-                          ksum.cores=1,
                           n.grid=25,
                           n.integrate=1000,
                           n.sub=300,
                           nmulti=3,
                           optim.degree.cores=NULL,
+                          optim.ksum.cores=1,
                           optim.nmulti.cores=NULL,
                           penalty.cutoff=.Machine$double.xmin,
                           penalty.method=c("smooth","constant","trim"),
@@ -297,7 +297,7 @@ bkcde.default <- function(h=NULL,
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
-  if(ksum.cores < 1) stop("ksum.cores must be at least 1 in bkcde()")
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde()")
   if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
   if(fitted.cores < 1) stop("fitted.cores must be at least 1 in bkcde()")
   if(!is.null(optim.degree.cores) && optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
@@ -322,7 +322,7 @@ bkcde.default <- function(h=NULL,
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then likelihood cross-validation is used to
-  ## obtain the bandwidths and polynomial order (use ksum.cores,
+  ## obtain the bandwidths and polynomial order (use optim.ksum.cores,
   ## optim.degree.cores, optim.nmulti.cores)
   if(is.null(h) & cv == "full") {
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
@@ -334,9 +334,9 @@ bkcde.default <- function(h=NULL,
                              x.ub=x.ub,
                              degree.max=degree.max,
                              degree.min=degree.min,
-                             ksum.cores=ksum.cores,
                              nmulti=nmulti,
                              optim.degree.cores=optim.degree.cores,
+                             optim.ksum.cores=optim.ksum.cores,
                              optim.nmulti.cores=optim.nmulti.cores,
                              penalty.cutoff=penalty.cutoff,
                              penalty.method=penalty.method,
@@ -370,8 +370,8 @@ bkcde.default <- function(h=NULL,
                       y.ub=y.ub,
                       degree.max=degree.max,
                       degree.min=degree.min,
-                      ksum.cores=ksum.cores,
                       optim.degree.cores=optim.degree.cores,
+                      optim.ksum.cores=optim.ksum.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
                       penalty.cutoff=penalty.cutoff,
                       penalty.method=penalty.method,
@@ -549,10 +549,10 @@ bkcde.default <- function(h=NULL,
                       h.x.init.mat=h.x.init.mat,
                       h.y.init.mat=h.y.init.mat,
                       h.sf=h/(EssDee(cbind(y,x))*length(y)^(-1/6)),
-                      ksum.cores=ksum.cores,
                       n.grid=n.grid,
                       n.sub=n.sub,
                       optim.degree.cores=optim.degree.cores,
+                      optim.ksum.cores=optim.ksum.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optimize=optimize,
                       proper.cores=proper.cores,
@@ -605,9 +605,9 @@ bkcde.optim <- function(x=x,
                         x.ub=x.ub,
                         degree.max=degree.max,
                         degree.min=degree.min,
-                        ksum.cores=ksum.cores,
                         nmulti=nmulti,
                         optim.degree.cores=optim.degree.cores,
+                        optim.ksum.cores=optim.ksum.cores,
                         optim.nmulti.cores=optim.nmulti.cores,
                         penalty.cutoff=penalty.cutoff,
                         penalty.method=penalty.method,
@@ -661,7 +661,7 @@ bkcde.optim <- function(x=x,
                                               x.ub=x.ub,
                                               poly.raw=poly.raw,
                                               degree=p,
-                                              ksum.cores=ksum.cores,
+                                              optim.ksum.cores=optim.ksum.cores,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
@@ -762,7 +762,6 @@ plot.bkcde <- function(x,
                        ci.method = c("Pointwise","Bonferroni","Simultaneous","all"),
                        ci.preplot = TRUE,
                        fitted.cores = NULL,
-                       ksum.cores = NULL,
                        n.grid = NULL,
                        persp = TRUE,
                        phi = NULL,
@@ -825,7 +824,6 @@ plot.bkcde <- function(x,
   if(!proper & plot.unadjusted) stop("plot.unadjusted=TRUE requires proper=TRUE in bkcde() or in plot.bkcde() (i.e., plot())")
   if(!persp & is.null(x.eval)) x.eval <- median(x$x.eval)
   if(!persp & !is.null(x.eval) & length(x.eval) >1) stop("x.eval must be a scalar in plot.bkcde() when persp=FALSE")
-  if(is.null(ksum.cores)) ksum.cores <- x$ksum.cores
   ## proper.cores and fitted.cores are used in the predict() function and only
   ## in the bootstrap if ci=TRUE and ci.cores>1
   if(is.null(proper.cores)) proper.cores <- detectCores()
@@ -860,7 +858,6 @@ plot.bkcde <- function(x,
                          x.ub=x$x.ub,
                          proper=proper,
                          degree=x$degree,
-                         ksum.cores=ksum.cores,
                          fitted.cores=fitted.cores,
                          proper.cores=proper.cores,
                          progress=progress,
@@ -911,7 +908,6 @@ plot.bkcde <- function(x,
                          x.ub=x$x.ub,
                          proper=proper,
                          degree=x$degree,
-                         ksum.cores=ksum.cores,
                          fitted.cores=fitted.cores,
                          proper.cores=proper.cores,
                          progress=progress,
@@ -971,7 +967,6 @@ plot.bkcde <- function(x,
             fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
             proper=proper,
             proper.cores=ifelse(ci.cores>1,1,proper.cores),
-            ksum.cores=ksum.cores,
             degree=x$degree)$f
     },1:B,mc.cores=ci.cores,progress=progress))
     if(ci.bias.correct) {
@@ -1171,24 +1166,24 @@ summary.bkcde <- function(object, ...) {
     }
     cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
     cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
-    cat("Total number of cores used for optimization in parallel processing: ",object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
+    cat("Total number of cores used for optimization in parallel processing: ",object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
   }
   if(!object$cv.only) {
     if(object$proper) cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
-    cat("Number of cores used in parallel processing for kernel sum: ",object$ksum.cores,"\n",sep="")
+    cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
   }
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   if(object$optimize & !object$cv.only & object$cv != "sub") {
     cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
+    cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
     cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
-        " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+        " (allow for overhead and blocking, ideal = ",formatC(1/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
   } else if(object$optimize & object$cv.only & object$cv != "sub") {
     cat("Optimization time: ",formatC(sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization time per core: ",formatC((sum(object$secs.optim.mat))/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
+    cat("Optimization time per core: ",formatC((sum(object$secs.optim.mat))/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
     cat("Parallel efficiency: ",formatC(object$secs.elapsed/sum(object$secs.optim.mat),format="f",digits=2),
-        " (allow for overhead and blocking, ideal = ",formatC(1/(object$ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+        " (allow for overhead and blocking, ideal = ",formatC(1/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
   }
   cat("\n")
   invisible()
