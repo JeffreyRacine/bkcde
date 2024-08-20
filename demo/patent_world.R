@@ -18,7 +18,7 @@ attach(PatentsRD)
 x <- as.integer(as.character(year))
 y <- patent
 
-f.yx <- bkcde(x=x,y=y)
+f.yx <- bkcde(x=x,y=y,proper=TRUE)
 
 ## Estimator of Hall, Racine & Li (polynomial order 0 conditional density estimate)
 ## with bandwidth selection via likelihood cross-validation

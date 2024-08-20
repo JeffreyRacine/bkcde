@@ -8,7 +8,7 @@ library(bkcde)
 x <- as.integer(as.character(Italy$year))
 y <- Italy$gdp
 
-f.yx <- bkcde(x=x,y=y)
+f.yx <- bkcde(x=x,y=y,proper=TRUE)
 
 ## Create a 2D plot of the estimated conditional density for the year 1974,
 ## f(y|x=1974), and a 3D plot of the estimated conditional density for all

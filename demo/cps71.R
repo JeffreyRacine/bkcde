@@ -18,7 +18,7 @@ summary(np.out)
 ## bkcde() in the bkcde package selects the degree of the polynomial and
 ## bandwidths via likelihood cross-validation
 
-f.yx <- bkcde(x=x,y=y,degree.max=4,nmulti=5)
+f.yx <- bkcde(x=x,y=y,degree.max=4,nmulti=5,proper=TRUE)
 
 ## Create a 2x2 plot of the npcdens() and bkcde() figures
 

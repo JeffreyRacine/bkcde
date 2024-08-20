@@ -8,7 +8,7 @@ library(bkcde)
 
 x <- faithful$waiting
 y <- faithful$eruptions
-f.yx <- bkcde(x=x,y=y)
+f.yx <- bkcde(x=x,y=y,proper=TRUE)
 
 ## Create a 2x2 plot of the npcdens() and bkcde() figures
 
