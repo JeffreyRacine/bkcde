@@ -1171,7 +1171,7 @@ summary.bkcde <- function(object, ...) {
   if(!object$cv.only) {
     if(object$proper) cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
-    cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
+    if(object$optim.ksum.cores>1) cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
   }
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   if(object$optimize & !object$cv.only & object$cv != "sub") {
