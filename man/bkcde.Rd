@@ -7,7 +7,7 @@
 Boundary Corrected Polynomial Adaptive Conditional Kernel Density Estimation
 }
 \description{
-bkcde() is a function that estimates the conditional density of a response variable given a predictor variable using a boundary corrected polynomial adaptive kernel density estimator. The function is designed to be fast and memory efficient by using parallel processing and vectorized operations. Key parameter choices such as the order of the polynomial and bandwidths tuned to the data being analyzed are obtained by a data-driven method (likelihood cross-validation). The function is also designed to be flexible by allowing the user to specify the degree of the polynomial and the bandwidths of the kernel functions manually, if so desired. The function is \dQuote{overloaded} with arguments that allow the user to control the number of cores used for parallel processing, the number of grid points used for evaluation, the number of points used for numerical integration, the number of multi-starts used for optimization, the number of resamples used for sub-sampled cross-validation, the method used to penalize negative density values, and whether to use raw or orthogonal polynomials. The function returns an object of class \code{bkcde} that can be used to plot the conditional density, predict the conditional density at new values, and summarize the conditional density.
+\code{\link{bkcde}} is a function that estimates the conditional density of a response variable given a predictor variable using a boundary corrected polynomial adaptive kernel density estimator. The function is designed to be fast and memory efficient by using parallel processing and vectorized operations. Key parameter choices such as the order of the polynomial and bandwidths tuned to the data being analyzed are obtained by a data-driven method (likelihood cross-validation). The function is also designed to be flexible by allowing the user to specify the degree of the polynomial and the bandwidths of the kernel functions manually, if so desired. The function is \dQuote{overloaded} with arguments that allow the user to control the number of cores used for parallel processing, the number of grid points used for evaluation, the number of points used for numerical integration, the number of multi-starts used for optimization, the number of resamples used for sub-sampled cross-validation, the method used to penalize negative density values, and whether to use raw or orthogonal polynomials. The function returns an object of class \code{bkcde} that can be used to plot the conditional density, predict the conditional density at new values, and summarize the conditional density.
 }
 \usage{
 bkcde(...)
@@ -49,7 +49,7 @@ bkcde(...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{h}{
-  a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the bkcde.optim() function.
+  a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the \code{bkcde.optim} function.
 }
   \item{x}{
   a numeric vector of the predictor variable.
@@ -97,7 +97,7 @@ bkcde(...)
   the degree of the polynomial if specified manually. The default is NULL
 }
   \item{fitted.cores}{
-  the number of cores to use for the fitted values. The default is \code{detectCores()}
+  the number of cores to use for the fitted values. The default is \code{\link[parallel]{detectCores}}
 }
   \item{n.grid}{
   the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
@@ -112,13 +112,13 @@ bkcde(...)
   the number of multi-starts to use for optimization. The default is 3
 }
   \item{optim.degree.cores}{
-  manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
+  manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{\link[parallel]{detectCores}}, otherwise set to balance the load across the cores. The default is NULL
 }
   \item{optim.ksum.cores}{
   the number of cores to use for the kernel sum when conducting optimization. The default is 1
 }
   \item{optim.nmulti.cores}{
-  manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{detectCores()}, otherwise set to balance the load across the cores. The default is NULL
+  manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{\link[parallel]{detectCores}},  otherwise set to balance the load across the cores. The default is NULL
 }
   \item{penalty.cutoff}{
   the cutoff value for the penalty used in the log likelihood function for negative density values. 
@@ -133,7 +133,7 @@ bkcde(...)
   a logical value indicating whether to print progress. The default is FALSE
 }
   \item{proper.cores}{
-  the number of cores to use for the proper normalization. The default is \code{detectCores()}
+  the number of cores to use for the proper normalization. The default is \code{\link[parallel]{detectCores}}
 }
   \item{proper}{
   a logical value indicating whether to use proper normalization. The default is FALSE and a warning is issued if any negative values are detected in the estimate
@@ -145,15 +145,21 @@ bkcde(...)
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
 }
   \item{\dots}{
-  additional arguments to be passed to the bkcde.optim() function
+  additional arguments to be passed to the \code{bkcde.optim} function
 }
 }
 \details{
-A few words on computational cost and rendering the resultant estimate proper are in order.
+A few words on computational cost may be in order. This function is designed to be fast and memory efficient by using parallel processing and vectorized operations. This function is also intended to be sufficiently flexible to allow the user to do essentially anything they want, but constructed to protect the user from unnecessary computation. 
 
-When \code{proper=TRUE}, for each unique value of \code{x} in \code{x.eval} the conditional density is normalized so that a) the integral of the conditional density returned is equal to 1 and b) the conditional density returned is non-negative (it may be so regardless of whether \code{proper=TRUE} or \code{proper=FALSE}, and if polynomial \code{degree=0} the estimate is guaranteed to be non-negative, while if \code{y.lb=-Inf} and \code{y.ub=Inf} the estimate is guaranteed to integrate to 1 over its support regardless of the polynomial degree). 
+Data-driven bandwidth selection is achieved through numerical optimization of a delete-one likelihood function (cross-validation). By construction, this involves computational order \eqn{O(n^2)} calculations (\eqn{n} denotes the sample size) for each function evaluation (i.e., each \eqn{(h_y,h_x)} pair). Sub-sampling (Racine (1993)) can be invoked to reduce the computational overhead (see \code{\link{sub.cv}} and the option \code{cv="sub"}) allowing the user to conduct data-driven bandwidth selection for very large samples (say \code{1e+06} or higher). 
 
-To render an estimate proper, numerical integration is necessary hence a sequence of uniformly spaced points for \code{y} of length \code{n.integrate=1000} is created (the integral is computed over this sequence, and the length of this sequence can be changed by the user - its range is discussed shortly). When finite bounds \eqn{[a,b]} for \code{y}  exist  the sequence extends across this range (i.e., \code{seq(a,b,length=1000)}). Otherwise, the function \code{\link{extendrange}} is invoked with argument \code{f=2} to generate the sequence and \code{ceiling(n.integrate/(2*f+1))} evaluation points (200 by default) will lie inside the sample range, the remaining (800 by default) lying outside of this range (\code{f} denotes the fraction by which the range is extended; see \code{\link{extendrange}} for further details). For each unique value of \code{x} in \code{x.eval} the conditional density is estimated on the uniform grid, negative values set to zero, and the integral of the conditional density is re-computed and used to normalize the density returned ensuring it is non-negative with total probability one. Summaries of the integrals prior to and after normalization are returned in the output object and can be accessed using the \code{summary} function. Note that when a large number of unique values of \code{x} are used for \code{x.eval} (e.g., all sample realizations in a large sample) this procedure can involve significant compute overhead. The setting for \code{proper} can be toggled on or off at any time, and when constructing confidence intervals the user can choose to use the raw estimate or the proper estimate (which may be indistinguishable). The \code{proper} argument is set to \code{FALSE} by default, though a warning is issued should any negative density values be produced (though integration to one is of course not guaranteed and the user ought to confirm that results with and without \code{proper=FALSE} are comparable). The argument \code{progress} can be set to obtain more granular details of progress (set to \code{TRUE} to print progress). The argument \code{verbose} can additionally be set to obtain even more granular details (set to \code{TRUE} to print warnings and other low-level messages). 
+Then there is the question of the default function evaluation points \code{x.eval} and \code{y.eval}. One might be tempted to use all sample realizations (which you can by calling \code{bkcde(x=x,y=y,x.eval=x,y.eval=y)} but if the user simply wishes to plot the density, this can result in substantial wasted computation. Furthermore (more details below), if the option \code{proper=TRUE} is invoked this can lead to substantial wasted computational overhead when evaluating the estimated density on all sample realizations. The default is set to evaluate the density on a uniform grid of \code{n.grid=25} points for \code{x.eval} and \code{y.eval} that span the range of the sample realizations resulting in an evaluation grid of \eqn{25\times 25=625} points by default, which can be modified by the user. The goal of avoiding wasted computation is also why the default is to use  sub-sampled cross-validation when the sample size exceeds \code{cv.auto.threshold=5000} (the user can of course override this default).
+
+Next, a few words on computational cost when rendering the resultant estimate proper may be in order (the default is \code{proper=FALSE}). When \code{proper=TRUE}, for each unique value of \code{x} in \code{x.eval} the conditional density is normalized so that a) the integral of the conditional density returned is equal to 1 and b) the conditional density returned is non-negative (it may be so regardless of whether \code{proper=TRUE} or \code{proper=FALSE}, and if polynomial \code{degree=0} the estimate is guaranteed to be non-negative, while if \code{y.lb=-Inf} and \code{y.ub=Inf} the estimate is guaranteed to integrate to 1 over its support regardless of the polynomial degree). 
+
+To render an estimate proper, numerical integration becomes necessary hence a sequence of uniformly spaced points for \code{y} of length \code{n.integrate=1000} is automatically generated (the integral is computed over this sequence, and the length of this sequence can be changed by the user - its range is discussed shortly). When finite bounds \eqn{[a,b]} for \code{y}  exist  the sequence extends across this range (i.e., \code{seq(a,b,length=1000)}). Otherwise, the function \code{\link{extendrange}} is invoked with argument \code{f=2} to generate the sequence and \code{ceiling(n.integrate/(2*f+1))} evaluation points (200 by default) will lie inside the sample range, the remaining (800 by default) lying outside of this range (\code{f} denotes the fraction by which the range is extended; see \code{\link{extendrange}} for further details). For each unique value of \code{x} in \code{x.eval} the conditional density is estimated on the uniform grid, negative values set to zero, and the integral of the conditional density is re-computed and used to normalize the density returned ensuring it is non-negative possessing total probability one. Summaries of the integrals prior to and after normalization are returned in the output object and can be accessed using the \code{\link{summary}} function. Note that when a large number of unique values of \code{x} are used for \code{x.eval} (e.g., all sample realizations in a large sample) this procedure can involve significant computational overhead. The setting for \code{proper} can be toggled on or off at any time, and when constructing confidence intervals the user can choose to use the raw estimate or the proper estimate (which may be indistinguishable). The \code{proper} argument is set to \code{FALSE} by default, though a warning is always issued should any negative density values be produced (though integration to one is of course not guaranteed and the user ought to confirm that results with and without \code{proper=FALSE} are comparable if choosing the latter). The argument \code{progress=TRUE} can be set to obtain more granular details of progress. The argument \code{verbose=TRUE} can additionally be set to obtain even more granular details. 
+
+In addition to computing the conditional density, when \code{proper=TRUE} the conditional mean and cumulative distribution function are also computed. This involves no additional computational cost since they are constructed from the same set of numerical integrals required to render the conditional density proper. The estimated conditional density is denoted by \eqn{\hat f(y|x)}, the conditional mean is computed as \eqn{\hat E[Y|X=x] = \int y \hat f(y|x) dy} and the cumulative distribution function is computed as \eqn{\hat F[Y=y|X=x] = \int_{-\infty}^y \hat f(t|x) dt} for all \eqn{x} in \code{x.eval} (so if \code{x.eval} and \code{y.eval} are set to the sample realizations \code{x} these objects can be computed for each sample realization \eqn{(x_i,y_i),i=1,\dots,n}). The conditional mean and cumulative distribution function are returned in the output object \code{foo} and can be accessed as \code{foo$E.yx} and \code{foo$F}, respectively. Note that both the conditional mean and distribution use the same smoothing parameters as for the conditional density, which may not be optimal in the square error sense. The conditional mean and cumulative distribution function are not computed when \code{proper=FALSE}. See the demos \code{\link{demo(beta)}} and \code{\link{demo(normal)}} for some illustrations involving nonlinear DGPs and large sample sizes.
 }
 \value{
 \item{convergence.mat}{
@@ -163,7 +169,7 @@ a matrix of convergence values for each multi-start and degree
 a vector of convergence values for each multi-start
 }
 \item{convergence}{
-a scalar convergence values reported by optim()
+a scalar convergence values reported by \code{\link{optim}}
 }
 \item{degree.mat}{
 a matrix of degrees for each multi-start
@@ -177,6 +183,12 @@ the minimum degree of the polynomial searched
 \item{degree}{
 the degree of the polynomial if specified manually
 }
+\item{E.yx}{
+the conditional expectation of the response variable given the predictor variable, \eqn{E[Y|X=x]} (only computed if \code{proper=TRUE})
+}
+\item{F}{
+the cumulative distribution function of the conditional density \eqn{F[Y=y|X=x]} (only computed if \code{proper=TRUE})
+}
 \item{f.yx.integral.post}{
 the integral of the conditional density after proper normalization
 }
@@ -187,7 +199,7 @@ the integral of the conditional density before proper normalization
 the integral of the conditional density
 }
 \item{f}{
-the conditional density (properly normalized if \code{proper=TRUE} or raw if \code{proper=FALSE})
+the conditional density  \eqn{f[Y=y|X=x]} (properly normalized if \code{proper=TRUE} or raw if \code{proper=FALSE})
 }
 \item{f.unadjusted}{ 
 the raw conditional density or \code{NA} if \code{proper=FALSE}
@@ -229,7 +241,7 @@ a matrix of values for each multi-start
 a vector of values for each multi-start
 }
 \item{value}{
-a scalar value reported by optim()
+a scalar value reported by \code{\link{optim}}
 }
 \item{x.eval}{
 a numeric vector of the predictor variable at which to evaluate the conditional density
@@ -257,7 +269,7 @@ a numeric vector of the response variable
 }
 }
 \references{
-...
+Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window Width Selection for Nonparametric Kernel Regression,} Communications in Statistics, October, Volume 22, Issue 4, pages 1107-1114.
 }
 \author{
 Jeffrey S. Racine <racinej@mcmaster.ca>
