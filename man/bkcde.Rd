@@ -163,13 +163,13 @@ In addition to computing the conditional density, when \code{proper=TRUE} the co
 }
 \value{
 \item{convergence.mat}{
-a matrix of convergence values for each multi-start and degree
+a matrix of convergence values for each multi-start and degree reported by \code{\link{optim}}
 }
 \item{convergence.vec}{
-a vector of convergence values for each multi-start
+a vector of convergence values for each multi-start reported by \code{\link{optim}}
 }
 \item{convergence}{
-a scalar convergence values reported by \code{\link{optim}}
+a scalar convergence value reported by \code{\link{optim}}
 }
 \item{degree.mat}{
 a matrix of degrees for each multi-start
