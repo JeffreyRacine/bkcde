@@ -407,8 +407,8 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  f.yx.unadjusted <- NA
-  E.yx <- NA
+  # f.yx.unadjusted <- NA
+  # E.yx <- NA
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
@@ -449,6 +449,7 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- numeric()
       int.f.seq <- numeric()
       int.f.seq.post <- numeric()
+      int.f.seq.post.mat <- matrix(NA,nrow=length(x.eval.unique),ncol=n.integrate)
       E.yx <- numeric()
       ## We test for only 1 unique value of x.eval to avoid parallel processing in
       ## the outer mcmapply call and invoke fitting the mcmapply sequence of
@@ -464,18 +465,20 @@ bkcde.default <- function(h=NULL,
           f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
         }
         ## Compute integral of f.seq including any possible negative values
-        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
         ## Set any possible negative f.seq values to 0
         f.seq[f.seq < 0] <- 0
         ## Compute integral of f.seq after setting any possible negative values to 0
-        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[length(y.seq)]
+        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
         ## Compute integral of f.seq after setting any possible negative values to 0
         ## and correcting to ensure final estimate integrates to 1
-        int.f.seq.post[j] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[length(y.seq)]
-        E.yx[j] <- integrate.trapezoidal(y.seq,y.seq*f.seq/int.f.seq[j])[length(y.seq)]
+        int.f.seq.post.mat[j,] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])
+        int.f.seq.post[j] <- int.f.seq.post.mat[j,n.integrate] ## integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[n.integrate]
+        E.yx[j] <- integrate.trapezoidal(y.seq,y.seq*f.seq/int.f.seq[j])[n.integrate]
         return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                     int.f.seq=int.f.seq[j],
                     int.f.seq.post=int.f.seq.post[j],
+                    int.f.seq.post.mat=int.f.seq.post.mat[j,],
                     E.yx=E.yx[j]))
       },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
       ## Now gather the results, correct for negative entries then divide elements
@@ -497,6 +500,10 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- sapply(proper.out, function(x) x$int.f.seq.pre.neg)
       int.f.seq <- sapply(proper.out, function(x) x$int.f.seq)
       int.f.seq.post <- sapply(proper.out, function(x) x$int.f.seq.post)
+      int.f.seq.post.mat <- t(sapply(proper.out, function(x) x$int.f.seq.post.mat))
+      int.f.seq.post.mat <- int.f.seq.post.mat[match(x.eval, x.eval.unique),]
+      F.yx <- sapply(1:length(x.eval), function(j) {max(int.f.seq.post.mat[j, y.seq <= y.eval[j]])})
+      F.yx <- (F.yx-min(F.yx))/(max(F.yx)-min(F.yx))
       E.yx <- sapply(proper.out, function(x) x$E.yx)
       f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
       ## As a summary measure report the mean of the integrals
@@ -508,7 +515,9 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- NA
       int.f.seq <- NA
       int.f.seq.post <- NA
+      f.yx.unadjusted <- NA
       E.yx <- NA
+      F.yx <- NA
       if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
                                 ", ", 
@@ -524,6 +533,9 @@ bkcde.default <- function(h=NULL,
     }
   } else {
     f.yx <- NA
+    f.yx.unadjusted <- NA
+    F.yx <- NA
+    E.yx <- NA
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
@@ -538,6 +550,7 @@ bkcde.default <- function(h=NULL,
                       degree.min=degree.min,
                       degree=degree,
                       E.yx=E.yx,
+                      F=F.yx,
                       fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
