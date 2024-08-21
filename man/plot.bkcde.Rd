@@ -197,6 +197,16 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 Note that the default number of bootstrap replications, grid size, and level of confidence are set to ensure a sufficient number of replications for the Bonferroni confidence intervals. Of course, fewer can be used if desired, particularly if only pointwise intervals are needed.
+
+Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and CDF you can use the following code (the conditional PDF, and conditional mean, are only computed when proper=TRUE):
+
+\preformatted{
+  f.yx <- bkcde(x=x,y=y,proper=TRUE)
+  par(mfrow=c(1,2))
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),theta=120,phi=45,axes=FALSE)
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),theta=120,phi=45,axes=FALSE)
+}
+
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
