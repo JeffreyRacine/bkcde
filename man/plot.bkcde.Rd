@@ -129,7 +129,7 @@ When an object created by a call to \code{bkcde} is to be plotted, it was create
 
 If \code{proper=TRUE} is specified in the call to \code{plot.bkcde} (or the call to \code{bkcde} and is not overwritten in the call to \code{plot.bkcde}) and \code{ci=FALSE} is specified in the call to \code{plot.bkcde}, then the option \code{plot.unadjusted=TRUE} can be used to plot the unadjusted density estimate along with the adjusted one. This is useful for comparing the two. However, if the option \code{ci=TRUE} is specified then the two density estimates are not plotted as the confidence intervals are based on the object corresponding to the value of \code{proper} used in the call to \code{bkcde} (or \code{plot.bkcde} if specified). The exception is when the option \code{ci=TRUE} is specified and \code{ci.preplot=TRUE} is used (default) along with \code{proper=TRUE}. In this case, the two density estimates are plotted first while the bootstrap confidence intervals are being constructed, however the subsequent plot containing the confidence intervals will only contain the density estimate corresponding to the value of \code{proper}.
 
-\code{plot.bkcde} tries to avoid recomputing unnecessary objects by assessing what is being plotted and what is already available in the \code{bkcde} object. For example, if the user is plotting a 3D plot (default) and does not change options manually in the plot call (e.g., \code{n.grid}, \code{proper}, etc.) then the values used in the call to \code{bkcde} will be used directly. However, if the user changes the number of grid points for the 3D plot, then the estimate will be recomputed using the new grid points. Similarly, if the user changes the value of \code{proper} in the call to \code{plot.bkcde} then the estimate be recomputed using the new value of \code{proper}. This is done to avoid unnecessary recomputation and to speed up the plotting process, as the following example illustrates:
+\code{plot.bkcde} tries to avoid recomputing unnecessary objects by assessing what is being plotted and what is already available in the \code{bkcde} object. For example, if the user is plotting a 3D plot (default) and does not change options manually in the plot call (e.g., \code{n.grid}, \code{proper}, etc.) then the values used in the call to \code{bkcde} will be used directly. However, if the user changes the number of grid points for the 3D plot, then the estimate will be recomputed using the new grid points. Similarly, if the user changes the value of \code{proper} in the call to \code{plot.bkcde} then the estimate be recomputed using the new value of \code{proper}. This is done to avoid unnecessary re-computation and to speed up the plotting process, as the following example illustrates:
 
 \preformatted{
   set.seed(42)
@@ -169,9 +169,9 @@ For those interested in alternative plotting frameworks, you might consider usin
   z <- matrix(f.yx$f,50,50)
   open3d()
   par3d(windowRect=c(900,100,900+640,100+640))
-  view3d(theta = 120, phi = 45, fov = 80)
-  persp3d(x=sort(unique(f.yx$x.eval)),
-          y=sort(unique(f.yx$y.eval)),
+  view3d(theta = 120, phi = 45, fov = 60)
+  persp3d(x=unique(f.yx$x.eval),
+          y=unique(f.yx$y.eval),
           z=z,
           xlab="x",
           ylab="y",
@@ -184,6 +184,21 @@ For those interested in alternative plotting frameworks, you might consider usin
   grid3d(c("x", "y+", "z"))
 }
 
+Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and associated conditional CDF and conditional mean, you might modify the following code to suit your needs (note that the conditional CDF and conditional mean are only computed when \code{proper=TRUE} is used):
+
+\preformatted{
+  set.seed(42)
+  n <- 100
+  x <- runif(n,-.25,.25)
+  y <- rbeta(n,1+x,1.5+x)
+  f.yx <- bkcde(x=x,y=y,proper=TRUE)
+  par(mfrow=c(1,3))
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),
+        theta=120,phi=45,xlab="x",ylab="y",zlab="f(y|x)",main="Conditional PDF")
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),
+        theta=120,phi=45,xlab="x",ylab="y",zlab="F(y|x)",main="Conditional CDF")
+  plot(unique(f.yx$x.eval),f.yx$E.yx,type="l",xlab="x",ylab="E(y|x)",main="Conditional Mean")
+}
 
 }
 \value{
@@ -197,22 +212,6 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 Note that the default number of bootstrap replications, grid size, and level of confidence are set to ensure a sufficient number of replications for the Bonferroni confidence intervals. Of course, fewer can be used if desired, particularly if only pointwise intervals are needed.
-
-Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and CDF you can use the following code (the conditional PDF, and conditional mean, are only computed when proper=TRUE):
-
-\preformatted{
-  set.seed(42)
-  n <- 100
-  x <- runif(n,-.25,.25)
-  y <- rbeta(n,1+x,1.5+x)
-  f.yx <- bkcde(x=x,y=y,proper=TRUE)
-  par(mfrow=c(1,2))
-  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),
-        theta=120,phi=45,xlab="x",ylab="y",zlab="f(y|x)",main="Conditional PDF")
-  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),
-        theta=120,phi=45,xlab="x",ylab="y",zlab="F(y|x)",main="Conditional CDF")
-}
-
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
