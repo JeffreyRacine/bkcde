@@ -201,6 +201,10 @@ Note that the default number of bootstrap replications, grid size, and level of 
 Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and CDF you can use the following code (the conditional PDF, and conditional mean, are only computed when proper=TRUE):
 
 \preformatted{
+  set.seed(42)
+  n <- 100
+  x <- runif(n,-.25,.25)
+  y <- rbeta(n,1+x,1.5+x)
   f.yx <- bkcde(x=x,y=y,proper=TRUE)
   par(mfrow=c(1,2))
   persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),
