@@ -203,8 +203,10 @@ Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and 
 \preformatted{
   f.yx <- bkcde(x=x,y=y,proper=TRUE)
   par(mfrow=c(1,2))
-  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),theta=120,phi=45,axes=FALSE)
-  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),theta=120,phi=45,axes=FALSE)
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),
+        theta=120,phi=45,xlab="x",ylab="y",zlab="f(y|x)",main="Conditional PDF")
+  persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),
+        theta=120,phi=45,xlab="x",ylab="y",zlab="F(y|x)",main="Conditional CDF")
 }
 
 }
