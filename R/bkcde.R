@@ -77,6 +77,12 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## ifelse(X < a | X > b, 0, dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h))))
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
 }
+cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
+  ## Checking for bounds involves a bit of overhead (20%), so here we presume a
+  ## check is performed outside of this function - make sure this is the case!
+  ## ifelse(X < a | X > b, 0, dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h))))
+  pnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
+}
 
 ## log.likelihood() returns a likelihood function that supports constant,
 ## smooth, and trim approaches for dealing with density estimates (delete-one)
@@ -417,7 +423,10 @@ bkcde.default <- function(h=NULL,
       ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
       ## compute the estimate \hat f(y|x) as efficiently as possible
       # f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
-      foo <- t(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+      foo <- t(mcmapply(function(i){
+        kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
+        colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+      },1:length(y.eval),mc.cores=fitted.cores))
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       print(cbind(f.yx,foo[,1],foo[,2]))
