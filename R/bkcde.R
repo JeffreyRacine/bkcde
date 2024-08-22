@@ -77,11 +77,12 @@ kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## ifelse(X < a | X > b, 0, dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h))))
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
 }
+
 cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## Checking for bounds involves a bit of overhead (20%), so here we presume a
   ## check is performed outside of this function - make sure this is the case!
-  ## ifelse(X < a | X > b, 0, dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h))))
-  pnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
+  ## ifelse(X < a | X > b, 0, ...)
+  (pnorm((x-X)/h)-pnorm((a-x)/h))/(pnorm((b-x)/h)-pnorm((a-x)/h))
 }
 
 ## log.likelihood() returns a likelihood function that supports constant,
@@ -425,11 +426,11 @@ bkcde.default <- function(h=NULL,
       # f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
       foo <- t(mcmapply(function(i){
         kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
-        colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+        colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
       },1:length(y.eval),mc.cores=fitted.cores))
       f.yx <- foo[,1]
       E.yx <- foo[,2]
-      print(cbind(f.yx,foo[,1],foo[,2]))
+      F.yx <- foo[,3]
     } else {
       ## Choice of raw or orthogonal polynomials
       X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -439,12 +440,14 @@ bkcde.default <- function(h=NULL,
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
       # f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
       foo <- t(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
         c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
-          beta.hat[!is.na(beta.hat[,1]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]))
+          beta.hat[!is.na(beta.hat[,2]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]),
+          beta.hat[!is.na(beta.hat[,3]),3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,3]),drop = FALSE]))
       },1:length(y.eval),mc.cores=fitted.cores))
       f.yx <- foo[,1]
       E.yx <- foo[,2]
+      F.yx <- foo[,3]
     }
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
@@ -452,6 +455,7 @@ bkcde.default <- function(h=NULL,
     if(proper) {
       f.yx.unadjusted <- f.yx
       E.yx.unadjusted <- E.yx
+      F.yx.unadjusted <- F.yx
       if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
       ## Create a sequence of values along an appropriate grid to compute the integral.
       if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
@@ -538,8 +542,9 @@ bkcde.default <- function(h=NULL,
       int.f.seq.post <- NA
       f.yx.unadjusted <- NA
       E.yx.unadjusted <- NA
+      F.yx.unadjusted <- NA
       # E.yx <- NA
-      F.yx <- NA
+      #F.yx <- NA
       if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
                                 ", ", 
@@ -557,6 +562,7 @@ bkcde.default <- function(h=NULL,
     f.yx <- NA
     f.yx.unadjusted <- NA
     F.yx <- NA
+    F.yx.unadjusted <- NA
     E.yx <- NA
     E.yx.unadjusted <- NA
     int.f.seq.pre.neg <- NA
