@@ -549,7 +549,6 @@ bkcde.default <- function(h=NULL,
                       degree.max=degree.max,
                       degree.min=degree.min,
                       degree=degree,
-                      E.yx=E.yx,
                       F=F.yx,
                       fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
@@ -557,6 +556,7 @@ bkcde.default <- function(h=NULL,
                       f.yx.integral=int.f.seq,
                       f=f.yx,
                       f.unadjusted=f.yx.unadjusted,
+                      g=E.yx,
                       h.mat=h.mat,
                       h=h,
                       h.x.init.mat=h.x.init.mat,
@@ -875,14 +875,18 @@ plot.bkcde <- function(x,
                          proper.cores=proper.cores,
                          progress=progress,
                          ...)
-      x.fitted <- f.yx.plot$f
-      x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+      f.fitted <- f.yx.plot$f
+      f.fitted.unadjusted <- f.yx.plot$f.unadjusted
+      E.yx.fitted <- f.yx.plot$g
+      F.yx.fitted <- f.yx.plot$F
     } else {
-      x.fitted <- x$f
-      x.fitted.unadjusted <- x$f.unadjusted
+      f.fitted <- x$f
+      f.fitted.unadjusted <- x$f.unadjusted
+      E.yx.fitted <- x$g
+      F.yx.fitted <- x$F
     }
-    predict.mat <- matrix(x.fitted,n.grid,n.grid)
-    if(plot.unadjusted) predict.mat.unadjusted <- matrix(x.fitted.unadjusted,n.grid,n.grid)
+    predict.mat <- matrix(f.fitted,n.grid,n.grid)
+    if(plot.unadjusted) predict.mat.unadjusted <- matrix(f.fitted.unadjusted,n.grid,n.grid)
     if(is.null(theta)) theta <- 120
     if(is.null(phi)) phi <- 45
     if(is.null(xlab)) xlab <- "x"
@@ -925,11 +929,15 @@ plot.bkcde <- function(x,
                          proper.cores=proper.cores,
                          progress=progress,
                          ...)
-      x.fitted <- f.yx.plot$f
-      x.fitted.unadjusted <- f.yx.plot$f.unadjusted
+      f.fitted <- f.yx.plot$f
+      f.fitted.unadjusted <- f.yx.plot$f.unadjusted
+      E.yx.fitted <- f.yx.plot$g
+      F.yx.fitted <- f.yx.plot$F
     } else {
-      x.fitted <- x$f
-      x.fitted.unadjusted <- x$f.unadjusted
+      f.fitted <- x$f
+      f.fitted.unadjusted <- x$f.unadjusted
+      E.yx.fitted <- x$g
+      F.yx.fitted <- x$F
     }
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
@@ -937,7 +945,7 @@ plot.bkcde <- function(x,
     if(is.null(type)) type <- "l"
     if(ci.preplot & plot.behavior != "data") {
       if(!plot.unadjusted) {
-        plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
+        plot(y.plot.eval[order(y.plot.eval)],f.fitted[order(y.plot.eval)],
              sub=sub,
              ylim=ylim,
              ylab=ylab,
@@ -946,8 +954,8 @@ plot.bkcde <- function(x,
              panel.first=grid(lty=1),
              ...)
       } else {
-        if(is.null(ylim)) ylim <- range(x.fitted,x.fitted.unadjusted)
-        plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
+        if(is.null(ylim)) ylim <- range(f.fitted,f.fitted.unadjusted)
+        plot(y.plot.eval[order(y.plot.eval)],f.fitted[order(y.plot.eval)],
              sub=sub,
              ylim=ylim,
              ylab=ylab,
@@ -955,7 +963,7 @@ plot.bkcde <- function(x,
              type=type,
              panel.first=grid(lty=1),
              ...)        
-        lines(y.plot.eval[order(y.plot.eval)],x.fitted.unadjusted[order(y.plot.eval)],lty=2,col=2,lwd=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.fitted.unadjusted[order(y.plot.eval)],lty=2,col=2,lwd=2)
         legend("topleft",legend=c("Adjusted","Unadjusted"),lty=c(1,2),col=c(1,2),lwd=c(1,2),bty="n")
       }
     }
@@ -983,7 +991,7 @@ plot.bkcde <- function(x,
             degree=x$degree)$f
     },1:B,mc.cores=ci.cores,progress=progress))
     if(ci.bias.correct) {
-      bias.vec <- colMeans(boot.mat) - x.fitted
+      bias.vec <- colMeans(boot.mat) - f.fitted
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
       if(proper) boot.mat <- pmax(boot.mat,0)
     }
@@ -1002,13 +1010,13 @@ plot.bkcde <- function(x,
     if(persp & ci) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
-        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
-        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.bf.lb,ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.sim.lb,ci.sim.ub))
       } else {
-        if(is.null(zlim)) zlim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
       if(ci.method == "Pointwise") {
@@ -1057,16 +1065,16 @@ plot.bkcde <- function(x,
     } else if(ci) {
       ## Plot 2D again with ylim set for the confidence intervals
       if(ci.method == "Pointwise") {
-        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
-        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.bf.lb,ci.bf.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.bf.lb,ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.sim.lb,ci.sim.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.sim.lb,ci.sim.ub))
       } else {
-        if(is.null(ylim)) ylim <-  range(c(x.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
       }
       ## First plot, then lower and upper (lines)
-      plot(y.plot.eval[order(y.plot.eval)],x.fitted[order(y.plot.eval)],
+      plot(y.plot.eval[order(y.plot.eval)],f.fitted[order(y.plot.eval)],
            sub=sub,
            ylim=ylim,
            ylab=ylab,
@@ -1113,7 +1121,9 @@ plot.bkcde <- function(x,
                 ci.pw.ub=ci.pw.ub,
                 ci.sim.lb=ci.sim.lb,
                 ci.sim.ub=ci.sim.ub,
-                f=x.fitted,
+                f=f.fitted,
+                F=F.yx.fitted,
+                g=E.yx.fitted,
                 proper.cores=proper.cores,
                 secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
                 x.eval=x.eval,

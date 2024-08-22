@@ -197,7 +197,7 @@ Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and 
         theta=120,phi=45,xlab="x",ylab="y",zlab="f(y|x)",main="Conditional PDF")
   persp(unique(f.yx$x.eval),unique(f.yx$y.eval),matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),
         theta=120,phi=45,xlab="x",ylab="y",zlab="F(y|x)",main="Conditional CDF")
-  plot(unique(f.yx$x.eval),f.yx$E.yx,type="l",xlab="x",ylab="E(y|x)",main="Conditional Mean")
+  plot(unique(f.yx$x.eval),f.yx$g,type="l",xlab="x",ylab="E(y|x)",main="Conditional Mean")
 }
 
 }
@@ -227,8 +227,8 @@ n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y)
-foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data",proper=FALSE)
-plot(f.yx,ci=TRUE,proper=FALSE,ci.method="Simultaneous")
+foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data")
+plot(f.yx,ci=TRUE,ci.method="Simultaneous")
 \dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000

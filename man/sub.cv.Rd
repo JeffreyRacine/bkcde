@@ -203,7 +203,7 @@ ii <- 1:10000
 plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="True Conditional Mean")
 lines(x.seq,2*sin(4*pi*x.seq))
 plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
-lines(x.seq,f.yx$E.yx)
+lines(x.seq,f.yx$g)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
