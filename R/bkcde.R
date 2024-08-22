@@ -416,7 +416,11 @@ bkcde.default <- function(h=NULL,
     if(degree == 0) {
       ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
       ## compute the estimate \hat f(y|x) as efficiently as possible
-      f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+      # f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+      foo <- t(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
+      f.yx <- foo[,1]
+      E.yx <- foo[,2]
+      print(cbind(f.yx,foo[,1],foo[,2]))
     } else {
       ## Choice of raw or orthogonal polynomials
       X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -424,13 +428,21 @@ bkcde.default <- function(h=NULL,
       ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
       ## regression to estimate \hat f(y|x) rather than the intercept term from
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-      f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
+      # f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
+      foo <- t(mcmapply(function(i){
+        beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+        c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
+          beta.hat[!is.na(beta.hat[,1]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]))
+      },1:length(y.eval),mc.cores=fitted.cores))
+      f.yx <- foo[,1]
+      E.yx <- foo[,2]
     }
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
     ## could be < # proper.cores allocated)
     if(proper) {
       f.yx.unadjusted <- f.yx
+      E.yx.unadjusted <- E.yx
       if(progress) cat("\rComputing integrals to ensure estimate is proper...\n",sep="")
       ## Create a sequence of values along an appropriate grid to compute the integral.
       if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
@@ -516,7 +528,8 @@ bkcde.default <- function(h=NULL,
       int.f.seq <- NA
       int.f.seq.post <- NA
       f.yx.unadjusted <- NA
-      E.yx <- NA
+      E.yx.unadjusted <- NA
+      # E.yx <- NA
       F.yx <- NA
       if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
@@ -536,6 +549,7 @@ bkcde.default <- function(h=NULL,
     f.yx.unadjusted <- NA
     F.yx <- NA
     E.yx <- NA
+    E.yx.unadjusted <- NA
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
@@ -557,6 +571,7 @@ bkcde.default <- function(h=NULL,
                       f=f.yx,
                       f.unadjusted=f.yx.unadjusted,
                       g=E.yx,
+                      g.unadjusted=E.yx.unadjusted,
                       h.mat=h.mat,
                       h=h,
                       h.x.init.mat=h.x.init.mat,
