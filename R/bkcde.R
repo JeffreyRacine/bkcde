@@ -816,7 +816,7 @@ plot.bkcde <- function(x,
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
-  ci.pw.lb <- ci.pw.ub <- ci.bf.lb <- ci.bf.ub <- ci.sim.lb <- ci.sim.ub <- bias.vec <- NULL
+  f.ci.pw.lb <- f.ci.pw.ub <- f.ci.bf.lb <- f.ci.bf.ub <- f.ci.sim.lb <- f.ci.sim.ub <- bias.vec <- NULL
   if(!is.null(proper) & !is.logical(proper)) stop("proper must be logical in plot.bkcde()")
   if(persp & !is.null(x.eval) & !is.null(y.eval) & length(x.eval) != length(y.eval)) stop("length of x.eval must be equal to length of y.eval in plot.bkcde()")
   if(!is.null(n.grid) && n.grid < 2) stop("n.grid must be at least 2 in plot.bkcde()")
@@ -995,13 +995,13 @@ plot.bkcde <- function(x,
       boot.mat <- sweep(boot.mat,2,bias.vec,"-")
       if(proper) boot.mat <- pmax(boot.mat,0)
     }
-    ci.pw.lb <- apply(boot.mat, 2, quantile, probs = alpha / 2)
-    ci.pw.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / 2)
-    ci.bf.lb <- apply(boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
-    ci.bf.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
-    ci.SCS <- SCSrank(boot.mat, conf.level=1-alpha)$conf.int
-    ci.sim.lb <- ci.SCS[,1]
-    ci.sim.ub <- ci.SCS[,2]
+    f.ci.pw.lb <- apply(boot.mat, 2, quantile, probs = alpha / 2)
+    f.ci.pw.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / 2)
+    f.ci.bf.lb <- apply(boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+    f.ci.bf.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+    f.ci.SCS <- SCSrank(boot.mat, conf.level=1-alpha)$conf.int
+    f.ci.sim.lb <- f.ci.SCS[,1]
+    f.ci.sim.ub <- f.ci.SCS[,2]
     if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
   } else {
     if(is.null(ylim)) ylim <- NULL
@@ -1010,51 +1010,51 @@ plot.bkcde <- function(x,
     if(persp & ci) {
       ## Plot 3D again with zlim set for the confidence intervals (not checking for if(is.null(zlim)) yet)
       if(ci.method == "Pointwise") {
-        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,f.ci.pw.lb,f.ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
-        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.bf.lb,ci.bf.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,f.ci.bf.lb,f.ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,f.ci.sim.lb,f.ci.sim.ub))
       } else {
-        if(is.null(zlim)) zlim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+        if(is.null(zlim)) zlim <-  range(c(f.fitted,f.ci.pw.lb,f.ci.pw.ub,f.ci.bf.lb,f.ci.bf.ub,f.ci.sim.lb,f.ci.sim.ub))
       }
       ## Unlike plot() persp() does accept a null ylim argument so we need to check...
       if(ci.method == "Pointwise") {
         ## First lower, then plot, then upper (surfaces)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.pw.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.pw.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.pw.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.pw.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci.method == "Bonferroni") {
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.bf.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.bf.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.bf.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.bf.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci.method == "Simultaneous") {
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.sim.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.sim.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.sim.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.sim.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "all") {
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.pw.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.pw.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.pw.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.pw.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=2,ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.sim.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.sim.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
         persp.lim(x=x.eval,y=y.eval,z=predict.mat,xlab=xlab,ylab=ylab,zlab=zlab,theta=theta,phi=phi,ticktype="detailed",ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.sim.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.sim.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=3,ylim=ylim,zlim=zlim,...)
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.bf.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...) 
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.bf.lb,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...) 
         par(new = TRUE)
-        persp.lim(x=x.eval,y=y.eval,z=matrix(ci.bf.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...)
+        persp.lim(x=x.eval,y=y.eval,z=matrix(f.ci.bf.ub,n.grid,n.grid),xlab="",ylab="",zlab="",theta=theta,phi=phi,ticktype="detailed",border="grey",col=NA,lty=4,ylim=ylim,zlim=zlim,...)
         legend("topright",
                legend=c("Estimated f(y|x)",
                         paste(100*(1-alpha),"% Pointwise CIs",sep=""),
@@ -1065,13 +1065,13 @@ plot.bkcde <- function(x,
     } else if(ci) {
       ## Plot 2D again with ylim set for the confidence intervals
       if(ci.method == "Pointwise") {
-        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,f.ci.pw.lb,f.ci.pw.ub))
       } else if(ci.method == "Bonferroni") {
-        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.bf.lb,ci.bf.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,f.ci.bf.lb,f.ci.bf.ub))
       } else if(ci.method == "Simultaneous") {
-        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.sim.lb,ci.sim.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,f.ci.sim.lb,f.ci.sim.ub))
       } else {
-        if(is.null(ylim)) ylim <-  range(c(f.fitted,ci.pw.lb,ci.pw.ub,ci.bf.lb,ci.bf.ub,ci.sim.lb,ci.sim.ub))
+        if(is.null(ylim)) ylim <-  range(c(f.fitted,f.ci.pw.lb,f.ci.pw.ub,f.ci.bf.lb,f.ci.bf.ub,f.ci.sim.lb,f.ci.sim.ub))
       }
       ## First plot, then lower and upper (lines)
       plot(y.plot.eval[order(y.plot.eval)],f.fitted[order(y.plot.eval)],
@@ -1083,24 +1083,24 @@ plot.bkcde <- function(x,
            panel.first=grid(lty=1),
            ...)
       if(ci.method == "Pointwise") {
-        lines(y.plot.eval[order(y.plot.eval)],ci.pw.lb[order(y.plot.eval)],lty=2)
-        lines(y.plot.eval[order(y.plot.eval)],ci.pw.ub[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.pw.lb[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.pw.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci.method == "Bonferroni") {
-        lines(y.plot.eval[order(y.plot.eval)],ci.bf.lb[order(y.plot.eval)],lty=2)
-        lines(y.plot.eval[order(y.plot.eval)],ci.bf.ub[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.bf.lb[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.bf.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci & ci.method == "Simultaneous") {
-        lines(y.plot.eval[order(y.plot.eval)],ci.sim.lb[order(y.plot.eval)],lty=2)
-        lines(y.plot.eval[order(y.plot.eval)],ci.sim.ub[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.sim.lb[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.sim.ub[order(y.plot.eval)],lty=2)
         legend("topright",legend=c("Estimated f(y|x)",paste(100*(1-alpha),"% ",ci.method, " CIs",sep="")),lty=c(1,2),bty="n")
       } else if(ci.method == "all") {
-        lines(y.plot.eval[order(y.plot.eval)],ci.pw.lb[order(y.plot.eval)],lty=2)
-        lines(y.plot.eval[order(y.plot.eval)],ci.pw.ub[order(y.plot.eval)],lty=2)
-        lines(y.plot.eval[order(y.plot.eval)],ci.sim.lb[order(y.plot.eval)],lty=3)
-        lines(y.plot.eval[order(y.plot.eval)],ci.sim.ub[order(y.plot.eval)],lty=3)
-        lines(y.plot.eval[order(y.plot.eval)],ci.bf.lb[order(y.plot.eval)],lty=4)
-        lines(y.plot.eval[order(y.plot.eval)],ci.bf.ub[order(y.plot.eval)],lty=4)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.pw.lb[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.pw.ub[order(y.plot.eval)],lty=2)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.sim.lb[order(y.plot.eval)],lty=3)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.sim.ub[order(y.plot.eval)],lty=3)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.bf.lb[order(y.plot.eval)],lty=4)
+        lines(y.plot.eval[order(y.plot.eval)],f.ci.bf.ub[order(y.plot.eval)],lty=4)
         legend("topright",
                legend=c("Estimated f(y|x)",
                         paste(100*(1-alpha),"% Pointwise CIs",sep=""),
@@ -1114,13 +1114,13 @@ plot.bkcde <- function(x,
     ## Return in vector form for the user to plot as they wish (if
     ## persp=TRUE convert to matrix using x.eval & y.eval)
     return(list(bias.vec=bias.vec,
-                ci.bf.lb=ci.bf.lb,
-                ci.bf.ub=ci.bf.ub,
-                ci.cores=ci.cores,
-                ci.pw.lb=ci.pw.lb,
-                ci.pw.ub=ci.pw.ub,
-                ci.sim.lb=ci.sim.lb,
-                ci.sim.ub=ci.sim.ub,
+                f.ci.bf.lb=f.ci.bf.lb,
+                f.ci.bf.ub=f.ci.bf.ub,
+                f.ci.cores=f.ci.cores,
+                f.ci.pw.lb=f.ci.pw.lb,
+                f.ci.pw.ub=f.ci.pw.ub,
+                f.ci.sim.lb=f.ci.sim.lb,
+                f.ci.sim.ub=f.ci.sim.ub,
                 f=f.fitted,
                 F=F.yx.fitted,
                 g=E.yx.fitted,
