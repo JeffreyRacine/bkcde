@@ -877,13 +877,13 @@ plot.bkcde <- function(x,
                          ...)
       f.fitted <- f.yx.plot$f
       f.fitted.unadjusted <- f.yx.plot$f.unadjusted
-      E.yx.fitted <- f.yx.plot$g
-      F.yx.fitted <- f.yx.plot$F
+      g.fitted <- f.yx.plot$g
+      F.fitted <- f.yx.plot$F
     } else {
       f.fitted <- x$f
       f.fitted.unadjusted <- x$f.unadjusted
-      E.yx.fitted <- x$g
-      F.yx.fitted <- x$F
+      g.fitted <- x$g
+      F.fitted <- x$F
     }
     predict.mat <- matrix(f.fitted,n.grid,n.grid)
     if(plot.unadjusted) predict.mat.unadjusted <- matrix(f.fitted.unadjusted,n.grid,n.grid)
@@ -931,13 +931,13 @@ plot.bkcde <- function(x,
                          ...)
       f.fitted <- f.yx.plot$f
       f.fitted.unadjusted <- f.yx.plot$f.unadjusted
-      E.yx.fitted <- f.yx.plot$g
-      F.yx.fitted <- f.yx.plot$F
+      g.fitted <- f.yx.plot$g
+      F.fitted <- f.yx.plot$F
     } else {
       f.fitted <- x$f
       f.fitted.unadjusted <- x$f.unadjusted
-      E.yx.fitted <- x$g
-      F.yx.fitted <- x$F
+      g.fitted <- x$g
+      F.fitted <- x$F
     }
     if(is.null(sub)) sub <- paste("(degree = ",x$degree,", h.y = ",round(x$h[1],3), ", h.x = ",round(x$h[2],3),", n = ",length(x$y),")",sep="")
     if(is.null(ylab)) ylab <- "f(y|x)"
@@ -994,10 +994,20 @@ plot.bkcde <- function(x,
                   F=bkcde.out$F))
     },mc.cores=ci.cores,progress=progress)
     f.boot.mat <- t(sapply(boot.return, function(x) x$f))
+    F.boot.mat <- t(sapply(boot.return, function(x) x$F))
+    g.boot.mat <- t(sapply(boot.return, function(x) x$g))
     if(ci.bias.correct) {
       bias.vec <- colMeans(f.boot.mat) - f.fitted
       f.boot.mat <- sweep(f.boot.mat,2,bias.vec,"-")
-      if(proper) f.boot.mat <- pmax(f.boot.mat,0)
+      if(proper) {
+        bias.vec <- colMeans(F.boot.mat) - F.fitted
+        F.boot.mat <- sweep(F.boot.mat,2,bias.vec,"-")
+        bias.vec <- colMeans(g.boot.mat) - g.fitted
+        g.boot.mat <- sweep(g.boot.mat,2,bias.vec,"-")
+        f.boot.mat <- pmax(f.boot.mat,0)
+        F.boot.mat <- pmax(F.boot.mat,0)
+        g.boot.mat <- pmax(g.boot.mat,0)
+      }
     }
     f.ci.pw.lb <- apply(f.boot.mat, 2, quantile, probs = alpha / 2)
     f.ci.pw.ub <- apply(f.boot.mat, 2, quantile, probs = 1 - alpha / 2)
@@ -1006,6 +1016,35 @@ plot.bkcde <- function(x,
     f.ci.SCS <- SCSrank(f.boot.mat, conf.level=1-alpha)$conf.int
     f.ci.sim.lb <- f.ci.SCS[,1]
     f.ci.sim.ub <- f.ci.SCS[,2]
+    if(proper) {
+      F.ci.pw.lb <- apply(F.boot.mat, 2, quantile, probs = alpha / 2)
+      F.ci.pw.ub <- apply(F.boot.mat, 2, quantile, probs = 1 - alpha / 2)
+      F.ci.bf.lb <- apply(F.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+      F.ci.bf.ub <- apply(F.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+      F.ci.SCS <- SCSrank(F.boot.mat, conf.level=1-alpha)$conf.int
+      F.ci.sim.lb <- F.ci.SCS[,1]
+      F.ci.sim.ub <- F.ci.SCS[,2]
+      g.ci.pw.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / 2)
+      g.ci.pw.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / 2)
+      g.ci.bf.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+      g.ci.bf.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+      g.ci.SCS <- SCSrank(g.boot.mat, conf.level=1-alpha)$conf.int
+      g.ci.sim.lb <- g.ci.SCS[,1]
+      g.ci.sim.ub <- g.ci.SCS[,2]
+    } else {
+     F.ci.pw.lb <- NA
+     F.ci.pw.ub <- NA
+     F.ci.bf.lb <- NA
+     F.ci.bf.ub <- NA
+     F.ci.sim.lb <- NA
+     F.ci.sim.ub <- NA
+     g.ci.pw.lb <- NA
+     g.ci.pw.ub <- NA
+     g.ci.bf.lb <- NA
+     g.ci.bf.ub <- NA
+     g.ci.sim.lb <- NA
+     g.ci.sim.ub <- NA
+    }
     if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
   } else {
     if(is.null(ylim)) ylim <- NULL
@@ -1118,16 +1157,28 @@ plot.bkcde <- function(x,
     ## Return in vector form for the user to plot as they wish (if
     ## persp=TRUE convert to matrix using x.eval & y.eval)
     return(list(bias.vec=bias.vec,
+                ci.cores=ci.cores,
                 f.ci.bf.lb=f.ci.bf.lb,
                 f.ci.bf.ub=f.ci.bf.ub,
-                f.ci.cores=f.ci.cores,
                 f.ci.pw.lb=f.ci.pw.lb,
                 f.ci.pw.ub=f.ci.pw.ub,
                 f.ci.sim.lb=f.ci.sim.lb,
                 f.ci.sim.ub=f.ci.sim.ub,
+                F.ci.bf.lb=F.ci.bf.lb,
+                F.ci.bf.ub=F.ci.bf.ub,
+                F.ci.pw.lb=F.ci.pw.lb,
+                F.ci.pw.ub=F.ci.pw.ub,
+                F.ci.sim.lb=F.ci.sim.lb,
+                F.ci.sim.ub=F.ci.sim.ub,
+                g.ci.bf.lb=g.ci.bf.lb,
+                g.ci.bf.ub=g.ci.bf.ub,
+                g.ci.pw.lb=g.ci.pw.lb,
+                g.ci.pw.ub=g.ci.pw.ub,
+                g.ci.sim.lb=g.ci.sim.lb,
+                g.ci.sim.ub=g.ci.sim.ub,
                 f=f.fitted,
-                F=F.yx.fitted,
-                g=E.yx.fitted,
+                F=F.fitted,
+                g=g.fitted,
                 proper.cores=proper.cores,
                 secs.elapsed=as.numeric(difftime(Sys.time(),secs.start,units="secs")),
                 x.eval=x.eval,
