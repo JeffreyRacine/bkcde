@@ -974,32 +974,36 @@ plot.bkcde <- function(x,
     ## once this is done it makes sense to then generate all three types of
     ## confidence intervals
     if(is.null(ci.cores)) ci.cores <- detectCores()
-    boot.mat <- t(mcmapply.progress(function(b){
+    boot.return <- mclapply.progress(1:B,function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
-      bkcde(h=x$h,
-            x=x$x[ii],
-            y=x$y[ii],
-            x.eval=x.plot.eval,
-            y.eval=y.plot.eval,
-            y.lb=x$y.lb,
-            y.ub=x$y.ub,
-            x.lb=x$x.lb,
-            x.ub=x$x.ub,
-            fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
-            proper=proper,
-            proper.cores=ifelse(ci.cores>1,1,proper.cores),
-            degree=x$degree)$f
-    },1:B,mc.cores=ci.cores,progress=progress))
+      bkcde.out <- bkcde(h=x$h,
+                        x=x$x[ii],
+                        y=x$y[ii],
+                        x.eval=x.plot.eval,
+                        y.eval=y.plot.eval,
+                        y.lb=x$y.lb,
+                        y.ub=x$y.ub,
+                        x.lb=x$x.lb,
+                        x.ub=x$x.ub,
+                        fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
+                        proper=proper,
+                        proper.cores=ifelse(ci.cores>1,1,proper.cores),
+                        degree=x$degree)
+      return(list(f=bkcde.out$f,
+                  g=bkcde.out$g,
+                  F=bkcde.out$F))
+    },mc.cores=ci.cores,progress=progress)
+    f.boot.mat <- t(sapply(boot.return, function(x) x$f))
     if(ci.bias.correct) {
-      bias.vec <- colMeans(boot.mat) - f.fitted
-      boot.mat <- sweep(boot.mat,2,bias.vec,"-")
-      if(proper) boot.mat <- pmax(boot.mat,0)
+      bias.vec <- colMeans(f.boot.mat) - f.fitted
+      f.boot.mat <- sweep(f.boot.mat,2,bias.vec,"-")
+      if(proper) f.boot.mat <- pmax(f.boot.mat,0)
     }
-    f.ci.pw.lb <- apply(boot.mat, 2, quantile, probs = alpha / 2)
-    f.ci.pw.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / 2)
-    f.ci.bf.lb <- apply(boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
-    f.ci.bf.ub <- apply(boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
-    f.ci.SCS <- SCSrank(boot.mat, conf.level=1-alpha)$conf.int
+    f.ci.pw.lb <- apply(f.boot.mat, 2, quantile, probs = alpha / 2)
+    f.ci.pw.ub <- apply(f.boot.mat, 2, quantile, probs = 1 - alpha / 2)
+    f.ci.bf.lb <- apply(f.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+    f.ci.bf.ub <- apply(f.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+    f.ci.SCS <- SCSrank(f.boot.mat, conf.level=1-alpha)$conf.int
     f.ci.sim.lb <- f.ci.SCS[,1]
     f.ci.sim.ub <- f.ci.SCS[,2]
     if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
