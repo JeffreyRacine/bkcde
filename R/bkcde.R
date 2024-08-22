@@ -82,7 +82,9 @@ cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## Checking for bounds involves a bit of overhead (20%), so here we presume a
   ## check is performed outside of this function - make sure this is the case!
   ## ifelse(X < a | X > b, 0, ...)
-  pnorm((x-X)/h)
+  ## pnorm((x-X)/h)
+  ## 1-(pnorm((X-x)/h)-pnorm((a-x)/h))/((pnorm((b-x)/h)-pnorm((a-x)/h)))
+  (pnorm((b-x)/h)-pnorm((X-x)/h))/(pnorm((b-x)/h)-pnorm((a-x)/h))
 }
 
 ## log.likelihood() returns a likelihood function that supports constant,
