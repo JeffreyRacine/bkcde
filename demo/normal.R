@@ -74,6 +74,6 @@ persp(y=y.seq,
       shade=.25)
 
 plot(x[ii],y[ii],cex=.1,col="lightgrey",xlab="x",ylab="y",main="Estimated Conditional Mean")
-lines(f.yx$x.eval[order(f.yx$x.eval)],f.yx$g[order(f.yx$x.eval)])
+lines(x.seq,f.yx$g[1:n.grid])
 
 summary(f.yx)
