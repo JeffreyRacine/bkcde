@@ -309,7 +309,7 @@ y <- rnorm(n,mean=x^3,sd=1+abs(x))
 ## The default proper=FALSE is fine given the large sample size as we really only 
 ## need the bandwidths, but we manually set to TRUE for plot()...
 f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
-par(mfrow=c(1,2),cex=.75)
+par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
 dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=f.yx$x.eval^3,sd=1+abs(f.yx$x.eval)/2),n.grid,n.grid)
@@ -322,7 +322,7 @@ persp(y=y.seq,
       zlim=range(dgp.mat,f.yx$f[f.yx$f>0]),
       theta=120,
       phi=45,
-      main="True",
+      main="True PDF",
       ticktype="detailed",
       expand=0.75)
 plot(f.yx,
@@ -330,10 +330,27 @@ plot(f.yx,
      theta=120,
      phi=45,
      n.grid=n.grid,
-     main="Estimate",
+     main="Estimated PDF",
      progress=TRUE,
-     proper=TRUE,
      expand=0.75)
+persp(y=y.seq,
+      x=x.seq,
+      z=matrix(f.yx$F,n.grid,n.grid),
+      xlab="X",
+      ylab="Y",
+      zlab="F(y|x)",
+      theta=120,
+      phi=45,
+      main="Estimated CDF",
+      ticktype="detailed",
+      expand=0.75)  
+plot(x.seq,f.yx$g[1:n.grid],
+     xlab="X",
+     ylab="E[Y|X=x]",
+     main="Mean",
+     type="l")
+lines(x.seq,x.seq^3,col=2,lty=2)
+legend("topleft",legend=c("Estimated","True"),col=1:2,lty=1:2,bty="n")
 summary(f.yx)
 }
 }
