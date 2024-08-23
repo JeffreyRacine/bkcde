@@ -428,6 +428,9 @@ bkcde.default <- function(h=NULL,
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
+      f1.yx <- NULL
+      E1.yx <- NULL
+      F1.yx <- NULL
     } else {
       ## Choice of raw or orthogonal polynomials
       X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -439,11 +442,17 @@ bkcde.default <- function(h=NULL,
         beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
         c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
           beta.hat[!is.na(beta.hat[,2]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]),
-          beta.hat[!is.na(beta.hat[,3]),3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,3]),drop = FALSE]))
+          beta.hat[!is.na(beta.hat[,3]),3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,3]),drop = FALSE]),
+          beta.hat[2,1],
+          beta.hat[2,2],
+          beta.hat[2,3])
       },1:length(y.eval),mc.cores=fitted.cores))
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
+      f1.yx <- foo[,4]
+      E1.yx <- foo[,5]
+      F1.yx <- foo[,6]
     }
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
@@ -559,6 +568,9 @@ bkcde.default <- function(h=NULL,
     F.yx.unadjusted <- NA
     E.yx <- NA
     E.yx.unadjusted <- NA
+    f1.yx <- NA
+    E1.yx <- NA
+    F1.yx <- NA
     int.f.seq.pre.neg <- NA
     int.f.seq <- NA
     int.f.seq.post <- NA
@@ -573,14 +585,17 @@ bkcde.default <- function(h=NULL,
                       degree.min=degree.min,
                       degree=degree,
                       F=F.yx,
+                      F1=F1.yx,
                       F.unadjusted=F.yx.unadjusted,
                       fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
                       f.yx.integral=int.f.seq,
                       f=f.yx,
+                      f1=f1.yx,
                       f.unadjusted=f.yx.unadjusted,
                       g=E.yx,
+                      g1=E1.yx,
                       g.unadjusted=E.yx.unadjusted,
                       h.mat=h.mat,
                       h=h,
