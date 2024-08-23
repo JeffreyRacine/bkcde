@@ -414,8 +414,6 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  # f.yx.unadjusted <- NA
-  # E.yx <- NA
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
@@ -423,7 +421,6 @@ bkcde.default <- function(h=NULL,
     if(degree == 0) {
       ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
       ## compute the estimate \hat f(y|x) as efficiently as possible
-      # f.yx <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);mean(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y.eval),mc.cores=fitted.cores))
       foo <- t(mcmapply(function(i){
         kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
         colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
@@ -438,7 +435,6 @@ bkcde.default <- function(h=NULL,
       ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
       ## regression to estimate \hat f(y|x) rather than the intercept term from
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-      # f.yx <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat),drop = FALSE])},1:length(y.eval),mc.cores=fitted.cores))
       foo <- t(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
         c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
@@ -498,7 +494,7 @@ bkcde.default <- function(h=NULL,
         ## Compute integral of f.seq after setting any possible negative values to 0
         ## and correcting to ensure final estimate integrates to 1
         int.f.seq.post.mat[j,] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])
-        int.f.seq.post[j] <- int.f.seq.post.mat[j,n.integrate] ## integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])[n.integrate]
+        int.f.seq.post[j] <- int.f.seq.post.mat[j,n.integrate]
         E.yx[j] <- integrate.trapezoidal(y.seq,y.seq*f.seq/int.f.seq[j])[n.integrate]
         return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
                     int.f.seq=int.f.seq[j],
@@ -543,8 +539,6 @@ bkcde.default <- function(h=NULL,
       f.yx.unadjusted <- NA
       E.yx.unadjusted <- NA
       F.yx.unadjusted <- NA
-      # E.yx <- NA
-      #F.yx <- NA
       if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
                                 ", ", 
@@ -579,6 +573,7 @@ bkcde.default <- function(h=NULL,
                       degree.min=degree.min,
                       degree=degree,
                       F=F.yx,
+                      F.unadjusted=F.yx.unadjusted,
                       fitted.cores=fitted.cores,
                       f.yx.integral.post=int.f.seq.post,
                       f.yx.integral.pre.neg=int.f.seq.pre.neg,
@@ -853,9 +848,8 @@ plot.bkcde <- function(x,
   if(persp & is.null(n.grid)) {
     n.grid <- x$n.grid
   } else if(is.null(n.grid)) {
-    ## Default for 2D grid is x$n.grid*25 (100) corresponding to default for 3D
-    ## which is 25x25 grid
-    n.grid <- x$n.grid*5
+    ## Default for 2D grid if not specified is x$n.grid*4 (100)
+    n.grid <- x$n.grid*4
   }
   if(ci.preplot==FALSE & ci==FALSE & ci.method != "data") stop("ci.preplot must be TRUE when ci is TRUE and ci.method is not 'data' in plot.bkcde()")
   if(is.null(proper)) {
@@ -1007,18 +1001,18 @@ plot.bkcde <- function(x,
     boot.return <- mclapply.progress(1:B,function(b){
       ii <- sample(1:length(x$y),replace=TRUE)
       bkcde.out <- bkcde(h=x$h,
-                        x=x$x[ii],
-                        y=x$y[ii],
-                        x.eval=x.plot.eval,
-                        y.eval=y.plot.eval,
-                        y.lb=x$y.lb,
-                        y.ub=x$y.ub,
-                        x.lb=x$x.lb,
-                        x.ub=x$x.ub,
-                        fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
-                        proper=proper,
-                        proper.cores=ifelse(ci.cores>1,1,proper.cores),
-                        degree=x$degree)
+                         x=x$x[ii],
+                         y=x$y[ii],
+                         x.eval=x.plot.eval,
+                         y.eval=y.plot.eval,
+                         y.lb=x$y.lb,
+                         y.ub=x$y.ub,
+                         x.lb=x$x.lb,
+                         x.ub=x$x.ub,
+                         fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
+                         proper=proper,
+                         proper.cores=ifelse(ci.cores>1,1,proper.cores),
+                         degree=x$degree)
       return(list(f=bkcde.out$f,
                   g=bkcde.out$g,
                   F=bkcde.out$F))
@@ -1062,18 +1056,18 @@ plot.bkcde <- function(x,
       g.ci.sim.lb <- g.ci.SCS[,1]
       g.ci.sim.ub <- g.ci.SCS[,2]
     } else {
-     F.ci.pw.lb <- NA
-     F.ci.pw.ub <- NA
-     F.ci.bf.lb <- NA
-     F.ci.bf.ub <- NA
-     F.ci.sim.lb <- NA
-     F.ci.sim.ub <- NA
-     g.ci.pw.lb <- NA
-     g.ci.pw.ub <- NA
-     g.ci.bf.lb <- NA
-     g.ci.bf.ub <- NA
-     g.ci.sim.lb <- NA
-     g.ci.sim.ub <- NA
+      F.ci.pw.lb <- NA
+      F.ci.pw.ub <- NA
+      F.ci.bf.lb <- NA
+      F.ci.bf.ub <- NA
+      F.ci.sim.lb <- NA
+      F.ci.sim.ub <- NA
+      g.ci.pw.lb <- NA
+      g.ci.pw.ub <- NA
+      g.ci.bf.lb <- NA
+      g.ci.bf.ub <- NA
+      g.ci.sim.lb <- NA
+      g.ci.sim.ub <- NA
     }
     if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
   } else {
@@ -1251,7 +1245,7 @@ predict.bkcde <- function(object, newdata, proper = NULL, ...) {
                ...)$f)
 }
 
-## summary.bkcde() provides a summary of the boundary kernel CDE object
+## summary.bkcde() provides a summary of a bkcde object
 
 summary.bkcde <- function(object, ...) {
   if(!inherits(object,"bkcde")) stop("object must be of class bkcde in summary.bkcde()")
