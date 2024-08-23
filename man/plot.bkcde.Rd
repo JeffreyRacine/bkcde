@@ -184,7 +184,7 @@ For those interested in alternative plotting frameworks, you might consider usin
   grid3d(c("x", "y+", "z"))
 }
 
-Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and associated conditional CDF and conditional mean, you might modify the following code to suit your needs (note that the conditional CDF and conditional mean are only computed when \code{proper=TRUE} is used):
+Note that if you want \dQuote{quick and dirty} plots of the conditional PDF and associated conditional CDF and conditional mean, you might modify the following code to suit your needs.
 
 \preformatted{
   set.seed(42)
