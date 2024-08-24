@@ -422,12 +422,15 @@ bkcde.default <- function(h=NULL,
       ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
       ## compute the estimate \hat f(y|x) as efficiently as possible
       foo <- t(mcmapply(function(i){
+        ## Here we exploit the fact that we can multiply columns of a matrix by
+        ## the vector of kernel weights for x and avoid unnecessary computation
         kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
         colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
       },1:length(y.eval),mc.cores=fitted.cores))
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
+      ## Derivatives extracted from degree 1 polynomial fit only (below)
       f1.yx <- NULL
       E1.yx <- NULL
       F1.yx <- NULL
@@ -439,7 +442,14 @@ bkcde.default <- function(h=NULL,
       ## regression to estimate \hat f(y|x) rather than the intercept term from
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
       foo <- t(mcmapply(function(i){
+        ## Here we exploit the fact that lm.wfit() can work on multivariate Y
+        ## objects, so we don't need to recompute the X weight kernel sums and
+        ## can avoid unnecessary computation
         beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+        ## The first three rows are the conditional density, the conditional
+        ## mean, and conditional distribution, respectively, while the last
+        ## three rows are the derivatives of the conditional density, mean, and
+        ## distribution, respectively (computed only if degree=1)
         c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
           beta.hat[!is.na(beta.hat[,2]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]),
           beta.hat[!is.na(beta.hat[,3]),3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,3]),drop = FALSE]),
@@ -450,6 +460,7 @@ bkcde.default <- function(h=NULL,
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
+      ## Derivatives extracted from degree 1 polynomial fit only
       if(degree==1) {
         f1.yx <- foo[,4]
         E1.yx <- foo[,5]
