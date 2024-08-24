@@ -160,6 +160,9 @@ Next, a few words on computational cost when rendering the resultant estimate pr
 To render an estimate proper, numerical integration becomes necessary hence a sequence of uniformly spaced points for \code{y} of length \code{n.integrate=1000} is automatically generated (the integral is computed over this sequence, and the length of this sequence can be changed by the user - its range is discussed shortly). When finite bounds \eqn{[a,b]} for \code{y}  exist  the sequence extends across this range (i.e., \code{seq(a,b,length=1000)}). Otherwise, the function \code{\link{extendrange}} is invoked with argument \code{f=2} to generate the sequence and \code{ceiling(n.integrate/(2*f+1))} evaluation points (200 by default) will lie inside the sample range, the remaining (800 by default) lying outside of this range (\code{f} denotes the fraction by which the range is extended; see \code{\link{extendrange}} for further details). For each unique value of \code{x} in \code{x.eval} the conditional density is estimated on the uniform grid, negative values set to zero, and the integral of the conditional density is re-computed and used to normalize the density returned ensuring it is non-negative possessing total probability one. Summaries of the integrals prior to and after normalization are returned in the output object and can be accessed using the \code{\link{summary}} function. Note that when a large number of unique values of \code{x} are used for \code{x.eval} (e.g., all sample realizations in a large sample) this procedure can involve significant computational overhead. The setting for \code{proper} can be toggled on or off at any time, and when constructing confidence intervals the user can choose to use the raw estimate or the proper estimate (which may be indistinguishable). The \code{proper} argument is set to \code{FALSE} by default, though a warning is always issued should any negative density values be produced (though integration to one is of course not guaranteed and the user ought to confirm that results with and without \code{proper=FALSE} are comparable if choosing the latter). The argument \code{progress=TRUE} can be set to obtain more granular details of progress. The argument \code{verbose=TRUE} can additionally be set to obtain even more granular details. 
 
 In addition to computing the conditional density, the conditional mean and cumulative distribution function are also computed. When \code{proper=TRUE} this involves no additional computational cost since they are constructed from the same set of numerical integrals required to render the conditional density proper. The estimated conditional density is denoted by \eqn{\hat f(y|x)}, and when \code{proper=TRUE} the conditional mean is computed as \eqn{\hat E[Y|X=x] = \int y \hat f(y|x) dy} and the cumulative distribution function is computed as \eqn{\hat F[Y=y|X=x] = \int_{-\infty}^y \hat f(t|x) dt} for all \eqn{x} in \code{x.eval} (so if \code{x.eval} and \code{y.eval} are set to the sample realizations \code{x} these objects can be computed for each sample realization \eqn{(x_i,y_i),i=1,\dots,n}). When \code{proper=FALSE} they are computed using the local polynomial smooth for the sample realizations \code{y} and the doubly truncated CDF kernel for the mean and cumulative conditional density, respectively.  The conditional mean and cumulative distribution function are returned in the output object \code{foo} and can be accessed as \code{foo$g} and \code{foo$F}, respectively. Note that both the conditional mean and distribution use the same smoothing parameters as for the conditional density, which may not be optimal in the square error sense. See the demos named \code{beta} and \code{normal} for some illustrations involving nonlinear DGPs and large sample sizes (i.e., run the command \code{demo(beta)} or \code{demo(normal)}).
+
+If desired, first derivative estimates for \eqn{g(x)}, \eqn{f(y|x)}, and \eqn{F(y|x)} with respect to \eqn{x} can be obtained by setting the arguments \code{degree.min=1}, \code{degree.max=1}, and \code{poly.raw=TRUE} in the \code{\link{bkcde}} function (the estimates are extracted from the derivative coefficient of the local linear fit). The first derivative of the conditional mean is computed as \eqn{\frac{\partial}{\partial x} \hat E[Y|X=x] = \int y \frac{\partial}{\partial x} \hat f(y|x) dy} and the first derivative of the cumulative distribution function is computed as \eqn{\frac{\partial}{\partial x} \hat F[Y=y|X=x] = \int_{-\infty}^y \frac{\partial}{\partial x} \hat f(t|x) dt} for all \eqn{x} in \code{x.eval}. The first derivative of the conditional density is computed as \eqn{\frac{\partial}{\partial x} \hat f(y|x)} for all \eqn{x} in \code{x.eval} and \eqn{y} in \code{y.eval}. The first derivative of the conditional mean and cumulative distribution function are returned in the output object \code{foo} and can be accessed as \code{foo$g1} and \code{foo$F1}, respectively. The first derivative of the conditional density is returned in the output object \code{foo} and can be accessed as \code{foo$f1}.
+
 }
 \value{
 \item{convergence.mat}{
@@ -352,6 +355,83 @@ plot(x.seq,f.yx$g[1:n.grid],
 lines(x.seq,x.seq^3,col=2,lty=2)
 legend("topleft",legend=c("Estimated","True"),col=1:2,lty=1:2,bty="n")
 summary(f.yx)
+## We want derivatives of g(x), f(y|x), and F(y|x) with respect to x, so we fit
+## a model with poly.raw=TRUE and degree.min=1, degree.max=1 thereby generating
+## a local polynomial model of degree 1, and the derivative estimates are taken
+## from the derivative coefficient of these local models. We take a very large
+## sample (10 million observations) to ensure that the derivative estimates are
+## accurate. We plot the estimated mean function g(x) and true mean function,
+## likewise we plot the estimated conditional density f(y|x) and the estimated
+## conditional distribution F(y|x). We also plot the estimated derivative of
+## g(x), g1(x), the derivative of f(y|x), f1(y|x), and finally the estimated
+## derivative of F(y|x), F1(y|x). We conduct 5 multipliers and 25 resamples
+## using sub-sample cross-validation as otherwise the computation time would be
+## totally impractical.
+library(bkcde)
+set.seed(42)
+n <- 1e+07
+n.grid <- 50
+x <- runif(n,0,1)
+y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
+f.yx <- bkcde(x=x,
+              y=y,
+              cv="sub",
+              n.grid=n.grid,
+              n.sub=500,
+              nmulti=5,
+              resamples=25,
+              progress=TRUE,
+              poly.raw=TRUE,
+              degree.min=1,
+              degree.max=1)
+par(mfrow=c(2,3))
+x.seq <- f.yx$x.eval[1:f.yx$n.grid]
+plot(x.seq,f.yx$g[1:f.yx$n.grid],
+     ylim=range(f.yx$g[1:f.yx$n.grid],2*sin(4*pi*x.seq)),
+     xlab="x",ylab="g(x)",type="l")
+lines(x.seq,2*sin(4*pi*x.seq),lty=2,col=2)
+legend("topright",legend=c("g(x)","2*sin(4*pi*x)"),lty=1:2,col=1:2,bty="n")
+persp(unique(f.yx$x.eval),
+      unique(f.yx$y.eval),
+      matrix(f.yx$f,f.yx$n.grid,f.yx$n.grid),
+      theta=120,phi=45,
+      xlab="x",
+      ylab="y",
+      zlab="f(y|x)",
+      ticktype="detailed",
+      shade=TRUE)
+persp(unique(f.yx$x.eval),
+      unique(f.yx$y.eval),
+      matrix(f.yx$F,f.yx$n.grid,f.yx$n.grid),
+      theta=120,phi=45,
+      xlab="x",
+      ylab="y",
+      zlab="F(y|x)",
+      ticktype="detailed",
+      shade=TRUE)
+plot(x.seq,f.yx$g1[1:f.yx$n.grid],
+     ylim=range(f.yx$g1[1:f.yx$n.grid],8*pi*cos(4*pi*x.seq)),
+     xlab="x",ylab="g1(x)",type="l")
+lines(x.seq,8*pi*cos(4*pi*x.seq),lty=2,col=2)
+legend("topright",legend=c("g1(x)","8*pi*cos(4*pi*x)"),lty=1:2,col=1:2,bty="n")
+persp(unique(f.yx$x.eval),
+      unique(f.yx$y.eval),
+      matrix(f.yx$f1,f.yx$n.grid,f.yx$n.grid),
+      theta=120,phi=45,
+      xlab="x",
+      ylab="y",
+      zlab="f1(y|x)",
+      ticktype="detailed",
+      shade=TRUE)
+persp(unique(f.yx$x.eval),
+      unique(f.yx$y.eval),
+      matrix(f.yx$F1,f.yx$n.grid,f.yx$n.grid),
+      theta=120,phi=45,
+      xlab="x",
+      ylab="y",
+      zlab="F1(y|x)",
+      ticktype="detailed",
+      shade=TRUE)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
