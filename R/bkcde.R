@@ -1352,8 +1352,8 @@ summary.bkcde <- function(object, ...) {
   cat("Call:\n")
   cat("bkcde(h.y=",round(object$h[1],4),", h.x=",round(object$h[2],4),", x, y, x.eval, y.eval, y.lb=",object$y.lb,", y.ub=",object$y.ub,", x.lb=",object$x.lb,", x.ub=",object$x.ub,", degree=",object$degree,")\n",sep="")
   cat("\n")
-  cat("Number of sample realizations: ",length(object$y),"\n",sep="")
-  cat("Number of evaluation points: ",length(object$y.eval),"\n",sep="")
+  cat("Number of sample realizations: ",format(length(object$y), big.mark=",", scientific=FALSE),"\n",sep="")
+  cat("Number of evaluation points: ",format(length(object$y.eval), big.mark=",", scientific=FALSE),"\n",sep="")
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
   cat("Bandwidth scale factors: sf.y = ",object$h.sf[1],", sf.x = ",object$h.sf[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
@@ -1364,7 +1364,7 @@ summary.bkcde <- function(object, ...) {
     cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
     if(object$cv=="sub") {
       cat("Number of sub-cv resamples: ",object$resamples,"\n",sep="")
-      cat("Sample size of sub-cv resamples: ",object$n.sub,"\n",sep="")
+      cat("Sample size of sub-cv resamples: ",format(object$n.sub, big.mark=",", scientific=FALSE),"\n",sep="")
     }
     cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
     cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
