@@ -2,10 +2,10 @@
 \alias{sub.cv}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Sub-Sampled Optimization of Bandwidth Vector and Polynomial Degree for bkcde When Using Large Data Sets
+Sub-Sampled Optimization of Bandwidth Vector and Polynomial Degree
 }
 \description{
-This function optimizes the bandwidth vector and polynomial degree for the bkcde function. It is designed to be used with large data sets.
+This function optimizes the bandwidth vector and polynomial degree for the \code{\link{bkcde}} function. It is designed to be used with large data sets and is based on Racine (1993).
 }
 \usage{
 sub.cv(x, y, 
@@ -82,6 +82,8 @@ Jeffrey S. Racine <racinej@mcmaster.ca>
 }
 \note{
 Note that sample with replacement is ill-advised, but the switch \code{resample=TRUE} can be used to allow for this. The default is \code{resample=FALSE}.
+
+Defaults \code{n.sub} and \code{resamples} are based on simulation evidence for the Gaussian and Beta distributions. Simulation code is available in the \code{demo} directory of the package.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

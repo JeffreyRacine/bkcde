@@ -2,10 +2,10 @@
 \alias{plot.bkcde}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-S3 Plot Method for Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
+S3 Plot Method for \code{\link{bkcde}} Objects
 }
 \description{
-Plot method for \code{bkcde} objects which also provides for bootstrapped confidence intervals that include i) pointwise, ii) Bonferroni, iii) Simultaneous, and iv) all. Plotted values can be saved for further processing using the argument \code{plot.behavior}. Both 2D and 3D plots are supported.
+Plot method for \code{\link{bkcde}} objects which also provides for bootstrapped confidence intervals that include i) pointwise, ii) Bonferroni, iii) Simultaneous, and iv) all. Plotted values can be saved for further processing using the argument \code{plot.behavior}. Both 2D and 3D \code{\link{persp}} plots are supported.
 }
 \usage{
 \method{plot}{bkcde}(x, 
@@ -40,7 +40,7 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-  object of class \code{bkcde}
+  object of class \code{\link{bkcde}}
 }
   \item{B}{
  number of bootstrap samples
@@ -125,11 +125,11 @@ Plot method for \code{bkcde} objects which also provides for bootstrapped confid
 }
 }
 \details{
-When an object created by a call to \code{bkcde} is to be plotted, it was created using either the option \code{proper=TRUE} or \code{proper=FALSE}. This will be the default in the call to \code{plot.bkcde} unless the user specifies otherwise (in \code{plot.bkcde} the default is \code{proper=NULL}, i.e., a null value). If the user specifies \code{proper=TRUE} or \code{proper=FALSE} in the call to \code{plot.bkcde} this will override whichever was used in the call to \code{bkcde}. If the user specifies \code{ci=TRUE} in the call to \code{plot.bkcde}, the same rule applies.
+When an object created by a call to \code{\link{bkcde}} is to be plotted, it was created using either the option \code{proper=TRUE} or \code{proper=FALSE}. This will be the default in the call to \code{\link{plot.bkcde}} unless the user specifies otherwise (in \code{\link{plot.bkcde}} the default is \code{proper=NULL}, i.e., a null value). If the user specifies \code{proper=TRUE} or \code{proper=FALSE} in the call to \code{\link{plot.bkcde}} this will override whichever was used in the call to \code{\link{bkcde}}. If the user specifies \code{ci=TRUE} in the call to \code{\link{plot.bkcde}}, the same rule applies.
 
-If \code{proper=TRUE} is specified in the call to \code{plot.bkcde} (or the call to \code{bkcde} and is not overwritten in the call to \code{plot.bkcde}) and \code{ci=FALSE} is specified in the call to \code{plot.bkcde}, then the option \code{plot.unadjusted=TRUE} can be used to plot the unadjusted density estimate along with the adjusted one. This is useful for comparing the two. However, if the option \code{ci=TRUE} is specified then the two density estimates are not plotted as the confidence intervals are based on the object corresponding to the value of \code{proper} used in the call to \code{bkcde} (or \code{plot.bkcde} if specified). The exception is when the option \code{ci=TRUE} is specified and \code{ci.preplot=TRUE} is used (default) along with \code{proper=TRUE}. In this case, the two density estimates are plotted first while the bootstrap confidence intervals are being constructed, however the subsequent plot containing the confidence intervals will only contain the density estimate corresponding to the value of \code{proper}.
+If \code{proper=TRUE} is specified in the call to \code{\link{plot.bkcde}} (or the call to \code{\link{bkcde}} and is not overwritten in the call to \code{\link{plot.bkcde}}) and \code{ci=FALSE} is specified in the call to \code{\link{plot.bkcde}}, then the option \code{plot.unadjusted=TRUE} can be used to plot the unadjusted density estimate along with the adjusted one. This is useful for comparing the two. However, if the option \code{ci=TRUE} is specified then the two density estimates are not plotted as the confidence intervals are based on the object corresponding to the value of \code{proper} used in the call to \code{\link{bkcde}} (or \code{\link{plot.bkcde}} if specified). The exception is when the option \code{ci=TRUE} is specified and \code{ci.preplot=TRUE} is used (default) along with \code{proper=TRUE}. In this case, the two density estimates are plotted first while the bootstrap confidence intervals are being constructed, however the subsequent plot containing the confidence intervals will only contain the density estimate corresponding to the value of \code{proper}.
 
-\code{plot.bkcde} tries to avoid recomputing unnecessary objects by assessing what is being plotted and what is already available in the \code{bkcde} object. For example, if the user is plotting a 3D plot (default) and does not change options manually in the plot call (e.g., \code{n.grid}, \code{proper}, etc.) then the values used in the call to \code{bkcde} will be used directly. However, if the user changes the number of grid points for the 3D plot, then the estimate will be recomputed using the new grid points. Similarly, if the user changes the value of \code{proper} in the call to \code{plot.bkcde} then the estimate be recomputed using the new value of \code{proper}. This is done to avoid unnecessary re-computation and to speed up the plotting process, as the following example illustrates:
+\code{\link{plot.bkcde}} tries to avoid recomputing unnecessary objects by assessing what is being plotted and what is already available in the \code{\link{bkcde}} object. For example, if the user is plotting a 3D plot (default) and does not change options manually in the plot call (e.g., \code{n.grid}, \code{proper}, etc.) then the values used in the call to \code{\link{bkcde}} will be used directly. However, if the user changes the number of grid points for the 3D plot, then the estimate will be recomputed using the new grid points. Similarly, if the user changes the value of \code{proper} in the call to \code{\link{plot.bkcde}} then the estimate be recomputed using the new value of \code{proper}. This is done to avoid unnecessary re-computation and to speed up the plotting process, as the following example illustrates:
 
 \preformatted{
   set.seed(42)
@@ -155,17 +155,17 @@ For 2D objects (not the default), the same rules apply provided that the values 
   plot(f.yx,persp=FALSE)
 }
   
-Otherwise, \code{plot.bkcde} will need to recompute the estimates on the fly which can be time consuming (see the option \code{progress} in such cases if you wish to be informed of which stage computation is at - this is particularly helpful when \code{ci=TRUE} which invokes bootstrapping that can be computationally costly, particularly for larger sample sizes). 
+Otherwise, \code{\link{plot.bkcde}} will need to recompute the estimates on the fly which can be time consuming (see the option \code{progress} in such cases if you wish to be informed of which stage computation is at - this is particularly helpful when \code{ci=TRUE} which invokes bootstrapping that can be computationally costly, particularly for larger sample sizes). 
 
-For those interested in alternative plotting frameworks, you might consider using RGL (OpenGL) to create interactive 3D plots that you can rotate, zoom and otherwise manipulate dynamically using your mouse or cursor. The \pkg{rgl} package must be installed to use the following code (click on the object with your mouse and drag to rotate, use the mouse wheel to zoom in and out, and use the right mouse button to pan):
+For those interested in alternative plotting frameworks, you might consider using RGL (OpenGL) to create interactive 3D plots via \code{\link[rgl]{persp3d}} that you can rotate, zoom and otherwise manipulate dynamically using your mouse or cursor. The \pkg{rgl} package must be installed to use the following code. After running the code click on a corner the OpenGL object with your mouse and drag the corner of the object to rotate, use the mouse wheel to zoom in and out, and use the right mouse button to pan.
 
 \preformatted{
   library(rgl)
   set.seed(42)
-  n <- 1e+06
+  n <- 1e+05
   x <- runif(n,0,1)
   y <- rnorm(n,sin(2*pi*x))
-  f.yx <- bkcde(x=x,y=y,cv="sub",n.grid=50,progress=TRUE)
+  f.yx <- bkcde(x=x,y=y,n.grid=50,progress=TRUE)
   z <- matrix(f.yx$f,50,50)
   open3d()
   par3d(windowRect=c(900,100,900+640,100+640))
