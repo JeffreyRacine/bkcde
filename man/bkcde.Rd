@@ -7,7 +7,7 @@
 Boundary Corrected Polynomial Adaptive Conditional Kernel Density Estimation
 }
 \description{
-\code{\link{bkcde}} is a function that estimates the conditional density of a response variable given a predictor variable using a boundary corrected polynomial adaptive kernel density estimator. The function is designed to be fast and memory efficient by using parallel processing and vectorized operations. Key parameter choices such as the order of the polynomial and bandwidths tuned to the data being analyzed are obtained by a data-driven method (likelihood cross-validation). The function is also designed to be flexible by allowing the user to specify the degree of the polynomial and the bandwidths of the kernel functions manually, if so desired. The function is \dQuote{overloaded} with arguments that allow the user to control the number of cores used for parallel processing, the number of grid points used for evaluation, the number of points used for numerical integration, the number of multi-starts used for optimization, the number of resamples used for sub-sampled cross-validation, the method used to penalize negative density values, and whether to use raw or orthogonal polynomials. The function returns an object of class \code{\link{bkcde}} that can be used to plot the conditional density, predict the conditional density at new values, and summarize the conditional density.
+\code{\link{bkcde}} (\sQuote{Boundary Kernel Conditional Density Estimator}) is a function that estimates the conditional density of a response variable given a predictor variable using a boundary corrected polynomial adaptive kernel density estimator. The function is designed to be fast and memory efficient by using parallel processing and vectorized operations. Key parameter choices such as the order of the polynomial and bandwidths tuned to the data being analyzed are obtained by a data-driven method (likelihood cross-validation). The function is also designed to be flexible by allowing the user to specify the degree of the polynomial and the bandwidths of the kernel functions manually, if so desired. The function is \dQuote{overloaded} with arguments that allow the user to control the number of cores used for parallel processing, the number of grid points used for evaluation, the number of points used for numerical integration, the number of multi-starts used for optimization, the number of resamples used for sub-sampled cross-validation, the method used to penalize negative density values, and whether to use raw or orthogonal polynomials. The function returns an object of class \code{\link{bkcde}} that can be used to plot the conditional density, predict the conditional density at new values, and summarize the conditional density.
 }
 \usage{
 bkcde(...)
@@ -21,6 +21,7 @@ bkcde(...)
       y.lb = NULL, 
       x.ub = NULL, 
       y.ub = NULL, 
+      bwmethod = c("cv.ml","cv.ls"),
       bwscaling = FALSE,
       cv = c("auto","full","sub"),
       cv.auto.threshold = 5000,
@@ -75,14 +76,17 @@ bkcde(...)
   \item{y.ub}{
   the upper bound of the response variable. If y.ub is NULL, the function will use the maximum of y as the upper bound
 }
+\item{bwmethod}{
+  the cross-validation method to use (likelihood or least-squares cross-validation)
+}
 \item{bwscaling}{
   a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} 
 }
   \item{cv}{
-  the type of cross-validation to use. The default is "auto". The options are "full" (full sample cross-validation), "sub" (sub-sampled cross-validation via \code{\link{sub.cv}}), and "auto" (automatic selection of "full" or "sub" based on the sample size). When cv="auto" and the sample size is less than cv.auto.threshold, "full" cross-validation is used, otherwise "sub" cross-validation is used
+  the type of cross-validation to use. The default is \code{"auto"}. The options are \code{"full"} (full sample cross-validation), \code{"sub"} (sub-sampled cross-validation via \code{\link{sub.cv}}), and \code{"auto"} (automatic selection of \code{"full"} or \code{"sub"} based on the sample size). When \code{cv="auto"} and the sample size is less than cv.auto.threshold, \code{"full"} cross-validation is used, otherwise \code{"sub"} cross-validation is used
   }
   \item{cv.auto.threshold}{
-  the threshold sample size used to determine whether to use "full" or "sub" cross-validation when cv="auto". The default is 5000
+  the threshold sample size used to determine whether to use \code{"full"} or \code{"sub"} cross-validation when \code{cv="auto"}. The default is 5000
   }
   \item{cv.only}{
   a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE
@@ -311,7 +315,7 @@ x <- runif(n,-2,2)
 y <- rnorm(n,mean=x^3,sd=1+abs(x))
 ## The default proper=FALSE is fine given the large sample size as we really only 
 ## need the bandwidths, but we manually set to TRUE for plot()...
-f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
+f.yx <- bkcde(x=x,y=y,n.grid=n.grid,progress=TRUE)
 par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))

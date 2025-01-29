@@ -16,7 +16,7 @@
 
 ## The functions are briefly described below.  The functions include
 ## integrate.trapezoidal(), NZD(), EssDee(), kernel.bk(), log.likelihood(),
-## bkcde.loo(), bkcde(), bkcde.default(), bkcde.optim(), plot.bkcde(), and
+## bkcde.optim.fn(), bkcde(), bkcde.default(), bkcde.optim(), plot.bkcde(), and
 ## SCSrank() (the last from the MCSPAN package [Multiple contrast tests and
 ## simultaneous confidence intervals]).
 
@@ -159,7 +159,7 @@ log.likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
-## bkcde.loo() is the leave-one-out likelihood cross-validation function that
+## bkcde.optim.fn() is the leave-one-out likelihood cross-validation function that
 ## supports local polynomial estimation of degree p (raw polynomials or
 ## orthogonal polynomials can be used and appear to provide identical results
 ## for modest degree.max). The function returns the delete-one log likelihood
@@ -168,38 +168,71 @@ log.likelihood <- function(delete.one.values,
 ## optimization of the bandwidth and polynomial order in bkcde() and is called
 ## by bkcde.optim() to select the bandwidth and polynomial order.
 
-bkcde.loo <- function(h=NULL,
-                      x=NULL,
-                      y=NULL,
-                      y.lb=NULL,
-                      y.ub=NULL,
-                      x.lb=NULL,
-                      x.ub=NULL,
-                      poly.raw=FALSE,
-                      degree=NULL,
-                      optim.ksum.cores=1,
-                      penalty.method=NULL,
-                      penalty.cutoff=NULL,
-                      verbose=FALSE) {
+bkcde.optim.fn <- function(h=NULL,
+                           x=NULL,
+                           y=NULL,
+                           y.lb=NULL,
+                           y.ub=NULL,
+                           x.lb=NULL,
+                           x.ub=NULL,
+                           poly.raw=FALSE,
+                           degree=NULL,
+                           optim.ksum.cores=1,
+                           penalty.method=NULL,
+                           penalty.cutoff=NULL,
+                           verbose=FALSE,
+                           bwmethod=NULL) {
   ## Perform some argument checking
-  if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.loo()")
-  if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.loo()")
-  if(is.null(x)) stop("must provide x in bkcde.loo()")
-  if(is.null(y)) stop("must provide y in bkcde.loo()")
-  if(is.null(degree)) stop("must provide degree in bkcde.loo()")
-  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.loo()")
-  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.loo()")
-  if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.loo()")
-  if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.loo()")
-  if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.loo()")
-  if(degree==0) {
-    f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
+  if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
+  if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
+  if(is.null(x)) stop("must provide x in bkcde.optim.fn()")
+  if(is.null(y)) stop("must provide y in bkcde.optim.fn()")
+  if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
+  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim.fn()")
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.optim.fn()")
+  if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.optim.fn()")
+  if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.optim.fn()")
+  if(is.null(bwmethod)) stop("must provide bwmethod in bkcde.optim.fn()")
+  if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
+  if(bwmethod=="cv.ml") {
+    ## Likelihood cross-validation
+    if(degree==0) {
+      f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
+    } else {
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
+    }
+    return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
   } else {
-    X.poly <- poly(x,raw=poly.raw,degree=degree)
-    X <- cbind(1,X.poly)
-    f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
+    ## Least-squares cross-validation
+    ## Grid could be more sophisticated, but this is a simple example
+    n.grid <- 100
+    y.grid <- seq(min(y),max(y),length=n.grid)
+    ## Compute the sequence of integrals of the estimator squared
+    int.f.seq <- mcmapply(function(j) {
+      K <- kernel.bk(x[j],x,h[2],x.lb,x.ub)
+      if(degree == 0) {
+        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.grid[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.grid,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
+      } else {
+        X.poly <- poly(x,raw=poly.raw,degree=degree)
+        X <- cbind(1,X.poly)
+        X.eval <- cbind(1,predict(X.poly,x[j]))
+        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.grid[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.grid,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
+      }
+      integrate.trapezoidal(y.grid,f.seq^2)[n.grid]
+    },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+    ## Compute leave-one-out estimator
+    if(degree==0) {
+      f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
+    } else {
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
+    }
+    ## Use fnscale=-1 so sign change
+    return(-(mean(int.f.seq)-2*mean(f.loo)))
   }
-  return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
 }
 
 ## bckde() and bkcde.default() compute the conditional density \hat f(y|x)
@@ -236,6 +269,7 @@ bkcde.default <- function(h=NULL,
                           y.lb=NULL,
                           x.ub=NULL,
                           y.ub=NULL,
+                          bwmethod=c("cv.ml","cv.ls"),
                           bwscaling = FALSE,
                           cv=c("auto","full","sub"),
                           cv.auto.threshold=5000,
@@ -320,6 +354,7 @@ bkcde.default <- function(h=NULL,
   combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores())]
   combn.out <- combn.out[,ncol(combn.out)]
   if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
+  bwmethod <- match.arg(bwmethod)
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   penalty.method <- match.arg(penalty.method)
   cv <- match.arg(cv)
@@ -339,6 +374,7 @@ bkcde.default <- function(h=NULL,
                              y.ub=y.ub,
                              x.lb=x.lb,
                              x.ub=x.ub,
+                             bwmethod=bwmethod,
                              degree.max=degree.max,
                              degree.min=degree.min,
                              nmulti=nmulti,
@@ -375,6 +411,7 @@ bkcde.default <- function(h=NULL,
                       nmulti=nmulti,
                       y.lb=y.lb,
                       y.ub=y.ub,
+                      bwmethod=bwmethod,
                       degree.max=degree.max,
                       degree.min=degree.min,
                       optim.degree.cores=optim.degree.cores,
@@ -597,6 +634,7 @@ bkcde.default <- function(h=NULL,
                       convergence=convergence,
                       cv=cv,
                       cv.only=cv.only,
+                      bwmethod=bwmethod,
                       degree.mat=degree.mat,
                       degree.max=degree.max,
                       degree.min=degree.min,
@@ -673,6 +711,7 @@ bkcde.optim <- function(x=x,
                         y.ub=y.ub,
                         x.lb=x.lb,
                         x.ub=x.ub,
+                        bwmethod=bwmethod,
                         degree.max=degree.max,
                         degree.min=degree.min,
                         nmulti=nmulti,
@@ -722,7 +761,7 @@ bkcde.optim <- function(x=x,
     ## Here we run the optimization for each model over all multistarts
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
-                                              fn=bkcde.loo,
+                                              fn=bkcde.optim.fn,
                                               x=x,
                                               y=y,
                                               y.lb=y.lb,
@@ -730,6 +769,7 @@ bkcde.optim <- function(x=x,
                                               x.lb=x.lb,
                                               x.ub=x.ub,
                                               poly.raw=poly.raw,
+                                              bwmethod=bwmethod,
                                               degree=p,
                                               optim.ksum.cores=optim.ksum.cores,
                                               penalty.method=penalty.method,
@@ -1362,6 +1402,7 @@ summary.bkcde <- function(object, ...) {
   if(!is.na(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
   if(!is.na(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
   if(object$optimize) {
+    cat("Bandwidth selection criterion: ",object$bwmethod,"\n",sep="")
     cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
     if(object$cv=="sub") {
       cat("Number of sub-cv resamples: ",object$resamples,"\n",sep="")
