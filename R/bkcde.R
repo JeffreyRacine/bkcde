@@ -177,6 +177,7 @@ bkcde.optim.fn <- function(h=NULL,
                            x.ub=NULL,
                            poly.raw=FALSE,
                            degree=NULL,
+                           n.integrate=NULL,
                            optim.ksum.cores=1,
                            penalty.method=NULL,
                            penalty.cutoff=NULL,
@@ -193,6 +194,7 @@ bkcde.optim.fn <- function(h=NULL,
   if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.optim.fn()")
   if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.optim.fn()")
   if(is.null(bwmethod)) stop("must provide bwmethod in bkcde.optim.fn()")
+  if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
   if(bwmethod=="cv.ml") {
     ## Likelihood cross-validation
@@ -206,21 +208,23 @@ bkcde.optim.fn <- function(h=NULL,
     return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
   } else {
     ## Least-squares cross-validation
-    ## Grid could be more sophisticated, but this is a simple example
-    n.grid <- 100
-    y.grid <- seq(min(y),max(y),length=n.grid)
+    ## Create a sequence of values along an appropriate grid to compute the integral.
+    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)      
     ## Compute the sequence of integrals of the estimator squared
     int.f.seq <- mcmapply(function(j) {
       K <- kernel.bk(x[j],x,h[2],x.lb,x.ub)
       if(degree == 0) {
-        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.grid[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.grid,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
+        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
       } else {
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
         X.eval <- cbind(1,predict(X.poly,x[j]))
-        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.grid[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.grid,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
+        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
       }
-      integrate.trapezoidal(y.grid,f.seq^2)[n.grid]
+      integrate.trapezoidal(y.seq,f.seq^2)[n.integrate]
     },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
     ## Compute leave-one-out estimator
     if(degree==0) {
@@ -378,6 +382,7 @@ bkcde.default <- function(h=NULL,
                              degree.max=degree.max,
                              degree.min=degree.min,
                              nmulti=nmulti,
+                             n.integrate=n.integrate,
                              optim.degree.cores=optim.degree.cores,
                              optim.ksum.cores=optim.ksum.cores,
                              optim.nmulti.cores=optim.nmulti.cores,
@@ -414,6 +419,7 @@ bkcde.default <- function(h=NULL,
                       bwmethod=bwmethod,
                       degree.max=degree.max,
                       degree.min=degree.min,
+                      n.integrate=n.integrate,
                       optim.degree.cores=optim.degree.cores,
                       optim.ksum.cores=optim.ksum.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
@@ -659,6 +665,7 @@ bkcde.default <- function(h=NULL,
                       h.sf=h/(EssDee(cbind(y,x))*length(y)^(-1/6)),
                       n.grid=n.grid,
                       n.sub=n.sub,
+                      n.integrate=n.integrate,
                       optim.degree.cores=optim.degree.cores,
                       optim.ksum.cores=optim.ksum.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
@@ -714,6 +721,7 @@ bkcde.optim <- function(x=x,
                         bwmethod=bwmethod,
                         degree.max=degree.max,
                         degree.min=degree.min,
+                        n.integrate=n.integrate,
                         nmulti=nmulti,
                         optim.degree.cores=optim.degree.cores,
                         optim.ksum.cores=optim.ksum.cores,
@@ -771,6 +779,7 @@ bkcde.optim <- function(x=x,
                                               poly.raw=poly.raw,
                                               bwmethod=bwmethod,
                                               degree=p,
+                                              n.integrate=n.integrate,
                                               optim.ksum.cores=optim.ksum.cores,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
