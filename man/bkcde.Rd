@@ -31,7 +31,7 @@ bkcde(...)
       degree = NULL, 
       fitted.cores = detectCores(),
       n.grid = 25,
-      n.integrate = 1000, 
+      n.integrate = 100, 
       n.sub = 300,
       nmulti = 3, 
       optim.degree.cores = NULL, 
@@ -107,7 +107,7 @@ bkcde(...)
   the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
   }
   \item{n.integrate}{
-  the number of points to use for numerical integration. The default is 1000
+  the number of points to use for numerical integration. The default is 100
 }
 \item{n.sub}{
   the number of observations to use when \code{cv="sub"}. The default is 300
