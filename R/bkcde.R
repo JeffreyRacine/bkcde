@@ -199,43 +199,65 @@ bkcde.optim.fn <- function(h=NULL,
   if(bwmethod=="cv.ml") {
     ## Likelihood cross-validation
     if(degree==0) {
-      f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
+      f.loo <- as.numeric(mcmapply(function(i){
+        kernel.bk.x <- kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
+        mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+      },1:length(y),mc.cores=optim.ksum.cores))
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       X <- cbind(1,X.poly)
-      f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
+      f.loo <- as.numeric(mcmapply(function(i){
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        beta.hat%*%t(X[i, , drop = FALSE])
+      },1:length(y),mc.cores=optim.ksum.cores))
     }
     return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
   } else {
-    ## Least-squares cross-validation
-    ## Create a sequence of values along an appropriate grid to compute the integral.
+    ## Least-squares cross-validation. We use numerical integration, hence we
+    ## create a sequence of values for y and compute the integral of the squared
+    ## conditional density estimates to generate I.1
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)      
-    ## Compute the sequence of integrals of the estimator squared
-    int.f.seq <- mcmapply(function(j) {
-      K <- kernel.bk(x[j],x,h[2],x.lb,x.ub)
-      if(degree == 0) {
-        f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
-      } else {
-        X.poly <- poly(x,raw=poly.raw,degree=degree)
-        X <- cbind(1,X.poly)
-        X.eval <- cbind(1,predict(X.poly,x[j]))
-        f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x)>1,1,optim.ksum.cores)))
-      }
-      integrate.trapezoidal(y.seq,f.seq^2)[n.integrate]
-    },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
-    ## Compute leave-one-out estimator
+    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+    ## Create a matrix of kernel weights for the y values so that we can exploit
+    ## the multivariate Y capabilities of lm.wifit() when evaluating the
+    ## estimate on a grid of Y values. First we compute the integral of the
+    ## squared conditional density estimates for a given x[j] and all Y values
+    ## in y.seq. This gives us the terms we need for I.1 in the ls-cv function.
+    Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
     if(degree==0) {
-      f.loo <- as.numeric(mcmapply(function(i){kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))},1:length(y),mc.cores=optim.ksum.cores))
+      int.f.sq <- mcmapply(function(j){
+        kernel.bk.x <- kernel.bk(x[j],x,h[2],x.lb,x.ub);
+        integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
+      },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       X <- cbind(1,X.poly)
-      f.loo <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])},1:length(y),mc.cores=optim.ksum.cores))
+      int.f.sq <- mcmapply(function(j){
+        beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        integrate.trapezoidal(y.seq,(cbind(1,predict(X.poly,x[j]))%*%beta.hat)^2)[n.integrate]
+      },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+    }
+    ## Compute leave-one-out estimator which gives us the terms for I.2 in the
+    ## ls-cv function.
+    if(degree==0) {
+      f.loo <- as.numeric(mcmapply(function(i){
+        kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
+        mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+      },1:length(y),mc.cores=optim.ksum.cores))
+    } else {
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      f.loo <- as.numeric(mcmapply(function(i){
+        beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])
+      },1:length(y),mc.cores=optim.ksum.cores))
     }
     ## Use fnscale=-1 so sign change
-    return(-(mean(int.f.seq)-2*mean(f.loo)))
+    return(-(mean(int.f.sq)-2*mean(f.loo)))
   }
 }
 
@@ -283,7 +305,7 @@ bkcde.default <- function(h=NULL,
                           degree=NULL,
                           fitted.cores=detectCores(),
                           n.grid=25,
-                          n.integrate=1000,
+                          n.integrate=100,
                           n.sub=300,
                           nmulti=3,
                           optim.degree.cores=NULL,
