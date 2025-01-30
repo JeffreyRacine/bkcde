@@ -209,7 +209,7 @@ bkcde.optim.fn <- function(h=NULL,
       f.loo <- as.numeric(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
-        beta.hat%*%t(X[i, , drop = FALSE])
+        beta.hat%*%t(X[i,,drop=FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
     }
     return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
@@ -253,7 +253,7 @@ bkcde.optim.fn <- function(h=NULL,
       f.loo <- as.numeric(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
-        beta.hat%*%t(X[i, , drop = FALSE])
+        beta.hat%*%t(X[i,,drop=FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
     }
     ## Use fnscale=-1 so sign change
@@ -516,9 +516,9 @@ bkcde.default <- function(h=NULL,
         ## mean, and conditional distribution, respectively, while the last
         ## three rows are the derivatives of the conditional density, mean, and
         ## distribution, respectively (computed only if degree=1)
-        c(beta.hat[,1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
-          beta.hat[,2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
-          beta.hat[,3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
+        c(beta.hat[,1]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
+          beta.hat[,2]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
+          beta.hat[,3]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
           beta.hat[2,1],
           beta.hat[2,2],
           beta.hat[2,3])
