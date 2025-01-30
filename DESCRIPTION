@@ -3,7 +3,7 @@ Imports: parallel, pbmcapply, stats, MCPAN
 Suggests: lpcde, progress, robustbase
 Type: Package
 Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
-Version: 1.18
+Version: 1.19
 Date: 2025-01-30
 Author: Jeffrey S. Racine
 Maintainer: Jeffrey S. Racine <racinej@mcmaster.ca>

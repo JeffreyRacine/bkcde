@@ -252,8 +252,9 @@ bkcde.optim.fn <- function(h=NULL,
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       X <- cbind(1,X.poly)
       f.loo <- as.numeric(mcmapply(function(i){
-        beta.hat<-coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-        beta.hat[!is.na(beta.hat)]%*%t(X[i,!is.na(beta.hat), drop = FALSE])
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        beta.hat%*%t(X[i, , drop = FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
     }
     ## Use fnscale=-1 so sign change
@@ -511,13 +512,14 @@ bkcde.default <- function(h=NULL,
         ## objects, so we don't need to recompute the X weight kernel sums and
         ## can avoid unnecessary computation
         beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
         ## The first three rows are the conditional density, the conditional
         ## mean, and conditional distribution, respectively, while the last
         ## three rows are the derivatives of the conditional density, mean, and
         ## distribution, respectively (computed only if degree=1)
-        c(beta.hat[!is.na(beta.hat[,1]),1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,1]),drop = FALSE]),
-          beta.hat[!is.na(beta.hat[,2]),2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,2]),drop = FALSE]),
-          beta.hat[!is.na(beta.hat[,3]),3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,!is.na(beta.hat[,3]),drop = FALSE]),
+        c(beta.hat[,1]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
+          beta.hat[,2]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
+          beta.hat[,3]%*%t(cbind(1,predict(X.poly,x.eval[i]))[,,drop = FALSE]),
           beta.hat[2,1],
           beta.hat[2,2],
           beta.hat[2,3])
@@ -574,7 +576,11 @@ bkcde.default <- function(h=NULL,
           X.poly <- poly(x,raw=poly.raw,degree=degree)
           X <- cbind(1,X.poly)
           X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-          f.seq <- as.numeric(mcmapply(function(i){beta.hat<-coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));beta.hat[!is.na(beta.hat)]%*%t(X.eval[,!is.na(beta.hat),drop = FALSE])},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+          f.seq <- as.numeric(mcmapply(function(i){
+            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));
+            beta.hat[is.na(beta.hat)] <- 0;
+            beta.hat%*%t(X.eval[,,drop = FALSE])
+          },1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
