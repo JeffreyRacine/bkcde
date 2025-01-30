@@ -231,14 +231,14 @@ bkcde.optim.fn <- function(h=NULL,
       int.f.sq <- mcmapply(function(j){
         kernel.bk.x <- kernel.bk(x[j],x,h[2],x.lb,x.ub);
         integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
-      },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+      },1:length(y),mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       int.f.sq <- mcmapply(function(j){
         beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         integrate.trapezoidal(y.seq,(cbind(1,predict(X.poly,x[j]))%*%beta.hat)^2)[n.integrate]
-      },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+      },1:length(y),mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
     }
     ## Compute leave-one-out estimator which gives us the terms for I.2 in the
     ## ls-cv function.
