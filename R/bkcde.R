@@ -234,9 +234,8 @@ bkcde.optim.fn <- function(h=NULL,
       },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
       int.f.sq <- mcmapply(function(j){
-        beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         integrate.trapezoidal(y.seq,(cbind(1,predict(X.poly,x[j]))%*%beta.hat)^2)[n.integrate]
       },1:n,mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
@@ -569,18 +568,15 @@ bkcde.default <- function(h=NULL,
       ## the outer mcmapply call and invoke fitting the mcmapply sequence of
       ## f(y|x) values with proper.cores
       proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
-        K <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)
+        Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
         if(degree == 0) {
-          f.seq <- as.numeric(mcmapply(function(i){mean(kernel.bk(y.seq[i],y,h[1],y.lb,y.ub)*K)/NZD(mean(K))},1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+          kernel.bk.x <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
+          f.seq <- colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))
         } else {
           X.poly <- poly(x,raw=poly.raw,degree=degree)
-          X <- cbind(1,X.poly)
-          X.eval <- cbind(1,predict(X.poly,x.eval.unique[j]))
-          f.seq <- as.numeric(mcmapply(function(i){
-            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y.seq[i],y,h[1],y.lb,y.ub),w=NZD(K)));
-            beta.hat[is.na(beta.hat)] <- 0;
-            beta.hat%*%t(X.eval[,,drop = FALSE])
-          },1:n.integrate,mc.cores=ifelse(length(x.eval.unique)>1,1,proper.cores)))
+          beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
+          beta.hat[is.na(beta.hat)] <- 0;
+          f.seq <- as.numeric(cbind(1,predict(X.poly,x[j]))%*%beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
