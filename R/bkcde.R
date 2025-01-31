@@ -159,14 +159,15 @@ log.likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
-## bkcde.optim.fn() is the leave-one-out likelihood cross-validation function that
-## supports local polynomial estimation of degree p (raw polynomials or
-## orthogonal polynomials can be used and appear to provide identical results
-## for modest degree.max). The function returns the delete-one log likelihood
-## function for a given bandwidth and polynomial order, and is called by bkcde()
-## to select the bandwidth and polynomial order. The function is used in the
-## optimization of the bandwidth and polynomial order in bkcde() and is called
-## by bkcde.optim() to select the bandwidth and polynomial order.
+## bkcde.optim.fn() is the cross-validation objective function that supports
+## local polynomial estimation of degree p (raw polynomials or orthogonal
+## polynomials can be used and appear to provide identical results for modest
+## degree.max). The function returns the either the delete-one log likelihood
+## function (bwmethod="cv.ml") or the least-squares cross-validation function
+## (bwmethod="cv.ls") for a given bandwidth and polynomial order, and is called
+## by bkcde() to select the bandwidth and polynomial order. The function is used
+## in the optimization of the bandwidth and polynomial order in bkcde() and is
+## called by bkcde.optim() to select the bandwidth and polynomial order.
 
 bkcde.optim.fn <- function(h=NULL,
                            x=NULL,
@@ -262,27 +263,28 @@ bkcde.optim.fn <- function(h=NULL,
 }
 
 ## bckde() and bkcde.default() compute the conditional density \hat f(y|x)
-## where, if no bandwidth is provided, likelihood cross-validation is used to
-## select the bandwidths and polynomial order via numerical optimization with 5
-## restarts by default and polynomial orders 0,1,...,5 by default. Restarting is
-## used in an attempt to maximize the likelihood and (hopefully) avoid local
-## optima. This function supports local polynomial orders [0,1,...,n-1] where n
-## is the number of sample realizations (raw polynomials or orthogonal
-## polynomials can be used and appear to provide identical results for modest
-## degree.max). For large samples the function can be computationally intensive
-## so we include a sub-sampling cross-validation procedure following Racine
-## (1993) (cv="sub") which can be used to reduce computation time for large
-## samples, say of the order 10^7, which can be handled a few minutes on a
-## modern processor. Note that we rely on the mcmapply and mclapply functions
-## which rely on "forking" that is not currently available on Windows.  The
-## function returns a list of class "bkcde" with the following components:
-## convergence.mat, convergence.vec, convergence, cv, degree.mat, degree.max,
-## degree.min, degree, fitted.cores, f.yx.integral.post, f.yx.integral.pre.neg,
-## f.yx.integral, f, h.mat, h, optim.ksum.cores, optim.degree.cores,
-## optim.nmulti.cores, optimize, proper.cores, proper, secs.elapsed,
-## secs.estimate, secs.optim.mat, value.mat, value.vec, value, x.eval, x.lb,
-## x.ub, x, y.eval, y.lb, y.ub, y. S3 methods for the class "bkcde" include
-## fitting, plotting, and predicting the conditional density estimate.
+## where, if no bandwidth is provided, either likelihood or least-squares
+## cross-validation is used to select the bandwidths and polynomial order via
+## numerical optimization with nmulti restarts by default and polynomial orders
+## 0,1,...,degree.max by default. Restarting is used in an attempt to maximize
+## the likelihood and (hopefully) avoid local optima. This function supports
+## local polynomial orders [0,1,...,n-1] where n is the number of sample
+## realizations (raw polynomials or orthogonal polynomials can be used and
+## appear to provide identical results for modest degree.max). For large samples
+## the function can be computationally intensive so we include a sub-sampling
+## cross-validation procedure following Racine (1993) (cv="sub") which can be
+## used to reduce computation time for large samples, say of the order 10^7,
+## which can be handled a few minutes on a modern processor. Note that we rely
+## on the mcmapply and mclapply functions which rely on "forking" that is not
+## currently available on Windows.  The function returns a list of class "bkcde"
+## with the following components: convergence.mat, convergence.vec, convergence,
+## cv, degree.mat, degree.max, degree.min, degree, fitted.cores,
+## f.yx.integral.post, f.yx.integral.pre.neg, f.yx.integral, f, h.mat, h,
+## optim.ksum.cores, optim.degree.cores, optim.nmulti.cores, optimize,
+## proper.cores, proper, secs.elapsed, secs.estimate, secs.optim.mat, value.mat,
+## value.vec, value, x.eval, x.lb, x.ub, x, y.eval, y.lb, y.ub, y. S3 methods
+## for the class "bkcde" include fitting, plotting, and predicting the
+## conditional density estimate.
 
 bkcde <- function(...) UseMethod("bkcde")
 
@@ -389,9 +391,9 @@ bkcde.default <- function(h=NULL,
   if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   secs.start.total <- Sys.time()
-  ## If no bandwidth is provided, then likelihood cross-validation is used to
-  ## obtain the bandwidths and polynomial order (use optim.ksum.cores,
-  ## optim.degree.cores, optim.nmulti.cores)
+  ## If no bandwidth is provided, then either likelihood or least-squares
+  ## cross-validation is used to obtain the bandwidths and polynomial order (use
+  ## optim.ksum.cores, optim.degree.cores, optim.nmulti.cores)
   if(is.null(h) & cv == "full") {
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
     optim.out <- bkcde.optim(x=x,
@@ -719,19 +721,20 @@ bkcde.default <- function(h=NULL,
 ## polynomial order in bkcde() using the optim() function with the L-BFGS-B
 ## method which allows box constraints, that is each variable can be given a
 ## lower and/or upper bound (bandwidths must be positive so this is necessary).
-## We maximize the delete-one likelihood function (i.e., the likelihood function
-## for the leave-one-out density estimate) over all models (i.e., polynomial
-## orders) in parallel each having degree p in [degree.min,degree.max]. We use
-## nmulti multistarts for each model in parallel. The function returns the
-## object with the largest likelihood function over all models and multistarts,
-## padded with additional information. The function is parallelized over the
-## number of models and multistarts, so ideally the number of cores requested
-## would be equal to the number of multistarts (this is particularly useful to
-## avoid local optima in the optimization of the bandwidths). The function
-## returns the bandwidths and polynomial order that maximize the likelihood
-## function, the likelihood function value, the convergence status, the time
-## taken to optimize, the bandwidths and polynomial orders for all models and
-## multistarts, the likelihood function values for all models and multistarts,
+## We maximize either the delete-one likelihood function or least-squares
+## cross-validation function over all models (i.e., polynomial orders) in
+## parallel each having degree p in [degree.min,degree.max]. We use nmulti
+## multistarts for each model in parallel. The function returns the object with
+## the largest likelihood or smallest least-squares function over all models and
+## multistarts, padded with additional information. The function is parallelized
+## over the number of models and multistarts, so ideally the number of cores
+## requested would be equal to the number of multistarts (this is particularly
+## useful to avoid local optima in the optimization of the bandwidths). The
+## function returns the bandwidths and polynomial order that maximize the
+## likelihood function or minimize the least-squares cross-validatioin function,
+## the objective function value, the convergence status, the time taken to
+## optimize, the bandwidths and polynomial orders for all models and
+## multistarts, the objective function values for all models and multistarts,
 ## the convergence status for all models and multistarts, and the time taken to
 ## optimize for all models and multistarts. The function is used in bkcde() to
 ## select the bandwidths and polynomial order when no bandwidth is provided.
@@ -818,8 +821,9 @@ bkcde.optim <- function(x=x,
       optim.return$optim.par.init <- par.init[i,]
       optim.return
     },mc.cores = optim.nmulti.cores)
-    ## Return object with largest likelihood function over all multistarts for a
-    ## given polynomial order (model) and pad with additional information
+    ## Return object with largest likelihood function or smallest least-squares
+    ## function over all multistarts for a given polynomial order (model) and
+    ## pad with additional information
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
@@ -829,8 +833,9 @@ bkcde.optim <- function(x=x,
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
     optim.out
   },mc.cores = optim.degree.cores)
-  ## Return object with largest likelihood function over all models and
-  ## multistarts, padded with additional information
+  ## Return object with largest likelihood function or smallest least squares
+  ## function over all models and multistarts, padded with additional
+  ## information
   output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
   output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
   output.return$value.vec <- sapply(degree.return, function(x) x$value)
@@ -1477,13 +1482,13 @@ find_mode <- function(x) {
 
 ## This function takes subsets of the (x,y) data, computes the optimal bandwidth
 ## vector h and polynomial degree for each subset using standard delete-one
-## likelihood cross-validation, then repeats for the number of resamples
-## specified, then takes the "unscaled center" of the resampled bandwidth
-## vectors conditional upon the modal degree vector and returns rescaled values
-## appropriate for the full sample size. This is a fast way to compute the
-## optimal bandwidth and polynomial degree based upon Racine, J.S. (1993), "An
-## Efficient Cross-Validation Algorithm For Window Width Selection for
-## Nonparametric Kernel Regression," Communications in Statistics, October,
+## likelihood or least-squares cross-validation, then repeats for the number of
+## resamples specified, then takes the "unscaled center" of the resampled
+## bandwidth vectors conditional upon the modal degree vector and returns
+## rescaled values appropriate for the full sample size. This is a fast way to
+## compute the optimal bandwidth and polynomial degree based upon Racine, J.S.
+## (1993), "An Efficient Cross-Validation Algorithm For Window Width Selection
+## for Nonparametric Kernel Regression," Communications in Statistics, October,
 ## Volume 22, Issue 4, pages 1107-1114. When the number of resamples associated
 ## with the modal degree exceeds 3 (n > p+1 using covMcd's notation),
 ## covMcd()$center is used to compute the robust center of the h vector if
