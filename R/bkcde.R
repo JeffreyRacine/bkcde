@@ -628,12 +628,12 @@ bkcde.default <- function(h=NULL,
       int.f.seq.post <- mean(int.f.seq.post)
       if(progress) cat("\rComputed integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     } else {
-      int.f.seq.pre.neg <- NA
-      int.f.seq <- NA
-      int.f.seq.post <- NA
-      f.yx.unadjusted <- NA
-      E.yx.unadjusted <- NA
-      F.yx.unadjusted <- NA
+      int.f.seq.pre.neg <- NULL
+      int.f.seq <- NULL
+      int.f.seq.post <- NULL
+      f.yx.unadjusted <- NULL
+      E.yx.unadjusted <- NULL
+      F.yx.unadjusted <- NULL
       if(any(f.yx < 0)) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
                                 ", ", 
@@ -648,18 +648,18 @@ bkcde.default <- function(h=NULL,
                                 immediate. = TRUE)
     }
   } else {
-    f.yx <- NA
-    f.yx.unadjusted <- NA
-    F.yx <- NA
-    F.yx.unadjusted <- NA
-    E.yx <- NA
-    E.yx.unadjusted <- NA
-    f1.yx <- NA
-    E1.yx <- NA
-    F1.yx <- NA
-    int.f.seq.pre.neg <- NA
-    int.f.seq <- NA
-    int.f.seq.post <- NA
+    f.yx <- NULL
+    f.yx.unadjusted <- NULL
+    F.yx <- NULL
+    F.yx.unadjusted <- NULL
+    E.yx <- NULL
+    E.yx.unadjusted <- NULL
+    f1.yx <- NULL
+    E1.yx <- NULL
+    F1.yx <- NULL
+    int.f.seq.pre.neg <- NULL
+    int.f.seq <- NULL
+    int.f.seq.post <- NULL
   }
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
@@ -1155,9 +1155,9 @@ plot.bkcde <- function(x,
       F1.boot.mat <- t(sapply(boot.return, function(x) x$F1))
       g1.boot.mat <- t(sapply(boot.return, function(x) x$g1))
     } else {
-      f1.boot.mat <- NA
-      F1.boot.mat <- NA
-      g1.boot.mat <- NA
+      f1.boot.mat <- NULL
+      F1.boot.mat <- NULL
+      g1.boot.mat <- NULL
     }
     if(ci.bias.correct) {
       bias.vec <- colMeans(f.boot.mat) - f.fitted
@@ -1440,9 +1440,9 @@ summary.bkcde <- function(object, ...) {
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
   cat("Bandwidth scale factors: sf.y = ",object$h.sf[1],", sf.x = ",object$h.sf[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
-  if(!is.na(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
-  if(!is.na(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
-  if(!is.na(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
+  if(!is.null(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
+  if(!is.null(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
+  if(!is.null(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
   if(object$optimize) {
     cat("Bandwidth selection criterion: ",object$bwmethod,"\n",sep="")
     cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
