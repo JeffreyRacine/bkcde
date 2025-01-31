@@ -368,7 +368,7 @@ summary(f.yx)
 ## likewise we plot the estimated conditional density f(y|x) and the estimated
 ## conditional distribution F(y|x). We also plot the estimated derivative of
 ## g(x), g1(x), the derivative of f(y|x), f1(y|x), and finally the estimated
-## derivative of F(y|x), F1(y|x). We conduct 5 multipliers and 25 resamples
+## derivative of F(y|x), F1(y|x). We conduct 5 multistarts and 25 resamples
 ## using sub-sample cross-validation as otherwise the computation time would be
 ## totally impractical.
 library(bkcde)
