@@ -33,6 +33,6 @@ plot(f.yx,proper=TRUE,n.grid=50,theta=-50,phi=30,col="cyan",main="")
 ## intervals and report progress (default theta and phi, note two plots created
 ## since ci.preplot = TRUE is the default)
 
-plot(f.yx,ci=TRUE,B=100,n.grid=50,progress=TRUE)
+plot(f.yx,ci=TRUE,theta=-50,phi=30,B=100,n.grid=50,progress=TRUE)
 
 summary(f.yx)

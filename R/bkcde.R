@@ -6,13 +6,13 @@
 
 ## mclapply() and mcmapply() from the parallel package are used throughout
 ## instead of lapply() and mapply() to allow for multi-core computing, and when
-## optim.ksum.cores, optim.degree.cores, or optim.nmulti.cores are set to a value greater than 1,
-## the number of cores used in the parallel processing is set to the value of
-## the respective argument.  But when these are set to 1, the number of cores
-## used in the parallel processing is set to 1, i.e., serial processing occurs
-## exactly as if lapply() and mapply() were being used. If verbose=TRUE is
-## enabled, it appears warnings are most likely to appear immediately running
-## things in serial mode.
+## optim.ksum.cores, optim.degree.cores, or optim.nmulti.cores are set to a
+## value greater than 1, the number of cores used in the parallel processing is
+## set to the value of the respective argument.  But when these are set to 1,
+## the number of cores used in the parallel processing is set to 1, i.e., serial
+## processing occurs exactly as if lapply() and mapply() were being used. If
+## verbose=TRUE is enabled, it appears warnings are most likely to appear
+## immediately running things in serial mode.
 
 ## The functions are briefly described below.  The functions include
 ## integrate.trapezoidal(), NZD(), EssDee(), kernel.bk(), log.likelihood(),
@@ -232,14 +232,14 @@ bkcde.optim.fn <- function(h=NULL,
       int.f.sq <- mcmapply(function(j){
         kernel.bk.x <- kernel.bk(x[j],x,h[2],x.lb,x.ub);
         integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
-      },1:length(y),mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+      },1:length(y),mc.cores = optim.ksum.cores)
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       int.f.sq <- mcmapply(function(j){
         beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         integrate.trapezoidal(y.seq,(cbind(1,predict(X.poly,x[j]))%*%beta.hat)^2)[n.integrate]
-      },1:length(y),mc.cores = ifelse(length(x)>1,optim.ksum.cores,1))
+      },1:length(y),mc.cores = optim.ksum.cores)
     }
     ## Compute leave-one-out estimator which gives us the terms for I.2 in the
     ## ls-cv function.
@@ -1054,7 +1054,7 @@ plot.bkcde <- function(x,
     if(is.null(y.eval)) {
       y.plot.eval <- y.eval <- seq(min(x$y.eval),max(x$y.eval),length=n.grid)
     } else {
-      y.plot.eval <- y.eval <- y.eval
+      y.plot.eval <- y.eval
       n.grid <- length(y.eval)
     }
     x.plot.eval <- x.eval <- rep(x.eval,length(y.plot.eval))
@@ -1199,13 +1199,15 @@ plot.bkcde <- function(x,
     F.ci.SCS <- SCSrank(F.boot.mat, conf.level=1-alpha)$conf.int
     F.ci.sim.lb <- F.ci.SCS[,1]
     F.ci.sim.ub <- F.ci.SCS[,2]
-    g.ci.pw.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / 2)
-    g.ci.pw.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / 2)
-    g.ci.bf.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
-    g.ci.bf.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
-    g.ci.SCS <- SCSrank(g.boot.mat, conf.level=1-alpha)$conf.int
-    g.ci.sim.lb <- g.ci.SCS[,1]
-    g.ci.sim.ub <- g.ci.SCS[,2]
+    if(persp) {
+      g.ci.pw.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / 2)
+      g.ci.pw.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / 2)
+      g.ci.bf.lb <- apply(g.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+      g.ci.bf.ub <- apply(g.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+      g.ci.SCS <- SCSrank(g.boot.mat, conf.level=1-alpha)$conf.int
+      g.ci.sim.lb <- g.ci.SCS[,1]
+      g.ci.sim.ub <- g.ci.SCS[,2]
+    }
     if(!is.null(x$f1) & !is.null(x$F1) & !is.null(x$g1)){
       f1.ci.pw.lb <- apply(f1.boot.mat, 2, quantile, probs = alpha / 2)
       f1.ci.pw.ub <- apply(f1.boot.mat, 2, quantile, probs = 1 - alpha / 2)
@@ -1221,10 +1223,12 @@ plot.bkcde <- function(x,
       F1.ci.SCS <- SCSrank(F1.boot.mat, conf.level=1-alpha)$conf.int
       F1.ci.sim.lb <- F1.ci.SCS[,1]
       F1.ci.sim.ub <- F1.ci.SCS[,2]
-      g1.ci.pw.lb <- apply(g1.boot.mat, 2, quantile, probs = alpha / 2)
-      g1.ci.pw.ub <- apply(g1.boot.mat, 2, quantile, probs = 1 - alpha / 2)
-      g1.ci.bf.lb <- apply(g1.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
-      g1.ci.bf.ub <- apply(g1.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+      if(persp) {
+        g1.ci.pw.lb <- apply(g1.boot.mat, 2, quantile, probs = alpha / 2)
+        g1.ci.pw.ub <- apply(g1.boot.mat, 2, quantile, probs = 1 - alpha / 2)
+        g1.ci.bf.lb <- apply(g1.boot.mat, 2, quantile, probs = alpha / (2 * length(y.plot.eval)))
+        g1.ci.bf.ub <- apply(g1.boot.mat, 2, quantile, probs = 1 - alpha / (2 * length(y.plot.eval)))
+      }
     }
     if(progress) cat("\rComputed bootstrap confidence intervals in ",round(as.numeric(difftime(Sys.time(),secs.start,units="secs"))), " seconds\n",sep="")
   } else {
