@@ -775,25 +775,33 @@ bkcde.optim <- function(x=x,
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
   ## Get the sample size which we use to initialize the bandwidths using some
   ## common rules of thumb, set search bounds for bandwidths (scale factors of
-  ## 10^(-2) and 10^(4) are quite extreme, for the Gaussian it would be
-  ## approximately 1.06)
+  ## 5^(-1) and 10^(4) are extreme, for the Gaussian it would be approximately
+  ## 1.06). Note that it appears that having too low a lower bound (e.g.,
+  ## 10^(-2) or lower, which is obviously extreme) can lead to instability in
+  ## the polynomial approximation. It seems totally sensible and justifiable to
+  ## avoid regions where approximations are likely to be poor and I am totally
+  ## at home with this setting. In simulations it seems to resolve the
+  ## occasional extreme case that is difficult to justify.
   n <- length(y)
-  lower <- 10^(-2)*EssDee(cbind(y,x))*n^(-1/6)
+  lower <- 5^(-1)*EssDee(cbind(y,x))*n^(-1/6)
   upper <- 10^(4)*EssDee(cbind(y,x))
   ## Initialize the bandwidths for the optimization, each multistart has a
   ## different initial bandwidth vector, but each polynomial model uses the same
   ## initial bandwidth vector for each multistart. This is to ensure
   ## replicability rather than generate random numbers in the forked processes.
-  ## The first vector is non random using the rule of thumb 1.06*sd*n^(-1/6) for
-  ## starting values, and the rest (ir nmulti>1) are random values above and
-  ## below these.
+  ## The first vector is non random using the rule of thumb 1.06*sd*n^(-1/6)
+  ## (well, with 1.06 set to 1) for starting values, and the rest (ir nmulti>1)
+  ## are random multiples of this value.
   par.init <- matrix(NA,nmulti,2)
   par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
-  if(nmulti>1) par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),0.5,5),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
+  if(nmulti>1) par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),1,25),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
-    ## Here we run the optimization for each model over all multistarts
+    ## Here we run the optimization for each model over all multistarts.
+    ## lower=max(lower,lower*p) is a small increase in search lower bounds
+    ## related to increasing the polynomial degree in an attempt to avoid
+    ## instability
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.optim.fn,
@@ -811,7 +819,7 @@ bkcde.optim <- function(x=x,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
-                                              lower=lower,
+                                              lower=max(lower,lower*p),
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
