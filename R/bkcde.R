@@ -783,7 +783,7 @@ bkcde.optim <- function(x=x,
   ## at home with this setting. In simulations it seems to resolve the
   ## occasional extreme case that is difficult to justify.
   n <- length(y)
-  lower <- 10^(-1)*EssDee(cbind(y,x))*n^(-1/6)
+  lower <- 5^(-1)*EssDee(cbind(y,x))*n^(-1/6)
   upper <- 10^(4)*EssDee(cbind(y,x))
   ## Initialize the bandwidths for the optimization, each multistart has a
   ## different initial bandwidth vector, but each polynomial model uses the same
@@ -799,9 +799,8 @@ bkcde.optim <- function(x=x,
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over all multistarts.
-    ## lower=max(lower,lower*p) is a small increase in search lower bounds
-    ## related to increasing the polynomial degree in an attempt to avoid
-    ## instability
+    ## lower+lower*log(p+1) is a small increase in search lower bounds related
+    ## to increasing the polynomial degree in an attempt to avoid instability.
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.optim.fn,
@@ -819,7 +818,7 @@ bkcde.optim <- function(x=x,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
-                                              lower=lower,
+                                              lower=lower+lower*log(p+1),
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
