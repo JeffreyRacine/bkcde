@@ -578,7 +578,7 @@ bkcde.default <- function(h=NULL,
           X.poly <- poly(x,raw=poly.raw,degree=degree)
           beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          f.seq <- as.numeric(cbind(1,predict(X.poly,x[j]))%*%beta.hat)
+          f.seq <- as.numeric(cbind(1,predict(X.poly,x.eval.unique[j]))%*%beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
@@ -783,7 +783,7 @@ bkcde.optim <- function(x=x,
   ## at home with this setting. In simulations it seems to resolve the
   ## occasional extreme case that is difficult to justify.
   n <- length(y)
-  lower <- 5^(-1)*EssDee(cbind(y,x))*n^(-1/6)
+  lower <- 10^(-1)*EssDee(cbind(y,x))*n^(-1/6)
   upper <- 10^(4)*EssDee(cbind(y,x))
   ## Initialize the bandwidths for the optimization, each multistart has a
   ## different initial bandwidth vector, but each polynomial model uses the same
@@ -819,7 +819,7 @@ bkcde.optim <- function(x=x,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
-                                              lower=max(lower,lower*p),
+                                              lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
