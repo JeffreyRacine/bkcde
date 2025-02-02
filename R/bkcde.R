@@ -313,6 +313,8 @@ bkcde.default <- function(h=NULL,
                           optim.degree.cores=NULL,
                           optim.ksum.cores=1,
                           optim.nmulti.cores=NULL,
+                          optim.sf.y.lb=0.5,
+                          optim.sf.x.lb=0.5,
                           penalty.cutoff=.Machine$double.xmin,
                           penalty.method=c("smooth","constant","trim"),
                           poly.raw=FALSE,
@@ -371,6 +373,8 @@ bkcde.default <- function(h=NULL,
   if(fitted.cores < 1) stop("fitted.cores must be at least 1 in bkcde()")
   if(!is.null(optim.degree.cores) && optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
   if(!is.null(optim.nmulti.cores) && optim.nmulti.cores < 1) stop("optim.nmulti.cores must be at least 1 in bkcde()")
+  if(optim.sf.y.lb <= 0) stop("optim.sf.y.lb must be positive in bkcde()")
+  if(optim.sf.x.lb <= 0) stop("optim.sf.x.lb must be positive in bkcde()")
   ## This chunk of code is to determine the number of cores to use for the
   ## optimization based on the number of models and the number of multistarts and
   ## the number of cores available via detectCores() in the parallel package. If
@@ -410,6 +414,8 @@ bkcde.default <- function(h=NULL,
                              optim.degree.cores=optim.degree.cores,
                              optim.ksum.cores=optim.ksum.cores,
                              optim.nmulti.cores=optim.nmulti.cores,
+                             optim.sf.y.lb=optim.sf.y.lb,
+                             optim.sf.x.lb=optim.sf.x.lb,
                              penalty.cutoff=penalty.cutoff,
                              penalty.method=penalty.method,
                              poly.raw=poly.raw,
@@ -447,6 +453,8 @@ bkcde.default <- function(h=NULL,
                       optim.degree.cores=optim.degree.cores,
                       optim.ksum.cores=optim.ksum.cores,
                       optim.nmulti.cores=optim.nmulti.cores,
+                      optim.sf.y.lb=optim.sf.y.lb,
+                      optim.sf.x.lb=optim.sf.x.lb,
                       penalty.cutoff=penalty.cutoff,
                       penalty.method=penalty.method,
                       poly.raw=poly.raw,
@@ -753,6 +761,8 @@ bkcde.optim <- function(x=x,
                         optim.degree.cores=optim.degree.cores,
                         optim.ksum.cores=optim.ksum.cores,
                         optim.nmulti.cores=optim.nmulti.cores,
+                        optim.sf.y.lb=optim.sf.y.lb,
+                        optim.sf.x.lb=optim.sf.x.lb,
                         penalty.cutoff=penalty.cutoff,
                         penalty.method=penalty.method,
                         poly.raw=poly.raw,
@@ -775,16 +785,17 @@ bkcde.optim <- function(x=x,
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
   ## Get the sample size which we use to initialize the bandwidths using some
   ## common rules of thumb, set search bounds for bandwidths (scale factors of
-  ## 5^(-1) and 10^(4) are extreme, for the Gaussian it would be approximately
-  ## 1.06). Note that it appears that having too low a lower bound (e.g.,
-  ## 10^(-2) or lower, which is obviously extreme) can lead to instability in
-  ## the polynomial approximation. It seems totally sensible and justifiable to
-  ## avoid regions where approximations are likely to be poor and I am totally
-  ## at home with this setting. In simulations it seems to resolve the
-  ## occasional extreme case that is difficult to justify.
+  ## 2^(-1) and 10^(5) are somewhat extreme, for the Gaussian it would be
+  ## approximately 1.06). Note that it appears that having too low a lower bound
+  ## for the bandwidth for x, h[2], (e.g., 10^(-2) or lower, which is obviously
+  ## extreme) can lead to instability in the polynomial approximation. It seems
+  ## totally sensible and justifiable to avoid regions where approximations are
+  ## likely to be poor and I am totally at home with this setting. In
+  ## simulations it seems to resolve the occasional extreme case that is
+  ## difficult to justify.
   n <- length(y)
-  lower <- 5^(-1)*EssDee(cbind(y,x))*n^(-1/6)
-  upper <- 10^(4)*EssDee(cbind(y,x))
+  lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
+  upper <- 10^(5)*EssDee(cbind(y,x))
   ## Initialize the bandwidths for the optimization, each multistart has a
   ## different initial bandwidth vector, but each polynomial model uses the same
   ## initial bandwidth vector for each multistart. This is to ensure
@@ -794,7 +805,12 @@ bkcde.optim <- function(x=x,
   ## are random multiples of this value.
   par.init <- matrix(NA,nmulti,2)
   par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
-  if(nmulti>1) par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),1,25),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
+  if(nmulti>1) {
+    par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),1,25),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
+    ## Check that initial values are not below the lower bounds
+    par.init[,1] <- pmax(par.init[,1],lower[1])
+    par.init[,2] <- pmax(par.init[,2],lower[2])
+  }
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {

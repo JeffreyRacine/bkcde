@@ -37,6 +37,8 @@ bkcde(...)
       optim.degree.cores = NULL, 
       optim.ksum.cores = 1, 
       optim.nmulti.cores = NULL, 
+      optim.sf.y.lb=0.5,
+      optim.sf.x.lb=0.5,
       penalty.cutoff = .Machine$double.xmin, 
       penalty.method = c("smooth", "constant", "trim"), 
       poly.raw = FALSE, 
@@ -124,6 +126,13 @@ bkcde(...)
   \item{optim.nmulti.cores}{
   manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{\link[parallel]{detectCores}},  otherwise set to balance the load across the cores. The default is NULL
 }
+  \item{optim.sf.y.lb}{
+  the lower bound for the scale factor for y when conducting search (must be positive)
+}
+  \item{optim.sf.x.lb}{
+  the lower bound for the scale factor for x when conducting search (must be positive)
+}
+  
   \item{penalty.cutoff}{
   the cutoff value for the penalty used in the log likelihood function for negative density values. 
 }
