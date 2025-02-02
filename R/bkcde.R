@@ -799,8 +799,9 @@ bkcde.optim <- function(x=x,
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over all multistarts.
-    ## lower+lower*log(p+1) is a small increase in search lower bounds related
-    ## to increasing the polynomial degree in an attempt to avoid instability.
+    ## c(lower[1],lower[2]*p is a small increase in search
+    ## lower bounds related for the bandwidth for x h[2] which is increasing the
+    ## polynomial degree in an attempt to avoid instability.
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.optim.fn,
@@ -818,7 +819,7 @@ bkcde.optim <- function(x=x,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
-                                              lower=lower+lower*log(p+1),
+                                              lower=c(lower[1],max(lower[2],p*lower[2])),
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
