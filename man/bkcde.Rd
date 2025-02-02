@@ -37,7 +37,7 @@ bkcde(...)
       optim.degree.cores = NULL, 
       optim.ksum.cores = 1, 
       optim.nmulti.cores = NULL, 
-      optim.sf.y.lb=0.5,
+      optim.sf.y.lb=0.25,
       optim.sf.x.lb=0.5,
       penalty.cutoff = .Machine$double.xmin, 
       penalty.method = c("smooth", "constant", "trim"), 
