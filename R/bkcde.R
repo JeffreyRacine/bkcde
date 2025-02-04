@@ -235,10 +235,11 @@ bkcde.optim.fn <- function(h=NULL,
       },1:length(y),mc.cores = optim.ksum.cores)
     } else {
       X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
       int.f.sq <- mcmapply(function(j){
-        beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
-        integrate.trapezoidal(y.seq,(cbind(1,predict(X.poly,x[j]))%*%beta.hat)^2)[n.integrate]
+        integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
       },1:length(y),mc.cores = optim.ksum.cores)
     }
     ## Compute leave-one-out estimator which gives us the terms for I.2 in the
@@ -382,13 +383,17 @@ bkcde.default <- function(h=NULL,
   ## balance the load between the two, attempting to make full use of the
   ## available cores.
   nmodels <- degree.max-degree.min+1
-  combn.out <- combn(max(nmodels,nmulti),2)
-  combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores())]
-  combn.out <- combn.out[,ncol(combn.out)]
+  if(nmodels==1 & nmulti==1) {
+    combn.out <- 1
+  } else {
+    combn.out <- combn(max(nmodels,nmulti),2)
+    combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores()),drop=FALSE]
+    combn.out <- combn.out[,ncol(combn.out)]
+  }
   if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
-  bwmethod <- match.arg(bwmethod)
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   penalty.method <- match.arg(penalty.method)
+  bwmethod <- match.arg(bwmethod)
   cv <- match.arg(cv)
   if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
   if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
