@@ -205,8 +205,7 @@ bkcde.optim.fn <- function(h=NULL,
         mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
       },1:length(y),mc.cores=optim.ksum.cores))
     } else {
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
@@ -234,8 +233,7 @@ bkcde.optim.fn <- function(h=NULL,
         integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
       },1:length(y),mc.cores = optim.ksum.cores)
     } else {
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       int.f.sq <- mcmapply(function(j){
         beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
@@ -250,8 +248,7 @@ bkcde.optim.fn <- function(h=NULL,
         mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
       },1:length(y),mc.cores=optim.ksum.cores))
     } else {
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
