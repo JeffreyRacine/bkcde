@@ -583,13 +583,17 @@ bkcde.default <- function(h=NULL,
       ## the outer mcmapply call and invoke fitting the mcmapply sequence of
       ## f(y|x) values with proper.cores
       Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+      if(degree > 0) {
+        ## Not function of j, so we can compute this once
+        X.poly <- poly(x,raw=poly.raw,degree=degree)
+        X <- cbind(1,X.poly)
+      }
       proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
         if(degree == 0) {
           kernel.bk.x <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
           f.seq <- colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))
         } else {
-          X.poly <- poly(x,raw=poly.raw,degree=degree)
-          beta.hat <- coef(lm.wfit(x=cbind(1,X.poly),y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           f.seq <- as.numeric(cbind(1,predict(X.poly,x.eval.unique[j]))%*%beta.hat)
         }
