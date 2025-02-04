@@ -518,6 +518,7 @@ bkcde.default <- function(h=NULL,
       ## Choice of raw or orthogonal polynomials
       X.poly <- poly(x,raw=poly.raw,degree=degree)
       X <- cbind(1,X.poly)
+      X.eval <- cbind(1,predict(X.poly,x.eval))
       ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
       ## regression to estimate \hat f(y|x) rather than the intercept term from
       ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
@@ -531,9 +532,9 @@ bkcde.default <- function(h=NULL,
         ## mean, and conditional distribution, respectively, while the last
         ## three rows are the derivatives of the conditional density, mean, and
         ## distribution, respectively (computed only if degree=1)
-        c(beta.hat[,1]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
-          beta.hat[,2]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
-          beta.hat[,3]%*%t(cbind(1,predict(X.poly,x.eval[i]))),
+        c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
+          beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
+          beta.hat[,3]%*%t(X.eval[i,,drop=FALSE])),
           beta.hat[2,1],
           beta.hat[2,2],
           beta.hat[2,3])
@@ -587,6 +588,7 @@ bkcde.default <- function(h=NULL,
         ## Not function of j, so we can compute this once
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
+        X.eval.unique <- cbind(1,predict(X.poly,x.eval.unique))
       }
       proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
         if(degree == 0) {
@@ -595,11 +597,11 @@ bkcde.default <- function(h=NULL,
         } else {
           beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          f.seq <- as.numeric(cbind(1,predict(X.poly,x.eval.unique[j]))%*%beta.hat)
+          f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE])%*%beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        ## Set any possible negative f.seq values to 0
+        ## Set any possible negativhe f.seq values to 0
         f.seq[f.seq < 0] <- 0
         ## Compute integral of f.seq after setting any possible negative values to 0
         int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
