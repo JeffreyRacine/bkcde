@@ -534,7 +534,7 @@ bkcde.default <- function(h=NULL,
         ## distribution, respectively (computed only if degree=1)
         c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
           beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
-          beta.hat[,3]%*%t(X.eval[i,,drop=FALSE])),
+          beta.hat[,3]%*%t(X.eval[i,,drop=FALSE]),
           beta.hat[2,1],
           beta.hat[2,2],
           beta.hat[2,3])
@@ -597,7 +597,7 @@ bkcde.default <- function(h=NULL,
         } else {
           beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE])%*%beta.hat)
+          f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
