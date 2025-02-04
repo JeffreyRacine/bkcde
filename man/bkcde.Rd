@@ -372,7 +372,7 @@ summary(f.yx)
 ## a model with poly.raw=TRUE and degree.min=1, degree.max=1 thereby generating
 ## a local polynomial model of degree 1, and the derivative estimates are taken
 ## from the derivative coefficient of these local models. We take a very large
-## sample (10 million observations) to ensure that the derivative estimates are
+## sample (1 million observations) to ensure that the derivative estimates are
 ## accurate. We plot the estimated mean function g(x) and true mean function,
 ## likewise we plot the estimated conditional density f(y|x) and the estimated
 ## conditional distribution F(y|x). We also plot the estimated derivative of
@@ -382,7 +382,7 @@ summary(f.yx)
 ## totally impractical.
 library(bkcde)
 set.seed(42)
-n <- 1e+07
+n <- 1e+06
 n.grid <- 50
 x <- runif(n,0,1)
 y <- rnorm(n,mean=2*sin(4*pi*x),sd=1+abs(x))
