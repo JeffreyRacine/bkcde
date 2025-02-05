@@ -37,8 +37,8 @@ bkcde(...)
       optim.degree.cores = NULL, 
       optim.ksum.cores = 1, 
       optim.nmulti.cores = NULL, 
-      optim.sf.y.lb=0.25,
-      optim.sf.x.lb=0.25,
+      optim.sf.y.lb=0.5,
+      optim.sf.x.lb=0.5,
       penalty.cutoff = .Machine$double.xmin, 
       penalty.method = c("smooth", "constant", "trim"), 
       poly.raw = FALSE, 
@@ -82,7 +82,7 @@ bkcde(...)
   the cross-validation method to use (likelihood or least-squares cross-validation)
 }
 \item{bwscaling}{
-  a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} 
+  a logical value that when set to TRUE the supplied bandwidths are interpreted as \sQuote{scale factors} (the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
   \item{cv}{
   the type of cross-validation to use. The default is \code{"auto"}. The options are \code{"full"} (full sample cross-validation), \code{"sub"} (sub-sampled cross-validation via \code{\link{sub.cv}}), and \code{"auto"} (automatic selection of \code{"full"} or \code{"sub"} based on the sample size). When \code{cv="auto"} and the sample size is less than cv.auto.threshold, \code{"full"} cross-validation is used, otherwise \code{"sub"} cross-validation is used
@@ -127,10 +127,10 @@ bkcde(...)
   manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{\link[parallel]{detectCores}},  otherwise set to balance the load across the cores. The default is NULL
 }
   \item{optim.sf.y.lb}{
-  the lower bound for the scale factor for y when conducting search (must be positive)
+  the lower bound for the scale factor for y when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
   \item{optim.sf.x.lb}{
-  the lower bound for the scale factor for x when conducting search (must be positive)
+  the lower bound for the scale factor for x when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
   
   \item{penalty.cutoff}{

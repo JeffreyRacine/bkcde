@@ -311,8 +311,8 @@ bkcde.default <- function(h=NULL,
                           optim.degree.cores=NULL,
                           optim.ksum.cores=1,
                           optim.nmulti.cores=NULL,
-                          optim.sf.y.lb=0.25,
-                          optim.sf.x.lb=0.25,
+                          optim.sf.y.lb=0.5,
+                          optim.sf.x.lb=0.5,
                           penalty.cutoff=.Machine$double.xmin,
                           penalty.method=c("smooth","constant","trim"),
                           poly.raw=FALSE,
@@ -794,13 +794,12 @@ bkcde.optim <- function(x=x,
   ## Get the sample size which we use to initialize the bandwidths using some
   ## common rules of thumb, set search bounds for bandwidths (scale factors of
   ## 2^(-1) and 10^(5) are somewhat extreme, for the Gaussian it would be
-  ## approximately 1.06). Note that it appears that having too low a lower bound
-  ## for the bandwidth for x, h[2], (e.g., 10^(-2) or lower, which is obviously
-  ## extreme) can lead to instability in the polynomial approximation. It seems
-  ## totally sensible and justifiable to avoid regions where approximations are
-  ## likely to be poor and I am totally at home with this setting. In
-  ## simulations it seems to resolve the occasional extreme case that is
-  ## difficult to justify.
+  ## approximately 1). Note that it appears that having too low a lower bound
+  ## for the bandwidth for y, h[1], (e.g., 10^(-2) or lower, which is obviously
+  ## extreme) can lead to instability, similarly for x. It seems totally
+  ## sensible and justifiable to avoid regions where approximations are likely
+  ## to be poor and I am totally at home with this setting. In simulations it
+  ## seems to resolve the occasional extreme case that is difficult to justify.
   n <- length(y)
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
@@ -808,9 +807,9 @@ bkcde.optim <- function(x=x,
   ## different initial bandwidth vector, but each polynomial model uses the same
   ## initial bandwidth vector for each multistart. This is to ensure
   ## replicability rather than generate random numbers in the forked processes.
-  ## The first vector is non random using the rule of thumb 1.06*sd*n^(-1/6)
-  ## (well, with 1.06 set to 1) for starting values, and the rest (ir nmulti>1)
-  ## are random multiples of this value.
+  ## The first vector is non random using the rule of thumb sd*n^(-1/6) for
+  ## starting values, and the rest (i.e., nmulti>1) are random multiples of this
+  ## value.
   par.init <- matrix(NA,nmulti,2)
   par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
   if(nmulti>1) {
