@@ -312,7 +312,7 @@ bkcde.default <- function(h=NULL,
                           optim.ksum.cores=1,
                           optim.nmulti.cores=NULL,
                           optim.sf.y.lb=0.25,
-                          optim.sf.x.lb=0.5,
+                          optim.sf.x.lb=0.25,
                           penalty.cutoff=.Machine$double.xmin,
                           penalty.method=c("smooth","constant","trim"),
                           poly.raw=FALSE,
@@ -814,18 +814,13 @@ bkcde.optim <- function(x=x,
   par.init <- matrix(NA,nmulti,2)
   par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
   if(nmulti>1) {
-    par.init[2:nmulti,] <- sweep(matrix(runif(2*(nmulti-1),1,25),nmulti-1,2),2,EssDee(cbind(y,x))*n^(-1/6),"*")
-    ## Check that initial values are not below the lower bounds
-    par.init[,1] <- pmax(par.init[,1],lower[1])
-    par.init[,2] <- pmax(par.init[,2],lower[2])
+    par.init[2:nmulti,] <- cbind(EssDee(y)*runif(nmulti-1,optim.sf.y.lb,10+optim.sf.y.lb),
+                                 EssDee(x)*runif(nmulti-1,optim.sf.x.lb,10+optim.sf.x.lb))*n^(-1/6)
   }
   ## Here we conduct optimization over all models (i.e., polynomial orders) in
   ## parallel each having degree p in [degree.min,degree.max]
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     ## Here we run the optimization for each model over all multistarts.
-    ## c(lower[1],lower[2]*p is a small increase in search
-    ## lower bounds related for the bandwidth for x h[2] which is increasing the
-    ## polynomial degree in an attempt to avoid instability.
     nmulti.return <- mclapply(1:nmulti, function(i) {
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                               fn=bkcde.optim.fn,
@@ -843,7 +838,7 @@ bkcde.optim <- function(x=x,
                                               penalty.method=penalty.method,
                                               penalty.cutoff=penalty.cutoff,
                                               verbose=verbose,
-                                              lower=c(lower[1],max(lower[2],p*lower[2])),
+                                              lower=lower,
                                               upper=upper,
                                               method="L-BFGS-B",
                                               control=list(fnscale = -1)))
