@@ -1193,19 +1193,19 @@ plot.bkcde <- function(x,
       F.boot.mat <- sweep(F.boot.mat,2,bias.vec,"-")
       bias.vec <- colMeans(g.boot.mat) - g.fitted
       g.boot.mat <- sweep(g.boot.mat,2,bias.vec,"-")
-      if(!is.null(x$f1) & !is.null(x$F1) & !is.null(x$g1)) {
-        bias.vec <- colMeans(f1.boot.mat) - x$f1
+      if(!is.null(f1.fitted) & !is.null(F1.fitted) & !is.null(g1.fitted)) {
+        bias.vec <- colMeans(f1.boot.mat) - f1.fitted
         f1.boot.mat <- sweep(f1.boot.mat,2,bias.vec,"-")
-        bias.vec <- colMeans(F1.boot.mat) - x$F1
+        bias.vec <- colMeans(F1.boot.mat) - F1.fitted
         F1.boot.mat <- sweep(F1.boot.mat,2,bias.vec,"-")
-        bias.vec <- colMeans(g1.boot.mat) - x$g1
+        bias.vec <- colMeans(g1.boot.mat) - g1.fitted
         g1.boot.mat <- sweep(g1.boot.mat,2,bias.vec,"-")
       }
       if(proper) {
         f.boot.mat <- pmax(f.boot.mat,0)
         F.boot.mat <- pmax(F.boot.mat,0)
         g.boot.mat <- pmax(g.boot.mat,0)
-        if(!is.null(x$f1) & !is.null(x$F1) & !is.null(x$g1)){
+        if(!is.null(f1.fitted) & !is.null(F1.fitted) & !is.null(g1.fitted)){
           f1.boot.mat <- pmax(f1.boot.mat,0)
           F1.boot.mat <- pmax(F1.boot.mat,0)
           g1.boot.mat <- pmax(g1.boot.mat,0)
