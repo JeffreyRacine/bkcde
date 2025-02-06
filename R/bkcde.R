@@ -507,7 +507,8 @@ bkcde.default <- function(h=NULL,
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
-      ## Derivatives extracted from degree 1 polynomial fit only (below)
+      ## Derivatives extracted from degree 1 polynomial fit only (below), and
+      ## only if poly.raw=TRUE
       f1.yx <- NULL
       E1.yx <- NULL
       F1.yx <- NULL
@@ -539,8 +540,9 @@ bkcde.default <- function(h=NULL,
       f.yx <- foo[,1]
       E.yx <- foo[,2]
       F.yx <- foo[,3]
-      ## Derivatives extracted from degree 1 polynomial fit only
-      if(degree==1) {
+      ## Derivatives extracted from degree 1 polynomial fit only and only if
+      ## poly.raw=TRUE
+      if(degree==1 & poly.raw) {
         f1.yx <- foo[,4]
         E1.yx <- foo[,5]
         F1.yx <- foo[,6]
