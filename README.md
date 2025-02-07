@@ -12,4 +12,4 @@ library(devtools); install_github('bkcde', 'JeffreyRacine')
 
 Note Windows users have to first install [Rtools](https://cran.r-project.org/bin/windows/Rtools/), while OS X users have to first install [Xcode](https://apps.apple.com/us/app/xcode/id497799835) and the command line tools (in OS X 10.9 or higher, once you have Xcode installed, open a terminal and run xcode-select --install).
 
-https://github.com/JeffreyRacine/bkcde.git
+
