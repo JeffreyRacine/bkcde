@@ -4,7 +4,7 @@ This is the R package `bkcde' (Boundary Corrected Polynomial Adaptive Univariate
 
 ## Installation
 
-You can install the more recent version from GitHub by downloading the [zip ball](https://github.com/JeffreyRacine/R-Package-bkcde/zipball/master) or [tar ball](https://github.com/JeffreyRacine/R-Package-bkcde/tarball/master), decompress and run `R CMD INSTALL` on it, or install then use the **devtools** package to install the development version:
+You can install the more recent version from GitHub by downloading the [zip ball](https://github.com/JeffreyRacine/R-Package-bkcde/zipball/main) or [tar ball](https://github.com/JeffreyRacine/R-Package-bkcde/tarball/main), decompress and run `R CMD INSTALL` on it, or install then use the **devtools** package to install the development version:
 
 ```r
 library(devtools); install_github('R-Package-bkcde', 'JeffreyRacine')
