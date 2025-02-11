@@ -45,6 +45,7 @@ bkcde(...)
       progress = FALSE,
       proper.cores = detectCores(),
       proper = FALSE, 
+      proper.cv = FALSE, 
       resamples = 10,
       verbose = FALSE, 
       ...)
@@ -150,6 +151,9 @@ bkcde(...)
 }
   \item{proper}{
   a logical value indicating whether to use proper normalization. The default is FALSE and a warning is issued if any negative values are detected in the estimate
+}
+  \item{proper.cv}{
+  a logical value indicating whether to use proper normalization during cross-validation. The default is FALSE and a warning is issued if any negative values are detected in the estimate
 }
 \item{resamples}{
   the number of resamples to use for cross-validation when \code{cv="sub"}. The default is 10
