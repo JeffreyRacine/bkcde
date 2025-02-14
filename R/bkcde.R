@@ -202,7 +202,7 @@ bkcde.optim.fn <- function(h=NULL,
   if(bwmethod=="cv.ml") {
     ## Likelihood cross-validation
     if(degree==0) {
-      ## The p=0 estimator is always proper
+      ## The degree=0 estimator is always proper
       f.loo <- as.numeric(mcmapply(function(i){
         kernel.bk.x <- kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
         mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
@@ -250,7 +250,7 @@ bkcde.optim.fn <- function(h=NULL,
     ## in y.seq. This gives us the terms we need for I.1 in the ls-cv function.
     Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
     if(degree==0) {
-      ## The p=0 estimator is always proper
+      ## The degree=0 estimator is always proper
       int.f.sq <- mcmapply(function(j){
         kernel.bk.x <- kernel.bk(x[j],x,h[2],x.lb,x.ub);
         integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
@@ -262,7 +262,7 @@ bkcde.optim.fn <- function(h=NULL,
         int.f.sq <- mcmapply(function(j){
           beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          f.seq <- (X[j,,drop=FALSE]%*%beta.hat)
+          f.seq <- X[j,,drop=FALSE]%*%beta.hat
           f.seq[f.seq<0] <- 0
           f.seq <- f.seq/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
           integrate.trapezoidal(y.seq,f.seq^2)[n.integrate]
@@ -279,7 +279,7 @@ bkcde.optim.fn <- function(h=NULL,
     ## Compute leave-one-out estimator which gives us the terms for I.2 in the
     ## ls-cv function.
     if(degree==0) {
-      ## The p=0 estimator is always proper
+      ## The degree=0 estimator is always proper
       f.loo <- as.numeric(mcmapply(function(i){
         kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
         mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
@@ -296,11 +296,11 @@ bkcde.optim.fn <- function(h=NULL,
         f.loo <- as.numeric(mcmapply(function(i){
           beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          f.hat <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
+          f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
           f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
           f.seq[f.seq<0] <- 0
-          f.hat[f.hat<0] <- 0
-          f.hat/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+          f.loo[f.loo<0] <- 0
+          f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
         },1:length(y),mc.cores=optim.ksum.cores))
       } else {
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
