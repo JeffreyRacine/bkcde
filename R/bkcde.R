@@ -47,6 +47,21 @@ integrate.trapezoidal <- function(x,y) {
   return(int.vec[rank.x]-cf)
 }
 
+## Function that can be called to extend or shrink the rage of x or y
+## for evaluation data when data is unbounded
+
+trim.quantiles = function(dat, trim){
+  if (sign(trim) == sign(-1)){
+    trim = abs(trim)
+    tq = quantile(dat, probs = c(0.0, 0.0+trim, 1.0-trim,1.0))
+    tq = c(2.0*tq[1]-tq[2], 2.0*tq[4]-tq[3])
+  }
+  else {
+    tq = quantile(dat, probs = c(0.0+trim, 1.0-trim))
+  }
+  tq
+}
+
 ## NZD() is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
 ## accepted coding practice for a variety of languages
 
@@ -378,6 +393,8 @@ bkcde.default <- function(h=NULL,
                           proper.cv=FALSE,
                           resamples=10,
                           verbose=FALSE,
+                          x.trim=0,
+                          y.trim=0,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -397,15 +414,35 @@ bkcde.default <- function(h=NULL,
   ## plot.bkcde()). Of course these can be changed, and plot will override them
   ## if desired, as will predict.bkcde().
   optimize <- ifelse(is.null(h),TRUE,FALSE)
-  if(is.null(x.eval) & is.null(y.eval)) {
-    data.grid <- expand.grid(seq(min(x),max(x),length=n.grid),seq(min(y),max(y),length=n.grid))
-    x.eval <- data.grid$Var1
-    y.eval <- data.grid$Var2
-  }
   if(is.null(y.lb)) y.lb <- min(y)
   if(is.null(y.ub)) y.ub <- max(y)
   if(is.null(x.lb)) x.lb <- min(x)
   if(is.null(x.ub)) x.ub <- max(x)
+  if(is.null(x.eval) & is.null(y.eval)) {
+    x.tq <- trim.quantiles(x, x.trim)
+    if(is.finite(x.lb) & is.finite(x.ub)) {
+      x.seq <- seq(min(x),max(x),length=n.grid)
+    } else if(is.finite(x.lb) & !is.finite(x.ub)) {
+      x.seq <- seq(min(x),x.tq[2],length=n.grid)
+    } else if(!is.finite(x.lb) & is.finite(x.ub)) {
+      x.seq <- seq(x.tq[1],max(x),length=n.grid)
+    } else {
+      x.seq <- seq(x.tq[1],x.tq[2],length=n.grid)
+    }
+    y.tq <- trim.quantiles(y, y.trim)
+    if(is.finite(y.lb) & is.finite(y.ub)) {
+      y.seq <- seq(min(y),max(y),length=n.grid)
+    } else if(is.finite(y.lb) & !is.finite(y.ub)) {
+      y.seq <- seq(min(y),y.tq[2],length=n.grid)
+    } else if(!is.finite(y.lb) & is.finite(y.ub)) {
+      y.seq <- seq(y.tq[1],max(y),length=n.grid)
+    } else {
+      y.seq <- seq(y.tq[1],y.tq[2],length=n.grid)
+    }
+    data.grid <- expand.grid(x.seq,y.seq)
+    x.eval <- data.grid$Var1
+    y.eval <- data.grid$Var2
+  }
   if(any(y<y.lb) | any(y>y.ub)) stop("y must lie in [y.lb,y.ub] in bkcde()")
   if(any(y.eval<y.lb) | any(y.eval>y.ub)) stop("y.eval must lie in [y.lb,y.ub] in bkcde()")
   if(any(x<x.lb) | any(x>x.ub)) stop("x must lie in [x.lb,x.ub] in bkcde()")
