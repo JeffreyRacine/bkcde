@@ -419,6 +419,13 @@ bkcde.default <- function(h=NULL,
   if(is.null(x.lb)) x.lb <- min(x)
   if(is.null(x.ub)) x.ub <- max(x)
   if(is.null(x.eval) & is.null(y.eval)) {
+    ## When infinite lower or upper values are provided, we provide the
+    ## flexibilty to use min/max for the evaluation data (default, *.trim=0),
+    ## otherwise we allow the user to extend (*.trim < 0) or narrow (*.trim > 0)
+    ## the range of the evaluation data. Admittedly clunky and could be refined
+    ## further (i.e., with finite bounds could narrow the range of the
+    ## evaluation data without injury, leave for a rainy day - the purpose is to
+    ## assess behaviour of the integrated mean function).
     x.tq <- trim.quantiles(x, x.trim)
     if(is.finite(x.lb) & is.finite(x.ub)) {
       x.seq <- seq(min(x),max(x),length=n.grid)
