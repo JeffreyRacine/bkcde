@@ -227,9 +227,8 @@ n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
 f.yx <- bkcde(x=x, y=y)
-par(mfrow=c(2,2))
-foo <- plot(f.yx,ci=TRUE,ci.method="all",plot.behavior="plot-data")
-plot(f.yx,ci=TRUE,ci.method="Simultaneous")
+par(mfrow=c(1,2))
+plot(f.yx,ci=TRUE,ci.method="all")
 \dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000
