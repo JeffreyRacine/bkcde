@@ -1647,7 +1647,7 @@ sub.cv <- function(x, y,
   if(length(degree.vec[degree.vec==degree]) < 4) {
     h.covMcd <- h.mean
   } else {
-    h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
+    h.covMcd <- covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
   }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
   return(list(cv.vec=cv.vec,

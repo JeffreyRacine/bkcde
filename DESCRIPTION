@@ -1,6 +1,6 @@
 Package: bkcde
-Imports: parallel, pbmcapply, stats, MCPAN
-Suggests: lpcde, progress, robustbase
+Imports: MCPAN, parallel, pbmcapply, robustbase, stats
+Suggests: lpcde, progress
 Type: Package
 Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 Version: 1.26
