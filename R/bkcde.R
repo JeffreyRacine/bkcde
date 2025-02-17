@@ -47,21 +47,6 @@ integrate.trapezoidal <- function(x,y) {
   return(int.vec[rank.x]-cf)
 }
 
-## Function that can be called to extend or shrink the rage of x or y
-## for evaluation data when data is unbounded
-
-trim.quantiles = function(dat, trim){
-  if (sign(trim) == sign(-1)){
-    trim = abs(trim)
-    tq = quantile(dat, probs = c(0.0, 0.0+trim, 1.0-trim,1.0))
-    tq = c(2.0*tq[1]-tq[2], 2.0*tq[4]-tq[3])
-  }
-  else {
-    tq = quantile(dat, probs = c(0.0+trim, 1.0-trim))
-  }
-  tq
-}
-
 ## NZD() is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
 ## accepted coding practice for a variety of languages
 
@@ -393,8 +378,8 @@ bkcde.default <- function(h=NULL,
                           proper.cv=FALSE,
                           resamples=10,
                           verbose=FALSE,
-                          x.trim=0,
-                          y.trim=0,
+                          x.erf=0,
+                          y.erf=0,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -426,26 +411,17 @@ bkcde.default <- function(h=NULL,
     ## further (i.e., with finite bounds could narrow the range of the
     ## evaluation data without injury, leave for a rainy day - the purpose is to
     ## assess behaviour of the integrated mean function).
-    x.tq <- trim.quantiles(x, x.trim)
-    if(is.finite(x.lb) & is.finite(x.ub)) {
-      x.seq <- seq(min(x),max(x),length=n.grid)
-    } else if(is.finite(x.lb) & !is.finite(x.ub)) {
-      x.seq <- seq(min(x),x.tq[2],length=n.grid)
-    } else if(!is.finite(x.lb) & is.finite(x.ub)) {
-      x.seq <- seq(x.tq[1],max(x),length=n.grid)
-    } else {
-      x.seq <- seq(x.tq[1],x.tq[2],length=n.grid)
-    }
-    y.tq <- trim.quantiles(y, y.trim)
-    if(is.finite(y.lb) & is.finite(y.ub)) {
-      y.seq <- seq(min(y),max(y),length=n.grid)
-    } else if(is.finite(y.lb) & !is.finite(y.ub)) {
-      y.seq <- seq(min(y),y.tq[2],length=n.grid)
-    } else if(!is.finite(y.lb) & is.finite(y.ub)) {
-      y.seq <- seq(y.tq[1],max(y),length=n.grid)
-    } else {
-      y.seq <- seq(y.tq[1],y.tq[2],length=n.grid)
-    }
+    
+    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.grid)
+    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=y.erf)[2],length=n.grid)
+    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=y.erf)[1],y.ub,length=n.grid)
+    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=y.erf)[1],extendrange(y,f=y.erf)[2],length=n.grid)
+    
+    if(is.finite(x.lb) && is.finite(x.ub)) x.seq <- seq(x.lb,x.ub,length=n.grid)
+    if(is.finite(x.lb) && !is.finite(x.ub)) x.seq <- seq(x.lb,extendrange(x,f=x.erf)[2],length=n.grid)
+    if(!is.finite(x.lb) && is.finite(x.ub)) x.seq <- seq(extendrange(x,f=x.erf)[1],x.ub,length=n.grid)
+    if(!is.finite(x.lb) && !is.finite(x.ub)) x.seq <- seq(extendrange(x,f=x.erf)[1],extendrange(x,f=x.erf)[2],length=n.grid)
+    
     data.grid <- expand.grid(x.seq,y.seq)
     x.eval <- data.grid$Var1
     y.eval <- data.grid$Var2

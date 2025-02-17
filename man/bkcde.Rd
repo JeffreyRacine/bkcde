@@ -48,8 +48,8 @@ bkcde(...)
       proper.cv = FALSE, 
       resamples = 10,
       verbose = FALSE, 
-      x.trim = 0,
-      y.trim = 0,
+      x.erf = 0,
+      y.erf = 0,
       ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -163,11 +163,11 @@ bkcde(...)
   \item{verbose}{
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
 }
-  \item{x.trim}{
-  a scalar indicating whether to expand the evluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.
+  \item{x.erf}{
+  a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.
 }
-  \item{y.trim}{
-    a scalar indicating whether to expand the evluation grid beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
+  \item{y.erf}{
+    a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evluation grid beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
 }
   \item{\dots}{
   additional arguments to be passed to the \code{bkcde.optim} function
