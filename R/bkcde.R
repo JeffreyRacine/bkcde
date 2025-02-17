@@ -1074,11 +1074,6 @@ plot.bkcde <- function(x,
     ci.cores <- 1
     fitted.cores <-1
     proper.cores <- 1
-    fitted.cores <- 1
-    proper.cores <- 1
-    optim.degree.cores <- 1
-    optim.ksum.cores <- 1
-    optim.nmulti.cores <- 1
   }
 
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
