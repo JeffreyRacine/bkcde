@@ -704,7 +704,7 @@ bkcde.default <- function(h=NULL,
         }
         ## Compute integral of f.seq including any possible negative values
         int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        ## Set any possible negativhe f.seq values to 0
+        ## Set any possible negative f.seq values to 0
         f.seq[f.seq < 0] <- 0
         ## Compute integral of f.seq after setting any possible negative values to 0
         int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
@@ -743,6 +743,7 @@ bkcde.default <- function(h=NULL,
       F.yx <- sapply(1:length(x.eval), function(j) {max(int.f.seq.post.mat[j, y.seq <= y.eval[j]])})
       F.yx <- (F.yx-min(F.yx))/(max(F.yx)-min(F.yx))
       E.yx <- sapply(proper.out, function(x) x$E.yx)
+      E.yx <- E.yx[match(x.eval, x.eval.unique)]
       f.yx <- f.yx/int.f.seq[match(x.eval, x.eval.unique)]
       ## As a summary measure report the mean of the integrals
       int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
