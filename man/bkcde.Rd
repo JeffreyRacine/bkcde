@@ -30,6 +30,7 @@ bkcde(...)
       degree.min = 0, 
       degree = NULL, 
       fitted.cores = detectCores(),
+      integrate.erf = 1,
       n.grid = 25,
       n.integrate = 100, 
       n.sub = 300,
@@ -108,6 +109,9 @@ bkcde(...)
   \item{fitted.cores}{
   the number of cores to use for the fitted values. The default is \code{\link[parallel]{detectCores}}
 }
+  \item{integrate.erf}{
+    a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating the fraction of expansion of the integration evaluation grid when rendering the estimate proper beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
+}
   \item{n.grid}{
   the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
   }
@@ -164,10 +168,10 @@ bkcde(...)
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
 }
   \item{x.erf}{
-  a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.
+  a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evaluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.
 }
   \item{y.erf}{
-    a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evluation grid beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
+    a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evaluation grid beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
 }
   \item{\dots}{
   additional arguments to be passed to the \code{bkcde.optim} function
