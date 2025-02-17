@@ -404,6 +404,15 @@ bkcde.default <- function(h=NULL,
   if(is.null(y.ub)) y.ub <- max(y)
   if(is.null(x.lb)) x.lb <- min(x)
   if(is.null(x.ub)) x.ub <- max(x)
+  ## Test if non-unix type OS like Windows is running and set all cores to 1
+  if(.Platform$OS.type == "unix") {
+  } else {
+    fitted.cores <- 1
+    proper.cores <- 1
+    optim.degree.cores <- 1
+    optim.ksum.cores <- 1
+    optim.nmulti.cores <- 1
+  }
   if(is.null(x.eval) & is.null(y.eval)) {
     ## When infinite lower or upper values are provided, we provide the
     ## flexibilty to use min/max for the evaluation data (default, *.trim=0),
@@ -412,17 +421,14 @@ bkcde.default <- function(h=NULL,
     ## further (i.e., with finite bounds could narrow the range of the
     ## evaluation data without injury, leave for a rainy day - the purpose is to
     ## assess behaviour of the integrated mean function).
-    
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.grid)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=y.erf)[2],length=n.grid)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=y.erf)[1],y.ub,length=n.grid)
     if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=y.erf)[1],extendrange(y,f=y.erf)[2],length=n.grid)
-    
     if(is.finite(x.lb) && is.finite(x.ub)) x.seq <- seq(x.lb,x.ub,length=n.grid)
     if(is.finite(x.lb) && !is.finite(x.ub)) x.seq <- seq(x.lb,extendrange(x,f=x.erf)[2],length=n.grid)
     if(!is.finite(x.lb) && is.finite(x.ub)) x.seq <- seq(extendrange(x,f=x.erf)[1],x.ub,length=n.grid)
     if(!is.finite(x.lb) && !is.finite(x.ub)) x.seq <- seq(extendrange(x,f=x.erf)[1],extendrange(x,f=x.erf)[2],length=n.grid)
-    
     data.grid <- expand.grid(x.seq,y.seq)
     x.eval <- data.grid$Var1
     y.eval <- data.grid$Var2
@@ -1063,6 +1069,18 @@ plot.bkcde <- function(x,
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
+  if(.Platform$OS.type == "unix") {
+  } else {
+    ci.cores <- 1
+    fitted.cores <-1
+    proper.cores <- 1
+    fitted.cores <- 1
+    proper.cores <- 1
+    optim.degree.cores <- 1
+    optim.ksum.cores <- 1
+    optim.nmulti.cores <- 1
+  }
+
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   f.ci.pw.lb <- f.ci.pw.ub <- f.ci.bf.lb <- f.ci.bf.ub <- f.ci.sim.lb <- f.ci.sim.ub <- bias.vec <- NULL
   g.ci.pw.lb <- g.ci.pw.ub <- g.ci.bf.lb <- g.ci.bf.ub <- g.ci.sim.lb <- g.ci.sim.ub <- NULL
