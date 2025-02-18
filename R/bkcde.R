@@ -405,8 +405,9 @@ bkcde.default <- function(h=NULL,
   if(is.null(x.lb)) x.lb <- min(x)
   if(is.null(x.ub)) x.ub <- max(x)
   ## Test if non-unix type OS like Windows is running and set all cores to 1
-  if(.Platform$OS.type == "unix") {
+  if(.Platform$OS.type=="unix") {
   } else {
+    warning("non-unix type OS detected, setting all cores to 1 in bkcde() (no support for forking)")
     fitted.cores <- 1
     proper.cores <- 1
     optim.degree.cores <- 1
@@ -1069,8 +1070,9 @@ plot.bkcde <- function(x,
   plot.behavior <- match.arg(plot.behavior)
   if(alpha <= 0 | alpha >= 1) stop("alpha must lie in (0,1) in plot.bkcde()")
   if(B < 1) stop("B must be at least 1 in plot.bkcde()")
-  if(.Platform$OS.type == "unix") {
+  if(.Platform$OS.type=="unix") {
   } else {
+    warning("non-unix type OS detected, setting all cores to 1 in plot.bkcde() (no support for forking)")
     ci.cores <- 1
     fitted.cores <-1
     proper.cores <- 1
