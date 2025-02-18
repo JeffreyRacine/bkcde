@@ -26,6 +26,8 @@ bkcde(...)
       cv = c("auto","full","sub"),
       cv.auto.threshold = 5000,
       cv.only = FALSE,
+      cv.penalty.cutoff = .Machine$double.xmin, 
+      cv.penalty.method = c("smooth", "constant", "trim", "extreme"), 
       degree.max = 3, 
       degree.min = 0, 
       degree = NULL, 
@@ -40,8 +42,6 @@ bkcde(...)
       optim.nmulti.cores = NULL, 
       optim.sf.y.lb=0.5,
       optim.sf.x.lb=0.5,
-      penalty.cutoff = .Machine$double.xmin, 
-      penalty.method = c("smooth", "constant", "trim"), 
       poly.raw = FALSE, 
       progress = FALSE,
       proper.cores = detectCores(),
@@ -97,6 +97,13 @@ bkcde(...)
   \item{cv.only}{
   a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE
   }
+    
+  \item{cv.penalty.cutoff}{
+  the cutoff value for the penalty used in the log likelihood function for negative density values in log-likelihood when \code{bwmethod="cv.ml"}. 
+}
+  \item{cv.penalty.method}{
+  the method used to penalize negative density values in log-likelihood when \code{bwmethod="cv.ml"}. The default is \code{"smooth"}, while only \code{"extreme"} applies to \code{bwmethod="cv.ls"}
+}
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
 }
@@ -138,13 +145,6 @@ bkcde(...)
 }
   \item{optim.sf.x.lb}{
   the lower bound for the scale factor for x when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
-}
-  
-  \item{penalty.cutoff}{
-  the cutoff value for the penalty used in the log likelihood function for negative density values. 
-}
-  \item{penalty.method}{
-  the method used to penalize negative density values. The default is "smooth"
 }
   \item{poly.raw}{
   a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)

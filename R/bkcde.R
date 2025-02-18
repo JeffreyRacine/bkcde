@@ -105,17 +105,18 @@ cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
 ## this hack simply use the two-lines in the "constant" case.
 
 log.likelihood <- function(delete.one.values,
-                           penalty.method=c("smooth","constant","trim"),
-                           penalty.cutoff=.Machine$double.xmin,
+                           cv.penalty.method=c("smooth","constant","trim","extreme"),
+                           cv.penalty.cutoff=.Machine$double.xmin,
                            verbose=FALSE,
                            degree=degree,
                            h=h) {
-  penalty.method <- match.arg(penalty.method)
-  if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in log.likelihood()")
+  cv.penalty.method <- match.arg(cv.penalty.method)
+  if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in log.likelihood()")
   likelihood.vec <- numeric(length(delete.one.values))
-  cutoff.val <- penalty.cutoff
+  cutoff.val <- cv.penalty.cutoff
   log.cutoff <- log(cutoff.val)
-  if(penalty.method=="constant") {
+  
+  if(cv.penalty.method=="constant") {
     ## My "traditional" method, a constant penalty for negative delete-one
     ## values (so the log likelihood function is non smooth, and all negative
     ## values receive identical penalties)
@@ -131,7 +132,7 @@ log.likelihood <- function(delete.one.values,
                                                                                       round(h[2],5),
                                                                                       "]",
                                                                                       immediate. = TRUE)
-  } else if(penalty.method=="smooth") {
+  } else if(cv.penalty.method=="smooth") {
     ## A smooth penalty for negative delete-one values (so the log likelihood
     ## function is smooth except for an extremely narrow range at zero, and
     ## negative values receive a penalty that increases as the value becomes
@@ -149,12 +150,18 @@ log.likelihood <- function(delete.one.values,
                                                                                                 round(h[2],5),
                                                                                                 "]",
                                                                                                 immediate. = TRUE)
-  } else if(penalty.method=="trim") {
+  } else if(cv.penalty.method=="trim") {
     ## A trim penalty for negative delete-one values (so the log likelihood
     ## ignores negative values so can be shorter than the vector passed in)
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values>cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- NA
     likelihood.vec <- likelihood.vec[!is.na(likelihood.vec)]
+  } else if(cv.penalty.method=="extreme") {
+    if(any(delete.one.values < cv.penalty.cutoff)) {
+      likelihood.vec <- log(rep(cutoff.val,length(delete.one.values)))
+    } else {
+      likelihood.vec <- log(delete.one.values)
+    }
   }
   return(likelihood.vec)
 }
@@ -180,8 +187,8 @@ bkcde.optim.fn <- function(h=NULL,
                            degree=NULL,
                            n.integrate=NULL,
                            optim.ksum.cores=1,
-                           penalty.method=NULL,
-                           penalty.cutoff=NULL,
+                           cv.penalty.method=NULL,
+                           cv.penalty.cutoff=NULL,
                            verbose=FALSE,
                            bwmethod=NULL,
                            proper.cv=NULL) {
@@ -193,8 +200,8 @@ bkcde.optim.fn <- function(h=NULL,
   if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim.fn()")
   if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.optim.fn()")
-  if(is.null(penalty.method)) stop("must provide penalty.method in bkcde.optim.fn()")
-  if(is.null(penalty.cutoff)) stop("must provide penalty.cutoff in bkcde.optim.fn()")
+  if(is.null(cv.penalty.method)) stop("must provide cv.penalty.method in bkcde.optim.fn()")
+  if(is.null(cv.penalty.cutoff)) stop("must provide cv.penalty.cutoff in bkcde.optim.fn()")
   if(is.null(bwmethod)) stop("must provide bwmethod in bkcde.optim.fn()")
   if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
   if(is.null(proper.cv)) stop("must provide proper in bkcde.optim.fn()")
@@ -234,7 +241,51 @@ bkcde.optim.fn <- function(h=NULL,
         },1:length(y),mc.cores=optim.ksum.cores))
       }
     }
-    return(sum(log.likelihood(f.loo,penalty.method=penalty.method,penalty.cutoff=penalty.cutoff,verbose=verbose,degree=degree,h=h)))
+    if(cv.penalty.method=="extreme") {
+      ## Compute density estimate for extreme case only
+      if(degree==0) {
+        ## The degree=0 estimator is always proper
+        f <- as.numeric(mcmapply(function(i){
+          kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
+          mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+        },1:length(y),mc.cores=optim.ksum.cores))
+      } else {
+        if(proper.cv) {
+          ## Render the estimates proper while conducting cross-validaton
+          if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+          if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+          if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+          if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+          Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+          f <- as.numeric(mcmapply(function(i){
+            beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y[i],y,h[1],y.lb,y.ub),Y.seq.mat),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+            beta.hat[is.na(beta.hat)] <- 0;
+            f <- X%*%beta.hat[,1,drop=FALSE]
+            f.seq <- as.numeric(X%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
+            f.seq[f.seq<0] <- 0
+            f[f<0] <- 0
+            f/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+          },1:length(y),mc.cores=optim.ksum.cores))
+        } else {
+          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+          f <- as.numeric(mcmapply(function(i){
+            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+            beta.hat[is.na(beta.hat)] <- 0;
+            beta.hat%*%t(X)
+          },1:length(y),mc.cores=optim.ksum.cores))
+        }
+      } 
+    }
+    if(cv.penalty.method=="extreme") {
+      if(any(f < 0)) {
+        return(-sqrt(.Machine$double.xmax))
+      } else {
+        return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
+      }
+    } else {
+      return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
+    }
   } else {
     ## Least-squares cross-validation. We use numerical integration, hence we
     ## create a sequence of values for y and compute the integral of the squared
@@ -311,8 +362,56 @@ bkcde.optim.fn <- function(h=NULL,
         },1:length(y),mc.cores=optim.ksum.cores))
       }
     }
-    ## Use fnscale=-1 so sign change
-    return(-(mean(int.f.sq)-2*mean(f.loo)))
+    ## Using fnscale = -1 to maximize the likelihood, so return negative here
+    ## (also, selecting best model maximizes the objective function, so this is
+    ## simplest). Note - here we don't test for negative density values, only
+    ## delete-one values per cv.ml (have not verified, but if one is negative so
+    ## is the other perhaps?)
+    if(cv.penalty.method=="extreme") {
+      ## Compute density estimate for extreme case only
+      if(degree==0) {
+        ## The degree=0 estimator is always proper
+        f <- as.numeric(mcmapply(function(i){
+          kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
+          mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+        },1:length(y),mc.cores=optim.ksum.cores))
+      } else {
+        if(proper.cv) {
+          ## Render the estimates proper while conducting cross-validaton
+          if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+          if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+          if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+          if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+          Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+          f <- as.numeric(mcmapply(function(i){
+            beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y[i],y,h[1],y.lb,y.ub),Y.seq.mat),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+            beta.hat[is.na(beta.hat)] <- 0;
+            f <- X%*%beta.hat[,1,drop=FALSE]
+            f.seq <- as.numeric(X%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
+            f.seq[f.seq<0] <- 0
+            f[f<0] <- 0
+            f/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+          },1:length(y),mc.cores=optim.ksum.cores))
+        } else {
+          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+          f <- as.numeric(mcmapply(function(i){
+            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+            beta.hat[is.na(beta.hat)] <- 0;
+            beta.hat%*%t(X)
+          },1:length(y),mc.cores=optim.ksum.cores))
+        }
+      } 
+    }
+    if(cv.penalty.method=="extreme") {
+      if(any(f < 0)) {
+        return(-sqrt(.Machine$double.xmax))
+      } else {
+        return(-(mean(int.f.sq)-2*mean(f.loo)))
+      }
+    } else {
+      return(-(mean(int.f.sq)-2*mean(f.loo)))
+    }
   }
 }
 
@@ -356,6 +455,8 @@ bkcde.default <- function(h=NULL,
                           cv=c("auto","full","sub"),
                           cv.auto.threshold=5000,
                           cv.only=FALSE,
+                          cv.penalty.cutoff=.Machine$double.xmin,
+                          cv.penalty.method=c("smooth","constant","trim","extreme"),
                           degree.max=3,
                           degree.min=0,
                           degree=NULL,
@@ -370,8 +471,6 @@ bkcde.default <- function(h=NULL,
                           optim.nmulti.cores=NULL,
                           optim.sf.y.lb=0.5,
                           optim.sf.x.lb=0.5,
-                          penalty.cutoff=.Machine$double.xmin,
-                          penalty.method=c("smooth","constant","trim"),
                           poly.raw=FALSE,
                           progress=FALSE,
                           proper.cores=detectCores(),
@@ -474,12 +573,12 @@ bkcde.default <- function(h=NULL,
   }
   if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
-  penalty.method <- match.arg(penalty.method)
+  cv.penalty.method <- match.arg(cv.penalty.method)
   bwmethod <- match.arg(bwmethod)
   cv <- match.arg(cv)
   if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
   if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
-  if(penalty.cutoff <= 0) stop("penalty.cutoff must be positive in bkcde()")
+  if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then either likelihood or least-squares
@@ -494,6 +593,8 @@ bkcde.default <- function(h=NULL,
                              x.lb=x.lb,
                              x.ub=x.ub,
                              bwmethod=bwmethod,
+                             cv.penalty.cutoff=cv.penalty.cutoff,
+                             cv.penalty.method=cv.penalty.method,
                              degree.max=degree.max,
                              degree.min=degree.min,
                              nmulti=nmulti,
@@ -503,8 +604,6 @@ bkcde.default <- function(h=NULL,
                              optim.nmulti.cores=optim.nmulti.cores,
                              optim.sf.y.lb=optim.sf.y.lb,
                              optim.sf.x.lb=optim.sf.x.lb,
-                             penalty.cutoff=penalty.cutoff,
-                             penalty.method=penalty.method,
                              poly.raw=poly.raw,
                              proper.cv=proper.cv,
                              verbose=verbose,
@@ -537,6 +636,8 @@ bkcde.default <- function(h=NULL,
                       x.lb=x.lb,
                       x.ub=x.ub,
                       bwmethod=bwmethod,
+                      cv.penalty.cutoff=cv.penalty.cutoff,
+                      cv.penalty.method=cv.penalty.method,
                       degree.max=degree.max,
                       degree.min=degree.min,
                       n.integrate=n.integrate,
@@ -545,8 +646,6 @@ bkcde.default <- function(h=NULL,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optim.sf.y.lb=optim.sf.y.lb,
                       optim.sf.x.lb=optim.sf.x.lb,
-                      penalty.cutoff=penalty.cutoff,
-                      penalty.method=penalty.method,
                       poly.raw=poly.raw,
                       progress=progress,
                       ...)
@@ -853,6 +952,8 @@ bkcde.optim <- function(x=x,
                         x.lb=x.lb,
                         x.ub=x.ub,
                         bwmethod=bwmethod,
+                        cv.penalty.cutoff=cv.penalty.cutoff,
+                        cv.penalty.method=cv.penalty.method,
                         degree.max=degree.max,
                         degree.min=degree.min,
                         n.integrate=n.integrate,
@@ -862,8 +963,6 @@ bkcde.optim <- function(x=x,
                         optim.nmulti.cores=optim.nmulti.cores,
                         optim.sf.y.lb=optim.sf.y.lb,
                         optim.sf.x.lb=optim.sf.x.lb,
-                        penalty.cutoff=penalty.cutoff,
-                        penalty.method=penalty.method,
                         poly.raw=poly.raw,
                         proper.cv=proper.cv,
                         verbose=verbose,
@@ -924,11 +1023,11 @@ bkcde.optim <- function(x=x,
                                               x.ub=x.ub,
                                               poly.raw=poly.raw,
                                               bwmethod=bwmethod,
+                                              cv.penalty.method=cv.penalty.method,
+                                              cv.penalty.cutoff=cv.penalty.cutoff,
                                               degree=p,
                                               n.integrate=n.integrate,
                                               optim.ksum.cores=optim.ksum.cores,
-                                              penalty.method=penalty.method,
-                                              penalty.cutoff=penalty.cutoff,
                                               proper.cv=proper.cv,
                                               verbose=verbose,
                                               lower=lower,
