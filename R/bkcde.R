@@ -206,86 +206,64 @@ bkcde.optim.fn <- function(h=NULL,
   if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
   if(is.null(proper.cv)) stop("must provide proper in bkcde.optim.fn()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
-  if(bwmethod=="cv.ml") {
-    ## Likelihood cross-validation
+  ## First, if cv.penalty.method="extreme" we compute the density estimate
+  ## before doing anything else, and if any of the values are negative we return
+  ## a heavy penalty
+  if(cv.penalty.method=="extreme") {
     if(degree==0) {
-      ## The degree=0 estimator is always proper
-      f.loo <- as.numeric(mcmapply(function(i){
-        kernel.bk.x <- kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
-        mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+      f <- as.numeric(mcmapply(function(i){
+        kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
+        mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
       },1:length(y),mc.cores=optim.ksum.cores))
     } else {
-      if(proper.cv) {
-        ## Render the estimates proper while conducting cross-validaton
-        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-        if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-        if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-        if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-        Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
-        X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-        f.loo <- as.numeric(mcmapply(function(i){
-          beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
-          f.hat <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
-          f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-          f.seq[f.seq<0] <- 0
-          f.hat[f.hat<0] <- 0
-          f.hat/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        },1:length(y),mc.cores=optim.ksum.cores))
-      } else {
-        X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-        f.loo <- as.numeric(mcmapply(function(i){
-          beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
-          beta.hat%*%t(X[i,,drop=FALSE])
-        },1:length(y),mc.cores=optim.ksum.cores))
-      }
-    }
-    if(cv.penalty.method=="extreme") {
-      ## Compute density estimate for extreme case only
-      if(degree==0) {
-        ## The degree=0 estimator is always proper
-        f <- as.numeric(mcmapply(function(i){
-          kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
-          mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
-        },1:length(y),mc.cores=optim.ksum.cores))
-      } else {
-        if(proper.cv) {
-          ## Render the estimates proper while conducting cross-validaton
-          if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-          if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-          if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-          if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-          Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
-          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-          f <- as.numeric(mcmapply(function(i){
-            beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y[i],y,h[1],y.lb,y.ub),Y.seq.mat),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
-            beta.hat[is.na(beta.hat)] <- 0;
-            f <- X%*%beta.hat[,1,drop=FALSE]
-            f.seq <- as.numeric(X%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-            f.seq[f.seq<0] <- 0
-            f[f<0] <- 0
-            f/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-          },1:length(y),mc.cores=optim.ksum.cores))
-        } else {
-          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-          f <- as.numeric(mcmapply(function(i){
-            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
-            beta.hat[is.na(beta.hat)] <- 0;
-            beta.hat%*%t(X)
-          },1:length(y),mc.cores=optim.ksum.cores))
-        }
-      } 
-    }
-    if(cv.penalty.method=="extreme") {
-      if(any(f < 0)) {
-        return(-sqrt(.Machine$double.xmax))
-      } else {
-        return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
-      }
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+      f <- as.numeric(mcmapply(function(i){
+        beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        beta.hat%*%t(X)
+      },1:length(y),mc.cores=optim.ksum.cores))
+    } 
+    if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+  }
+  ## Next, both cv.ml and cv.ls require the delete-one estimate, so next compute that
+  ## Compute leave-one-out estimator which gives us the terms for I.2 in the
+  ## ls-cv function.
+  if(degree==0) {
+    ## The degree=0 estimator is always proper
+    f.loo <- as.numeric(mcmapply(function(i){
+      kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
+      mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+    },1:length(y),mc.cores=optim.ksum.cores))
+  } else {
+    if(proper.cv) {
+      ## Render the estimates proper while conducting cross-validaton
+      if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+      if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+      if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+      if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+      Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+      f.loo <- as.numeric(mcmapply(function(i){
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
+        f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
+        f.seq[f.seq<0] <- 0
+        f.loo[f.loo<0] <- 0
+        f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+      },1:length(y),mc.cores=optim.ksum.cores))
     } else {
-      return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
+      X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
+      f.loo <- as.numeric(mcmapply(function(i){
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat[is.na(beta.hat)] <- 0;
+        beta.hat%*%t(X[i,,drop=FALSE])
+      },1:length(y),mc.cores=optim.ksum.cores))
     }
+  }
+  if(bwmethod=="cv.ml") {
+    ## We have the delete-one estimator so simply compute and return the log-likelihood
+    return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
   } else {
     ## Least-squares cross-validation. We use numerical integration, hence we
     ## create a sequence of values for y and compute the integral of the squared
@@ -327,91 +305,12 @@ bkcde.optim.fn <- function(h=NULL,
         },1:length(y),mc.cores = optim.ksum.cores)
       }
     }
-    ## Compute leave-one-out estimator which gives us the terms for I.2 in the
-    ## ls-cv function.
-    if(degree==0) {
-      ## The degree=0 estimator is always proper
-      f.loo <- as.numeric(mcmapply(function(i){
-        kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
-        mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
-      },1:length(y),mc.cores=optim.ksum.cores))
-    } else {
-      if(proper.cv) {
-        ## Render the estimates proper while conducting cross-validaton
-        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-        if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-        if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-        if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-        Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
-        X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-        f.loo <- as.numeric(mcmapply(function(i){
-          beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
-          f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
-          f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-          f.seq[f.seq<0] <- 0
-          f.loo[f.loo<0] <- 0
-          f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        },1:length(y),mc.cores=optim.ksum.cores))
-      } else {
-        X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-        f.loo <- as.numeric(mcmapply(function(i){
-          beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
-          beta.hat%*%t(X[i,,drop=FALSE])
-        },1:length(y),mc.cores=optim.ksum.cores))
-      }
-    }
     ## Using fnscale = -1 to maximize the likelihood, so return negative here
     ## (also, selecting best model maximizes the objective function, so this is
     ## simplest). Note - here we don't test for negative density values, only
     ## delete-one values per cv.ml (have not verified, but if one is negative so
     ## is the other perhaps?)
-    if(cv.penalty.method=="extreme") {
-      ## Compute density estimate for extreme case only
-      if(degree==0) {
-        ## The degree=0 estimator is always proper
-        f <- as.numeric(mcmapply(function(i){
-          kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
-          mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
-        },1:length(y),mc.cores=optim.ksum.cores))
-      } else {
-        if(proper.cv) {
-          ## Render the estimates proper while conducting cross-validaton
-          if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-          if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-          if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-          if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-          Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
-          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-          f <- as.numeric(mcmapply(function(i){
-            beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y[i],y,h[1],y.lb,y.ub),Y.seq.mat),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
-            beta.hat[is.na(beta.hat)] <- 0;
-            f <- X%*%beta.hat[,1,drop=FALSE]
-            f.seq <- as.numeric(X%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-            f.seq[f.seq<0] <- 0
-            f[f<0] <- 0
-            f/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-          },1:length(y),mc.cores=optim.ksum.cores))
-        } else {
-          X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
-          f <- as.numeric(mcmapply(function(i){
-            beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
-            beta.hat[is.na(beta.hat)] <- 0;
-            beta.hat%*%t(X)
-          },1:length(y),mc.cores=optim.ksum.cores))
-        }
-      } 
-    }
-    if(cv.penalty.method=="extreme") {
-      if(any(f < 0)) {
-        return(-sqrt(.Machine$double.xmax))
-      } else {
-        return(-(mean(int.f.sq)-2*mean(f.loo)))
-      }
-    } else {
-      return(-(mean(int.f.sq)-2*mean(f.loo)))
-    }
+    return(-(mean(int.f.sq)-2*mean(f.loo)))
   }
 }
 
@@ -1176,7 +1075,7 @@ plot.bkcde <- function(x,
     fitted.cores <-1
     proper.cores <- 1
   }
-
+  
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   f.ci.pw.lb <- f.ci.pw.ub <- f.ci.bf.lb <- f.ci.bf.ub <- f.ci.sim.lb <- f.ci.sim.ub <- bias.vec <- NULL
   g.ci.pw.lb <- g.ci.pw.ub <- g.ci.bf.lb <- g.ci.bf.ub <- g.ci.sim.lb <- g.ci.sim.ub <- NULL
