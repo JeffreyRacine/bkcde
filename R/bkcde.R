@@ -237,8 +237,8 @@ bkcde.optim.fn <- function(h=NULL,
     },1:length(y),mc.cores=optim.ksum.cores))
   } else {
     if(proper.cv) {
-      ## Render the estimates proper while conducting cross-validaton when
-      ## degree>0... for efficiency create a grid of y values of length
+      ## Render the delte-one estimates proper while conducting cross-validation
+      ## when degree>0... for efficiency create a grid of y values of length
       ## n.integrate then a matrix of kernel weights for the y values so that we
       ## can exploit the multivariate Y capabilities of lm.wifit() when
       ## evaluating the estimate on a grid of Y values
@@ -274,9 +274,9 @@ bkcde.optim.fn <- function(h=NULL,
     ## We have the delete-one estimator so simply compute and return the log-likelihood
     return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
   } else {
-    ## Least-squares cross-validation. We use numerical integration, hence we
-    ## create a sequence of values for y and compute the integral of the squared
-    ## conditional density estimates to generate I.1
+    ## Least-squares cross-validation. We use numerical integration for the I.1
+    ## term, hence we create a sequence of values for y and compute the integral
+    ## of the squared conditional density estimates to generate I.1
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
     if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
@@ -318,7 +318,7 @@ bkcde.optim.fn <- function(h=NULL,
     ## (also, selecting best model maximizes the objective function, so this is
     ## simplest). Note - here we don't test for negative density values, only
     ## delete-one values per cv.ml (have not verified, but if one is negative so
-    ## is the other perhaps?)
+    ## is the other perhaps?), so return -(I.1-I.2)
     return(-(mean(int.f.sq)-2*mean(f.loo)))
   }
 }
@@ -421,6 +421,9 @@ bkcde.default <- function(h=NULL,
     optim.ksum.cores <- 1
     optim.nmulti.cores <- 1
   }
+  ## Set logical flag for evaluation data being auto-generated hence grid
+  ## structure guaranteed
+  is.null.eval <- FALSE
   if(is.null(x.eval) & is.null(y.eval)) {
     ## When infinite lower or upper values are provided, we provide the
     ## flexibilty to use min/max for the evaluation data (default, *.trim=0),
@@ -440,6 +443,9 @@ bkcde.default <- function(h=NULL,
     data.grid <- expand.grid(x.seq,y.seq)
     x.eval <- data.grid$Var1
     y.eval <- data.grid$Var2
+    ## Set logical flag for evaluation data being auto-generated hence grid
+    ## structure guaranteed
+    is.null.eval <- TRUE
   }
   if(any(y<y.lb) | any(y>y.ub)) stop("y must lie in [y.lb,y.ub] in bkcde()")
   if(any(y.eval<y.lb) | any(y.eval>y.ub)) stop("y.eval must lie in [y.lb,y.ub] in bkcde()")
@@ -586,65 +592,145 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
+  ## XXX project for Feb 20 at UW.
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
-    ## Compute the fitted conditional density estimate (use fitted.cores)
-    if(degree == 0) {
-      ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
-      ## compute the estimate \hat f(y|x) as efficiently as possible
-      foo <- t(mcmapply(function(i){
-        ## Here we exploit the fact that we can multiply columns of a matrix by
-        ## the vector of kernel weights for x and avoid unnecessary computation
-        kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
-        colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
-      },1:length(y.eval),mc.cores=fitted.cores))
-      f.yx <- foo[,1]
-      E.yx <- foo[,2]
-      F.yx <- foo[,3]
-      ## Derivatives extracted from degree 1 polynomial fit only (below), and
-      ## only if poly.raw=TRUE
-      f1.yx <- NULL
-      E1.yx <- NULL
-      F1.yx <- NULL
+    if(!is.null.eval) {
+      ## Grid structure not assured, so go brute force as y.eval and/or x.eval
+      ## are provided. Compute the fitted conditional density estimate (use
+      ## fitted.cores)
+      ## Don't touch!!! Uncomment when finished!!!
+      # if(degree == 0) {
+      #   ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
+      #   ## compute the estimate \hat f(y|x) as efficiently as possible
+      #   foo <- t(mcmapply(function(i){
+      #     ## Here we exploit the fact that we can multiply columns of a matrix by
+      #     ## the vector of kernel weights for x and avoid unnecessary computation
+      #     kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
+      #     colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+      #   },1:length(y.eval),mc.cores=fitted.cores))
+      #   f.yx <- foo[,1]
+      #   E.yx <- foo[,2]
+      #   F.yx <- foo[,3]
+      #   ## Derivatives extracted from degree 1 polynomial fit only (below), and
+      #   ## only if poly.raw=TRUE
+      #   f1.yx <- NULL
+      #   E1.yx <- NULL
+      #   F1.yx <- NULL
+      # } else {
+      #   ## Choice of raw or orthogonal polynomials
+      #   X.poly <- poly(x,raw=poly.raw,degree=degree)
+      #   X <- cbind(1,X.poly)
+      #   X.eval <- cbind(1,predict(X.poly,x.eval))
+      #   ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+      #   ## regression to estimate \hat f(y|x) rather than the intercept term from
+      #   ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
+      #   foo <- t(mcmapply(function(i){
+      #     ## Here we exploit the fact that lm.wfit() can work on multivariate Y
+      #     ## objects, so we don't need to recompute the X weight kernel sums and
+      #     ## can avoid unnecessary computation
+      #     beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+      #     beta.hat[is.na(beta.hat)] <- 0;
+      #     ## The first three rows are the conditional density, the conditional
+      #     ## mean, and conditional distribution, respectively, while the last
+      #     ## three rows are the derivatives of the conditional density, mean, and
+      #     ## distribution, respectively (computed only if degree=1)
+      #     c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
+      #       beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
+      #       beta.hat[,3]%*%t(X.eval[i,,drop=FALSE]),
+      #       beta.hat[2,1],
+      #       beta.hat[2,2],
+      #       beta.hat[2,3])
+      #   },1:length(y.eval),mc.cores=fitted.cores))
+      #   f.yx <- foo[,1]
+      #   E.yx <- foo[,2]
+      #   F.yx <- foo[,3]
+      #   ## Derivatives extracted from degree 1 polynomial fit only and only if
+      #   ## poly.raw=TRUE
+      #   if(degree==1 & poly.raw) {
+      #     f1.yx <- foo[,4]
+      #     E1.yx <- foo[,5]
+      #     F1.yx <- foo[,6]
+      #   } else {
+      #     f1.yx <- NULL
+      #     E1.yx <- NULL
+      #     F1.yx <- NULL
+      #   }
+      # }
     } else {
-      ## Choice of raw or orthogonal polynomials
-      X.poly <- poly(x,raw=poly.raw,degree=degree)
-      X <- cbind(1,X.poly)
-      X.eval <- cbind(1,predict(X.poly,x.eval))
-      ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
-      ## regression to estimate \hat f(y|x) rather than the intercept term from
-      ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-      foo <- t(mcmapply(function(i){
-        ## Here we exploit the fact that lm.wfit() can work on multivariate Y
-        ## objects, so we don't need to recompute the X weight kernel sums and
-        ## can avoid unnecessary computation
-        beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
-        beta.hat[is.na(beta.hat)] <- 0;
-        ## The first three rows are the conditional density, the conditional
-        ## mean, and conditional distribution, respectively, while the last
-        ## three rows are the derivatives of the conditional density, mean, and
-        ## distribution, respectively (computed only if degree=1)
-        c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
-          beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
-          beta.hat[,3]%*%t(X.eval[i,,drop=FALSE]),
-          beta.hat[2,1],
-          beta.hat[2,2],
-          beta.hat[2,3])
-      },1:length(y.eval),mc.cores=fitted.cores))
-      f.yx <- foo[,1]
-      E.yx <- foo[,2]
-      F.yx <- foo[,3]
-      ## Derivatives extracted from degree 1 polynomial fit only and only if
-      ## poly.raw=TRUE
-      if(degree==1 & poly.raw) {
-        f1.yx <- foo[,4]
-        E1.yx <- foo[,5]
-        F1.yx <- foo[,6]
-      } else {
+      ## Grid structure guaranteed since is.null.eval is TRUE. Compute the
+      ## fitted conditional density estimate (use fitted.cores) on only the
+      ## unique x values and use the multivariate Y capabilities to efficiently
+      ## compute the coefficient matrix
+      x.eval.unique <- unique(x.eval)
+      y.eval.unique <- unique(y.eval)
+      pdf.kernel.mat <- mapply(function(i) kernel.bk(y.eval.unique[i], y, h[1], y.lb, y.ub),1:n.grid)
+      cdf.kernel.mat <- mapply(function(i) cdf.kernel.bk(y.eval.unique[i], y, h[1], y.lb, y.ub),1:n.grid)
+      if(degree == 0) {
+        ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
+        ## compute the estimate \hat f(y|x) as efficiently as possible.
+        output <- mclapply(1:n.grid,function(i) {
+          ## Here we exploit the fact that we can multiply columns of a matrix by
+          ## the vector of kernel weights for x and avoid unnecessary computation
+          kernel.bk.x<-kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub);
+          ## Coefficient matrix in order are column 1 E.y.x, 2 - n.grid+1 f.yx,
+          ## n.grid+2 - 2*n.grid+1 F.yx
+          foo <- colMeans(sweep(cbind(y,pdf.kernel.mat,cdf.kernel.mat),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+          return(list(E.yx=foo[1],
+                      f.yx=foo[2:(n.grid+1)],
+                      F.yx=foo[(n.grid+2):(2*n.grid+1)]))
+        })
+        f.yx <- sapply(output, function(x) x$f.yx)
+        f.yx <- f.yx[order(x.eval)]
+        F.yx <- sapply(output, function(x) x$F.yx)
+        F.yx <- F.yx[order(x.eval)]
+        E.yx <- sapply(output, function(x) x$E.yx)
+        E.yx <- E.yx[match(x.eval, x.eval.unique)]
+        ## Derivatives extracted from degree 1 polynomial fit only (below), and
+        ## only if poly.raw=TRUE
         f1.yx <- NULL
         E1.yx <- NULL
         F1.yx <- NULL
+      } else {
+        ## Choice of raw or orthogonal polynomials
+        X.poly <- poly(x,raw=poly.raw,degree=degree)
+        X <- cbind(1,X.poly)
+        X.eval <- cbind(1,predict(X.poly,x.eval))
+        ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
+        ## regression to estimate \hat f(y|x) rather than the intercept term from
+        ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
+        foo <- t(mcmapply(function(i){
+          ## Here we exploit the fact that lm.wfit() can work on multivariate Y
+          ## objects, so we don't need to recompute the X weight kernel sums and
+          ## can avoid unnecessary computation
+          beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+          beta.hat[is.na(beta.hat)] <- 0;
+          ## The first three rows are the conditional density, the conditional
+          ## mean, and conditional distribution, respectively, while the last
+          ## three rows are the derivatives of the conditional density, mean, and
+          ## distribution, respectively (computed only if degree=1)
+          c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
+            beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
+            beta.hat[,3]%*%t(X.eval[i,,drop=FALSE]),
+            beta.hat[2,1],
+            beta.hat[2,2],
+            beta.hat[2,3])
+        },1:length(y.eval),mc.cores=fitted.cores))
+        f.yx <- foo[,1]
+        E.yx <- foo[,2]
+        F.yx <- foo[,3]
+        ## Derivatives extracted from degree 1 polynomial fit only and only if
+        ## poly.raw=TRUE
+        if(degree==1 & poly.raw) {
+          f1.yx <- foo[,4]
+          E1.yx <- foo[,5]
+          F1.yx <- foo[,6]
+        } else {
+          f1.yx <- NULL
+          E1.yx <- NULL
+          F1.yx <- NULL
+        }
       }
     }
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
