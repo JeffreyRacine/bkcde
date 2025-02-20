@@ -682,7 +682,7 @@ bkcde.default <- function(h=NULL,
           return(list(E.yx=foo[1],
                       f.yx=foo[2:(n.grid+1)],
                       F.yx=foo[(n.grid+2):(2*n.grid+1)]))
-        })
+        },mc.cores=fitted.cores)
         f.yx <- sapply(output, function(x) x$f.yx)
         f.yx <- f.yx[order(x.eval)]
         F.yx <- sapply(output, function(x) x$F.yx)
@@ -715,7 +715,7 @@ bkcde.default <- function(h=NULL,
                       E1.yx=as.numeric(beta.hat[2,1]),
                       f1.yx=as.numeric(beta.hat[2,2:(n.grid+1)]),
                       F1.yx=as.numeric(beta.hat[2,(n.grid+2):(2*n.grid+1)])))          
-        })
+        },mc.cores=fitted.cores)
         f.yx <- sapply(output, function(x) x$f.yx)
         f.yx <- f.yx[order(x.eval)]
         F.yx <- sapply(output, function(x) x$F.yx)
