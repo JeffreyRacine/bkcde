@@ -595,7 +595,6 @@ bkcde.default <- function(h=NULL,
     secs.optim <- NULL
     secs.optim.mat <- NULL
   }
-  ## XXX project for Feb 20 at UW.
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
     secs.start.estimate <- Sys.time()
@@ -662,8 +661,8 @@ bkcde.default <- function(h=NULL,
         }
       }
     } else {
-      ## Grid structure guaranteed since is.grid is TRUE. Compute the
-      ## fitted conditional density estimate (use fitted.cores) on only the
+      ## Grid structure (hopefully) guaranteed since is.grid is TRUE. Compute
+      ## the fitted conditional density estimate (use fitted.cores) on only the
       ## unique x values and use the multivariate Y capabilities to efficiently
       ## compute the coefficient matrix
       x.eval.unique <- unique(x.eval)
@@ -699,36 +698,39 @@ bkcde.default <- function(h=NULL,
         ## Choice of raw or orthogonal polynomials
         X.poly <- poly(x,raw=poly.raw,degree=degree)
         X <- cbind(1,X.poly)
-        X.eval <- cbind(1,predict(X.poly,x.eval))
+        X.eval.unique <- cbind(1,predict(X.poly,x.eval.unique))
         ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
         ## regression to estimate \hat f(y|x) rather than the intercept term from
         ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-        foo <- t(mcmapply(function(i){
+        output <- mclapply(1:n.grid,function(i) {
           ## Here we exploit the fact that lm.wfit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
-          beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=cbind(y,pdf.kernel.mat,cdf.kernel.mat),w=NZD(kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
-          ## The first three rows are the conditional density, the conditional
-          ## mean, and conditional distribution, respectively, while the last
-          ## three rows are the derivatives of the conditional density, mean, and
-          ## distribution, respectively (computed only if degree=1)
-          c(beta.hat[,1]%*%t(X.eval[i,,drop=FALSE]),
-            beta.hat[,2]%*%t(X.eval[i,,drop=FALSE]),
-            beta.hat[,3]%*%t(X.eval[i,,drop=FALSE]),
-            beta.hat[2,1],
-            beta.hat[2,2],
-            beta.hat[2,3])
-        },1:length(y.eval),mc.cores=fitted.cores))
-        f.yx <- foo[,1]
-        E.yx <- foo[,2]
-        F.yx <- foo[,3]
+          ## as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
+          return(list(E.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]),
+                      f.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,2:(n.grid+1),drop=FALSE]),
+                      F.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,(n.grid+2):(2*n.grid+1),drop=FALSE]),
+                      E1.yx=as.numeric(beta.hat[2,1]),
+                      f1.yx=as.numeric(beta.hat[2,2:(n.grid+1)]),
+                      F1.yx=as.numeric(beta.hat[2,(n.grid+2):(2*n.grid+1)])))          
+        })
+        f.yx <- sapply(output, function(x) x$f.yx)
+        f.yx <- f.yx[order(x.eval)]
+        F.yx <- sapply(output, function(x) x$F.yx)
+        F.yx <- F.yx[order(x.eval)]
+        E.yx <- sapply(output, function(x) x$E.yx)
+        E.yx <- E.yx[match(x.eval, x.eval.unique)]
         ## Derivatives extracted from degree 1 polynomial fit only and only if
         ## poly.raw=TRUE
         if(degree==1 & poly.raw) {
-          f1.yx <- foo[,4]
-          E1.yx <- foo[,5]
-          F1.yx <- foo[,6]
+          f1.yx <- sapply(output, function(x) x$f1.yx)
+          f1.yx <- f1.yx[order(x.eval)]
+          F1.yx <- sapply(output, function(x) x$F1.yx)
+          F1.yx <- F1.yx[order(x.eval)]
+          E1.yx <- sapply(output, function(x) x$E1.yx)
+          E1.yx <- E1.yx[match(x.eval, x.eval.unique)]
         } else {
           f1.yx <- NULL
           E1.yx <- NULL
