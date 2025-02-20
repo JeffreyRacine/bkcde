@@ -212,7 +212,7 @@ bkcde.optim.fn <- function(h=NULL,
   if(cv.penalty.method=="extreme") {
     if(degree==0) {
       f <- as.numeric(mcmapply(function(i){
-        kernel.bk.x<-kernel.bk(x[i],x,h[2],x.lb,x.ub);
+        kernel.bk.x <- kernel.bk(x[i],x,h[2],x.lb,x.ub);
         mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
       },1:length(y),mc.cores=optim.ksum.cores))
     } else {
@@ -225,18 +225,23 @@ bkcde.optim.fn <- function(h=NULL,
     } 
     if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
   }
-  ## Next, both cv.ml and cv.ls require the delete-one estimate, so next compute that
-  ## Compute leave-one-out estimator which gives us the terms for I.2 in the
+  ## Next, both cv.ml and cv.ls require the delete-one estimate, so compute that
+  ## which gives us the argument for the likelihood function and for I.2 in the
   ## ls-cv function.
   if(degree==0) {
-    ## The degree=0 estimator is always proper
+    ## The degree=0 estimator is always proper, so no need for if(proper)
+    ## here...
     f.loo <- as.numeric(mcmapply(function(i){
       kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
       mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
     },1:length(y),mc.cores=optim.ksum.cores))
   } else {
     if(proper.cv) {
-      ## Render the estimates proper while conducting cross-validaton
+      ## Render the estimates proper while conducting cross-validaton when
+      ## degree>0... for efficiency create a grid of y values of length
+      ## n.integrate then a matrix of kernel weights for the y values so that we
+      ## can exploit the multivariate Y capabilities of lm.wifit() when
+      ## evaluating the estimate on a grid of Y values
       if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
       if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
       if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
@@ -246,8 +251,12 @@ bkcde.optim.fn <- function(h=NULL,
       f.loo <- as.numeric(mcmapply(function(i){
         beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
+        ## The first coefficient vector is the delete-one estimate, the second
+        ## the sequence of estimates on the grid
         f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
         f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
+        ## When rendering proper, set all negative values to zero and normalize
+        ## so that the new non-negative estimates integrate to 1
         f.seq[f.seq<0] <- 0
         f.loo[f.loo<0] <- 0
         f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
