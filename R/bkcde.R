@@ -51,7 +51,9 @@ integrate.trapezoidal <- function(x,y) {
 ## accepted coding practice for a variety of languages
 
 NZD <- function(a) {
-  ifelse(a<0,pmin(-.Machine$double.eps,a),pmax(.Machine$double.eps,a))
+  a[a < 0] <- pmin(-.Machine$double.eps, a[a < 0])
+  a[a >= 0] <- pmax(.Machine$double.eps, a[a >= 0])
+  a
 }
 
 ## EssDee() returns a robust measure of spread (it can accept both vectors and
