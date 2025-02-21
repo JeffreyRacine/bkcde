@@ -445,7 +445,7 @@ bkcde.default <- function(h=NULL,
   }
   ## Set logical flag for evaluation data being auto-generated hence grid
   ## structure guaranteed
-  if(length(y.eval)/length(unique(y.eval))==n.grid && length(x.eval)/length(unique(x.eval))==n.grid) {
+  if((length(y.eval)/length(unique(y.eval))) == n.grid && (length(x.eval)/length(unique(x.eval))) == n.grid) {
     is.grid <- TRUE
   } else {
     is.grid <- FALSE
@@ -602,7 +602,6 @@ bkcde.default <- function(h=NULL,
       # Grid structure not assured, so go brute force as y.eval and/or x.eval
       # are provided. Compute the fitted conditional density estimate (use
       # fitted.cores)
-      # Don't touch!!! Uncomment when finished!!!
       if(degree == 0) {
         ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
         ## compute the estimate \hat f(y|x) as efficiently as possible
@@ -1175,7 +1174,6 @@ plot.bkcde <- function(x,
     fitted.cores <-1
     proper.cores <- 1
   }
-  
   if(!is.null(ci.cores) && ci.cores < 1) stop("ci.cores must be at least 1 in plot.bkcde()")
   f.ci.pw.lb <- f.ci.pw.ub <- f.ci.bf.lb <- f.ci.bf.ub <- f.ci.sim.lb <- f.ci.sim.ub <- bias.vec <- NULL
   g.ci.pw.lb <- g.ci.pw.ub <- g.ci.bf.lb <- g.ci.bf.ub <- g.ci.sim.lb <- g.ci.sim.ub <- NULL
@@ -1234,6 +1232,7 @@ plot.bkcde <- function(x,
                          y.ub=x$y.ub,
                          x.lb=x$x.lb,
                          x.ub=x$x.ub,
+                         n.grid=n.grid,
                          proper=proper,
                          degree=x$degree,
                          fitted.cores=fitted.cores,
@@ -1294,6 +1293,7 @@ plot.bkcde <- function(x,
                          y.ub=x$y.ub,
                          x.lb=x$x.lb,
                          x.ub=x$x.ub,
+                         n.grid=n.grid,
                          proper=proper,
                          degree=x$degree,
                          fitted.cores=fitted.cores,
@@ -1362,6 +1362,7 @@ plot.bkcde <- function(x,
                          y.ub=x$y.ub,
                          x.lb=x$x.lb,
                          x.ub=x$x.ub,
+                         n.grid=n.grid,
                          fitted.cores=ifelse(ci.cores>1,1,fitted.cores),
                          proper=proper,
                          proper.cores=ifelse(ci.cores>1,1,proper.cores),
