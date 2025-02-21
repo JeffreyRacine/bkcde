@@ -444,7 +444,8 @@ bkcde.default <- function(h=NULL,
     ## structure guaranteed
   }
   ## Set logical flag for evaluation data being auto-generated hence grid
-  ## structure guaranteed
+  ## structure guaranteed (well, someone could break it I am sure but
+  ## internally, if you let objects be created it will be fine)
   if((length(y.eval)/length(unique(y.eval))) == n.grid && (length(x.eval)/length(unique(x.eval))) == n.grid) {
     is.grid <- TRUE
   } else {
@@ -736,6 +737,12 @@ bkcde.default <- function(h=NULL,
           F1.yx <- NULL
         }
       }
+      ## Kill objects that can be memory intensive and no longer needed
+      if(degree==0) {
+        rm(pdf.kernel.mat,cdf.kernel.mat)
+      } else {
+        rm(pdf.kernel.mat,cdf.kernel.mat,X,X.poly,X.eval.unique)
+      }
     }
     if(progress) cat("\rFitted conditional density estimate complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     ## Ensure the estimate is proper (use proper.cores over unique(x.eval) which
@@ -830,6 +837,12 @@ bkcde.default <- function(h=NULL,
       int.f.seq.pre.neg <- mean(int.f.seq.pre.neg)
       int.f.seq <- mean(int.f.seq)
       int.f.seq.post <- mean(int.f.seq.post)
+      ## Kill objects that can be memory intensive and no longer needed
+      if(degree==0) {
+        rm(Y.seq.mat)
+      } else {
+        rm(Y.seq.mat,X,X.poly,X.eval.unique)
+      }
       if(progress) cat("\rComputed integrals to ensure estimate is proper complete in ",round(as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))), " seconds\n",sep="")
     } else {
       int.f.seq.pre.neg <- NULL
