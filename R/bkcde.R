@@ -1235,6 +1235,7 @@ plot.bkcde <- function(x,
     data.grid <- expand.grid(x.eval,y.eval)
     x.plot.eval <- data.grid$Var1
     y.plot.eval <- data.grid$Var2
+    rm(data.grid)
     if((n.grid != x$n.grid) || (!is.null(plot.proper) && plot.proper!=x$proper) || !identical(x.plot.eval,x$x.eval) || !identical(y.plot.eval,x$y.eval)) {
       f.yx.plot <- bkcde(h=x$h,
                          x=x$x,
