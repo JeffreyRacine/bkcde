@@ -237,7 +237,7 @@ bkcde.optim.fn <- function(h=NULL,
     },1:length(y),mc.cores=optim.ksum.cores))
   } else {
     if(proper.cv) {
-      ## Render the delte-one estimates proper while conducting cross-validation
+      ## Render the delete-one estimates proper while conducting cross-validation
       ## when degree>0... for efficiency create a grid of y values of length
       ## n.integrate then a matrix of kernel weights for the y values so that we
       ## can exploit the multivariate Y capabilities of lm.wifit() when
@@ -295,7 +295,7 @@ bkcde.optim.fn <- function(h=NULL,
       },1:length(y),mc.cores = optim.ksum.cores)
     } else {
       if(proper.cv) {
-        ## Render the estimates proper while conducting cross-validaton
+        ## Render the estimates proper while conducting cross-validation
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
         int.f.sq <- mcmapply(function(j){
           beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
@@ -423,7 +423,7 @@ bkcde.default <- function(h=NULL,
   }
   if(is.null(x.eval) & is.null(y.eval)) {
     ## When infinite lower or upper values are provided, we provide the
-    ## flexibilty to use min/max for the evaluation data (default, *.trim=0),
+    ## flexibility to use min/max for the evaluation data (default, *.trim=0),
     ## otherwise we allow the user to extend (*.trim < 0) or narrow (*.trim > 0)
     ## the range of the evaluation data. Admittedly clunky and could be refined
     ## further (i.e., with finite bounds could narrow the range of the
@@ -935,7 +935,7 @@ bkcde.default <- function(h=NULL,
 ## requested would be equal to the number of multistarts (this is particularly
 ## useful to avoid local optima in the optimization of the bandwidths). The
 ## function returns the bandwidths and polynomial order that maximize the
-## likelihood function or minimize the least-squares cross-validatioin function,
+## likelihood function or minimize the least-squares cross-validation function,
 ## the objective function value, the convergence status, the time taken to
 ## optimize, the bandwidths and polynomial orders for all models and
 ## multistarts, the objective function values for all models and multistarts,
