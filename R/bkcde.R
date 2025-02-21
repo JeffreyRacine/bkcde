@@ -26,26 +26,26 @@
 ## estimators "proper" (non-negative and integrating to 1). Vectors are paired
 ## naturally but need not be ordered (the function will take care of that for
 ## you).  The function also includes a correction term to ensure the integral is
-## correct at the boundary.
+## correct at the boundary. Optimized version supplanted previous
+## (microbenchmark indicates 50% computation time using diff etc.)
 
-integrate.trapezoidal <- function(x,y) {
+integrate.trapezoidal <- function(x, y) {
   n <- length(x)
-  rank.x <- rank(x)
   order.x <- order(x)
-  y <- y[order.x]
   x <- x[order.x]
-  int.vec <- numeric(length(x))
-  ## Use a correction term at the boundary: -cx^2/12*(f'(b)-f'(a)),
-  ## check for NaN case
-  cx  <- x[2]-x[1]
-  ca <- (y[2]-y[1])/cx
-  cb <- (y[n]-y[n-1])/cx
-  cf <- cx^2/12*(cb-ca)
-  if(!is.finite(cf)) cf <- 0
-  int.vec[1] <- 0
-  int.vec[2:n] <- cumsum((x[2:n]-x[2:n-1])*(y[2:n]+y[2:n-1])/2)
-  return(int.vec[rank.x]-cf)
+  y <- y[order.x]
+  dx <- diff(x)
+  dy <- diff(y)
+  cx <- dx[1]
+  ca <- dy[1] / cx
+  cb <- dy[n-1] / cx
+  cf <- cx^2 / 12 * (cb - ca)
+  if (!is.finite(cf)) cf <- 0
+  int.vec <- c(0, cumsum(dx * (y[-n] + y[-1]) / 2))
+  int.vec <- int.vec - cf
+  int.vec[order(order.x)]
 }
+
 
 ## NZD() is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
 ## accepted coding practice for a variety of languages
