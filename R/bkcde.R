@@ -82,7 +82,8 @@ pdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
 cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## Checking for bounds involves a bit of overhead (20%), so here we presume a
   ## check is performed outside of this function - make sure this is the case!
-  (pnorm((x-X)/h)-pnorm((a-X)/h))/(pnorm((b-X)/h)-pnorm((a-X)/h))
+  pnorm.a <- pnorm((a-X)/h)
+  (pnorm((x-X)/h)-pnorm.a)/(pnorm((b-X)/h)-pnorm.a)
 }
 
 ## log.likelihood() returns a likelihood function that supports constant,
