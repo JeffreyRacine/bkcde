@@ -15,7 +15,7 @@
 ## immediately running things in serial mode.
 
 ## The functions are briefly described below.  The functions include
-## integrate.trapezoidal(), NZD(), EssDee(), kernel.bk(), log.likelihood(),
+## integrate.trapezoidal(), NZD(), EssDee(), pdf.kernel.bk(), log.likelihood(),
 ## bkcde.optim.fn(), bkcde(), bkcde.default(), bkcde.optim(), plot.bkcde(), and
 ## SCSrank() (the last from the MCSPAN package [Multiple contrast tests and
 ## simultaneous confidence intervals]).
@@ -68,10 +68,10 @@ EssDee <- function(y){
   return(a)
 }
 
-## kernel.bk() is the doubly truncated Gaussian boundary kernel function from
+## pdf.kernel.bk() is the doubly truncated Gaussian boundary kernel function from
 ## Racine et al 2024
 
-kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
+pdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
   ## Checking for bounds involves a bit of overhead (20%), so here we presume a
   ## check is performed outside of this function - make sure this is the case!
   dnorm((x-X)/h)/(h*(pnorm((b-x)/h)-pnorm((a-x)/h)))
@@ -212,13 +212,13 @@ bkcde.optim.fn <- function(h=NULL,
   if(cv.penalty.method=="extreme") {
     if(degree==0) {
       f <- as.numeric(mcmapply(function(i){
-        kernel.bk.x <- kernel.bk(x[i],x,h[2],x.lb,x.ub);
-        mean(kernel.bk(y[i],y,h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+        pdf.kernel.bk.x <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub);
+        mean(pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub)*pdf.kernel.bk.x)/NZD(mean(pdf.kernel.bk.x))
       },1:length(y),mc.cores=optim.ksum.cores))
     } else {
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X,y=kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x,h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=X,y=pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         beta.hat%*%t(X)
       },1:length(y),mc.cores=optim.ksum.cores))
@@ -232,8 +232,8 @@ bkcde.optim.fn <- function(h=NULL,
     ## The degree=0 estimator is always proper, so no need for if(proper)
     ## here...
     f.loo <- as.numeric(mcmapply(function(i){
-      kernel.bk.x<-kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
-      mean(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*kernel.bk.x)/NZD(mean(kernel.bk.x))
+      pdf.kernel.bk.x<-pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub);
+      mean(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*pdf.kernel.bk.x)/NZD(mean(pdf.kernel.bk.x))
     },1:length(y),mc.cores=optim.ksum.cores))
   } else {
     if(proper.cv) {
@@ -246,10 +246,10 @@ bkcde.optim.fn <- function(h=NULL,
       if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
       if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
       if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-      Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+      Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         ## The first coefficient vector is the delete-one estimate, the second
         ## the sequence of estimates on the grid
@@ -264,7 +264,7 @@ bkcde.optim.fn <- function(h=NULL,
     } else {
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
+        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
         beta.hat[is.na(beta.hat)] <- 0;
         beta.hat%*%t(X[i,,drop=FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
@@ -286,19 +286,19 @@ bkcde.optim.fn <- function(h=NULL,
     ## estimate on a grid of Y values. First we compute the integral of the
     ## squared conditional density estimates for a given x[j] and all Y values
     ## in y.seq. This gives us the terms we need for I.1 in the ls-cv function.
-    Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
     if(degree==0) {
       ## The degree=0 estimator is always proper
       int.f.sq <- mcmapply(function(j){
-        kernel.bk.x <- kernel.bk(x[j],x,h[2],x.lb,x.ub);
-        integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))^2)[n.integrate]
+        pdf.kernel.bk.x <- pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub);
+        integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*pdf.kernel.bk.x/NZD(mean(pdf.kernel.bk.x)))^2)[n.integrate]
       },1:length(y),mc.cores = optim.ksum.cores)
     } else {
       if(proper.cv) {
         ## Render the estimates proper while conducting cross-validation
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
         int.f.sq <- mcmapply(function(j){
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           f.seq <- X[j,,drop=FALSE]%*%beta.hat
           f.seq[f.seq<0] <- 0
@@ -308,7 +308,7 @@ bkcde.optim.fn <- function(h=NULL,
       } else {
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
         int.f.sq <- mcmapply(function(j){
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x[j],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
         },1:length(y),mc.cores = optim.ksum.cores)
@@ -608,8 +608,8 @@ bkcde.default <- function(h=NULL,
         foo <- t(mcmapply(function(i){
           ## Here we exploit the fact that we can multiply columns of a matrix by
           ## the vector of kernel weights for x and avoid unnecessary computation
-          kernel.bk.x<-kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
-          colMeans(sweep(cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+          pdf.kernel.bk.x<-pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
+          colMeans(sweep(cbind(pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,pdf.kernel.bk.x,"*"))/NZD(mean(pdf.kernel.bk.x))
         },1:length(y.eval),mc.cores=fitted.cores))
         f.yx <- foo[,1]
         E.yx <- foo[,2]
@@ -631,7 +631,7 @@ bkcde.default <- function(h=NULL,
           ## Here we exploit the fact that lm.wfit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
-          beta.hat <- coef(lm.wfit(x=X,y=cbind(kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=cbind(pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           ## The first three rows are the conditional density, the conditional
           ## mean, and conditional distribution, respectively, while the last
@@ -666,7 +666,7 @@ bkcde.default <- function(h=NULL,
       ## compute the coefficient matrix
       x.eval.unique <- unique(x.eval)
       y.eval.unique <- unique(y.eval)
-      pdf.kernel.mat <- mapply(function(i) kernel.bk(y.eval.unique[i], y, h[1], y.lb, y.ub),1:n.grid)
+      pdf.kernel.mat <- mapply(function(i) pdf.kernel.bk(y.eval.unique[i], y, h[1], y.lb, y.ub),1:n.grid)
       cdf.kernel.mat <- mapply(function(i) cdf.kernel.bk(y.eval.unique[i], y, h[1], y.lb, y.ub),1:n.grid)
       if(degree == 0) {
         ## For degree 0 don't invoke the overhead associated with lm.wfit(), just
@@ -674,10 +674,10 @@ bkcde.default <- function(h=NULL,
         output <- mclapply(1:n.grid,function(i) {
           ## Here we exploit the fact that we can multiply columns of a matrix by
           ## the vector of kernel weights for x and avoid unnecessary computation
-          kernel.bk.x<-kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub);
+          pdf.kernel.bk.x<-pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub);
           ## Coefficient matrix in order are column 1 E.y.x, 2 - n.grid+1 f.yx,
           ## n.grid+2 - 2*n.grid+1 F.yx
-          foo <- colMeans(sweep(cbind(y,pdf.kernel.mat,cdf.kernel.mat),1,kernel.bk.x,"*"))/NZD(mean(kernel.bk.x))
+          foo <- colMeans(sweep(cbind(y,pdf.kernel.mat,cdf.kernel.mat),1,pdf.kernel.bk.x,"*"))/NZD(mean(pdf.kernel.bk.x))
           return(list(E.yx=foo[1],
                       f.yx=foo[2:(n.grid+1)],
                       F.yx=foo[(n.grid+2):(2*n.grid+1)]))
@@ -705,7 +705,7 @@ bkcde.default <- function(h=NULL,
           ## Here we exploit the fact that lm.wfit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
-          beta.hat <- coef(lm.wfit(x=X,y=cbind(y,pdf.kernel.mat,cdf.kernel.mat),w=NZD(kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=cbind(y,pdf.kernel.mat,cdf.kernel.mat),w=NZD(pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           ## as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
           return(list(E.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]),
@@ -767,7 +767,7 @@ bkcde.default <- function(h=NULL,
       ## We test for only 1 unique value of x.eval to avoid parallel processing in
       ## the outer mcmapply call and invoke fitting the mcmapply sequence of
       ## f(y|x) values with proper.cores
-      Y.seq.mat <- mapply(function(i) kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
+      Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
       if(degree > 0) {
         ## Not function of j, so we can compute this once
         X.poly <- poly(x,raw=poly.raw,degree=degree)
@@ -776,10 +776,10 @@ bkcde.default <- function(h=NULL,
       }
       proper.out <- mclapply.progress(1:length(x.eval.unique),function(j) {
         if(degree == 0) {
-          kernel.bk.x <- kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
-          f.seq <- colMeans(Y.seq.mat*kernel.bk.x/NZD(mean(kernel.bk.x)))
+          pdf.kernel.bk.x <- pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
+          f.seq <- colMeans(Y.seq.mat*pdf.kernel.bk.x/NZD(mean(pdf.kernel.bk.x)))
         } else {
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
+          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
           beta.hat[is.na(beta.hat)] <- 0;
           f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
         }
