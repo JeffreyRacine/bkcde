@@ -1418,16 +1418,6 @@ plot.bkcde <- function(x,
         bias.vec <- colMeans(g1.boot.mat) - g1.fitted
         g1.boot.mat <- sweep(g1.boot.mat,2,bias.vec,"-")
       }
-      if(proper) {
-        f.boot.mat <- pmax(f.boot.mat,0)
-        F.boot.mat <- pmax(F.boot.mat,0)
-        g.boot.mat <- pmax(g.boot.mat,0)
-        if(!is.null(f1.fitted) & !is.null(F1.fitted) & !is.null(g1.fitted)){
-          f1.boot.mat <- pmax(f1.boot.mat,0)
-          F1.boot.mat <- pmax(F1.boot.mat,0)
-          g1.boot.mat <- pmax(g1.boot.mat,0)
-        }
-      }
     }
     f.ci.pw.lb <- apply(f.boot.mat, 2, quantile, probs = alpha / 2)
     f.ci.pw.ub <- apply(f.boot.mat, 2, quantile, probs = 1 - alpha / 2)
