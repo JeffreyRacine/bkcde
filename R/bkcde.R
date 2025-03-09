@@ -182,6 +182,8 @@ log.likelihood <- function(delete.one.values,
 bkcde.optim.fn <- function(h=NULL,
                            x=NULL,
                            y=NULL,
+                           x.eval=NULL,
+                           y.eval=NULL,
                            y.lb=NULL,
                            y.ub=NULL,
                            x.lb=NULL,
@@ -211,21 +213,30 @@ bkcde.optim.fn <- function(h=NULL,
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
   ## First, if cv.penalty.method="extreme" we compute the density estimate
   ## before doing anything else, and if any of the values are negative we return
-  ## a heavy penalty
+  ## a heavy penalty. Note this is on the sample realizations and on the
+  ## estimated grid for x.eval and y.eval. Also, for degree 0 the estimate must
+  ## be non-negative so no need to check for negative values in this case.
   if(cv.penalty.method=="extreme") {
-    if(degree==0) {
+    if(degree>0) {
+      ## First check for violations on evaluation grid
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      X.eval <- cbind(1,predict(X.poly,x.eval))
       f <- as.numeric(mcmapply(function(i){
-        pdf.kernel.bk.x <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub);
-        mean(pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub)*pdf.kernel.bk.x)/NZD(mean(pdf.kernel.bk.x))
-      },1:length(y),mc.cores=optim.ksum.cores))
-    } else {
+        w <- NZD(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub)))
+        beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*w)$coefficients
+        beta.hat%*%t(X.eval[i,,drop=FALSE])
+      },1:length(y.eval),mc.cores=optim.ksum.cores))
+      if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+      ## Next, check for violations on sample realizations
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f <- as.numeric(mcmapply(function(i){
         w <- NZD(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub)))
-        .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub)*w)$fitted.values
+        beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub)*w)$coefficients
+        beta.hat%*%t(X[i,,drop=FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
-    } 
-    if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+      if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+    }
   }
   ## Next, both cv.ml and cv.ls require the delete-one estimate, so compute that
   ## which gives us the argument for the likelihood function and for I.2 in the
@@ -508,6 +519,8 @@ bkcde.default <- function(h=NULL,
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
     optim.out <- bkcde.optim(x=x,
                              y=y,
+                             x.eval=x.eval,
+                             y.eval=y.eval,
                              y.lb=y.lb,
                              y.ub=y.ub,
                              x.lb=x.lb,
@@ -548,6 +561,8 @@ bkcde.default <- function(h=NULL,
     if(progress) cat("\rSub-sample optimization (",degree.max-degree.min+1," models, ",nmulti," restarts/model, n.sub = ",n.sub,", resamples = ", resamples, ")\n",sep="")
     optimal <- sub.cv(x=x,
                       y=y,
+                      x.eval=x.eval,
+                      y.eval=y.eval,
                       n.sub=n.sub,
                       resamples=resamples,
                       nmulti=nmulti,
@@ -970,6 +985,8 @@ bkcde.default <- function(h=NULL,
 
 bkcde.optim <- function(x=x,
                         y=y,
+                        x.eval=x.eval,
+                        y.eval=y.eval,
                         y.lb=y.lb,
                         y.ub=y.ub,
                         x.lb=x.lb,
@@ -1040,6 +1057,8 @@ bkcde.optim <- function(x=x,
                                               fn=bkcde.optim.fn,
                                               x=x,
                                               y=y,
+                                              x.eval=x.eval,
+                                              y.eval=y.eval,
                                               y.lb=y.lb,
                                               y.ub=y.ub,
                                               x.lb=x.lb,

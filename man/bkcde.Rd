@@ -102,7 +102,7 @@ bkcde(...)
   the cutoff value for the penalty used in the log likelihood function for negative density values in log-likelihood when \code{bwmethod="cv.ml"}. 
 }
   \item{cv.penalty.method}{
-  the method used to penalize negative density values in log-likelihood when \code{bwmethod="cv.ml"}. The default is \code{"smooth"}, while only \code{"extreme"} applies to \code{bwmethod="cv.ls"} (\code{"extreme"} applies an extreme penalty to negative density estimates that can occur when \code{degree > 0})
+  the method used to penalize negative density values in the log-likelihood when \code{bwmethod="cv.ml"}. The default is \code{"smooth"}. Note that \code{"extreme"} applies an extreme penalty to negative density estimates on the sample realizations and evaluation grid data when \code{degree > 0} for both \code{bwmethod="cv.ml"} and \code{bwmethod="cv.ls"} (\code{proper=TRUE} conducts any correction after bandwidth selection is completed)
 }
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
