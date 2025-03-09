@@ -1,3 +1,3 @@
 .onAttach <- function (lib, pkg) {
-	packageStartupMessage("package bkcde version 1.29", domain = NULL,  appendLF = TRUE)
+	packageStartupMessage("package bkcde version 1.30", domain = NULL,  appendLF = TRUE)
 }

@@ -221,9 +221,8 @@ bkcde.optim.fn <- function(h=NULL,
     } else {
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X,y=pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub),w=NZD(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub))));
-        beta.hat[is.na(beta.hat)] <- 0;
-        beta.hat%*%t(X)
+        w <- NZD(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub)))
+        .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub)*w)$fitted.values
       },1:length(y),mc.cores=optim.ksum.cores))
     } 
     if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
@@ -252,8 +251,8 @@ bkcde.optim.fn <- function(h=NULL,
       Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub),1:n.integrate)
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE]),w=NZD(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-        beta.hat[is.na(beta.hat)] <- 0;
+        w <- NZD(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub)))
+        beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
         ## The first coefficient vector is the delete-one estimate, the second
         ## the sequence of estimates on the grid
         f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
@@ -267,8 +266,8 @@ bkcde.optim.fn <- function(h=NULL,
     } else {
       X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
       f.loo <- as.numeric(mcmapply(function(i){
-        beta.hat <- coef(lm.wfit(x=X[-i,,drop=FALSE],y=pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub),w=NZD(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub))));
-        beta.hat[is.na(beta.hat)] <- 0;
+        w <- NZD(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub)))
+        beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub)*w)$coefficients
         beta.hat%*%t(X[i,,drop=FALSE])
       },1:length(y),mc.cores=optim.ksum.cores))
     }
@@ -301,8 +300,8 @@ bkcde.optim.fn <- function(h=NULL,
         ## Render the estimates proper while conducting cross-validation
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
         int.f.sq <- mcmapply(function(j){
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
+          w <- NZD(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub)))
+          beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
           f.seq <- X[j,,drop=FALSE]%*%beta.hat
           f.seq[f.seq<0] <- 0
           f.seq <- f.seq/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
@@ -311,8 +310,8 @@ bkcde.optim.fn <- function(h=NULL,
       } else {
         X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
         int.f.sq <- mcmapply(function(j){
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
+          w <- NZD(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub)))
+          beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
           integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
         },1:length(y),mc.cores = optim.ksum.cores)
       }
@@ -641,8 +640,8 @@ bkcde.default <- function(h=NULL,
           ## Here we exploit the fact that lm.wfit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
-          beta.hat <- coef(lm.wfit(x=X,y=cbind(pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),w=NZD(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
+          w <- NZD(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub)))
+          beta.hat <- .lm.fit(X*w,cbind(pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub))*w)$coefficients
           ## The first three rows are the conditional density, the conditional
           ## mean, and conditional distribution, respectively, while the last
           ## three rows are the derivatives of the conditional density, mean, and
@@ -715,9 +714,8 @@ bkcde.default <- function(h=NULL,
           ## Here we exploit the fact that lm.wfit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
-          beta.hat <- coef(lm.wfit(x=X,y=cbind(y,pdf.kernel.mat,cdf.kernel.mat),w=NZD(pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
-          ## as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
+          w <- NZD(sqrt(pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub)))
+          beta.hat <- .lm.fit(X*w,cbind(y,pdf.kernel.mat,cdf.kernel.mat)*w)$coefficients
           return(list(E.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]),
                       f.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,2:(n.grid+1),drop=FALSE]),
                       F.yx=as.numeric(X.eval.unique[i,,drop=FALSE]%*%beta.hat[,(n.grid+2):(2*n.grid+1),drop=FALSE]),
@@ -800,8 +798,8 @@ bkcde.default <- function(h=NULL,
           pdf.kernel.bk.x <- pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
           f.seq <- colMeans(Y.seq.mat*pdf.kernel.bk.x/NZD(mean(pdf.kernel.bk.x)))
         } else {
-          beta.hat <- coef(lm.wfit(x=X,y=Y.seq.mat,w=NZD(pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub))));
-          beta.hat[is.na(beta.hat)] <- 0;
+          w <- NZD(sqrt(pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)))
+          beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
           f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
