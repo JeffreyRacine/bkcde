@@ -218,17 +218,19 @@ bkcde.optim.fn <- function(h=NULL,
   ## be non-negative so no need to check for negative values in this case.
   if(cv.penalty.method=="extreme" && degree>0) {
     ## First check for violations on evaluation grid (typically smaller than the
-    ## sample size)
-    X.poly <- poly(x,raw=poly.raw,degree=degree)
-    X <- cbind(1,X.poly)
-    X.eval <- cbind(1,predict(X.poly,x.eval))
-    f <- as.numeric(mcmapply(function(i){
-      w <- NZD(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub)))
-      beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*w)$coefficients
-      beta.hat%*%t(X.eval[i,,drop=FALSE])
-    },1:length(y.eval),mc.cores=optim.ksum.cores))
-    ## If any of the grid estimates are negative, return a heavy penalty
-    if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+    ## sample size) if the estimation and evaluation points are different
+    if(!identical(y,y.eval) | !identical(x,x.eval))  {
+      X.poly <- poly(x,raw=poly.raw,degree=degree)
+      X <- cbind(1,X.poly)
+      X.eval <- cbind(1,predict(X.poly,x.eval))
+      f <- as.numeric(mcmapply(function(i){
+        w <- NZD(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub)))
+        beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)*w)$coefficients
+        beta.hat%*%t(X.eval[i,,drop=FALSE])
+      },1:length(y.eval),mc.cores=optim.ksum.cores))
+      ## If any of the grid estimates are negative, return a heavy penalty
+      if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+    }
     ## Next, check for violations on sample realizations
     X <- cbind(1,poly(x,raw=poly.raw,degree=degree))
     f <- as.numeric(mcmapply(function(i){
