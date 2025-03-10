@@ -108,7 +108,7 @@ cdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf) {
 ## this hack simply use the two-lines in the "constant" case.
 
 log.likelihood <- function(delete.one.values,
-                           cv.penalty.method=c("smooth","constant","trim","extreme"),
+                           cv.penalty.method=c("smooth","constant","trim","nonneg"),
                            cv.penalty.cutoff=.Machine$double.xmin,
                            verbose=FALSE,
                            degree=degree,
@@ -159,7 +159,7 @@ log.likelihood <- function(delete.one.values,
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values>cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- NA
     likelihood.vec <- likelihood.vec[!is.na(likelihood.vec)]
-  } else if(cv.penalty.method=="extreme") {
+  } else if(cv.penalty.method=="nonneg") {
     if(any(delete.one.values < cv.penalty.cutoff)) {
       likelihood.vec <- log(rep(cutoff.val,length(delete.one.values)))
     } else {
@@ -211,12 +211,12 @@ bkcde.optim.fn <- function(h=NULL,
   if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
   if(is.null(proper.cv)) stop("must provide proper in bkcde.optim.fn()")
   if(degree < 0 | degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
-  ## First, if cv.penalty.method="extreme" we compute the density estimate
+  ## First, if cv.penalty.method="nonneg" we compute the density estimate
   ## before doing anything else, and if any of the values are negative we return
   ## a heavy penalty. Note this is on the sample realizations and on the
   ## estimated grid for x.eval and y.eval. Also, for degree 0 the estimate must
   ## be non-negative so no need to check for negative values in this case.
-  if(cv.penalty.method=="extreme" && degree>0) {
+  if(cv.penalty.method=="nonneg" && degree>0) {
     ## First check for violations on evaluation grid (typically smaller than the
     ## sample size) if the estimation and evaluation points are different
     if(!identical(y,y.eval) | !identical(x,x.eval))  {
@@ -380,7 +380,7 @@ bkcde.default <- function(h=NULL,
                           cv.auto.threshold=5000,
                           cv.only=FALSE,
                           cv.penalty.cutoff=.Machine$double.xmin,
-                          cv.penalty.method=c("smooth","constant","trim","extreme"),
+                          cv.penalty.method=c("smooth","constant","trim","nonneg"),
                           degree.max=3,
                           degree.min=0,
                           degree=NULL,
