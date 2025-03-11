@@ -553,7 +553,11 @@ bkcde.default <- function(h=NULL,
     value <- optim.out$value
     value.vec <- optim.out$value.vec
     value.mat <- optim.out$value.mat
-    convergence <- optim.out$convergence
+    if(identical(value,-sqrt(.Machine$double.xmax))) {
+      convergence <- 99
+    } else {
+      convergence <- optim.out$convergence
+    }
     convergence.vec <- optim.out$convergence.vec
     convergence.mat <- optim.out$convergence.mat
     secs.optim <- optim.out$secs.optim
@@ -908,6 +912,14 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- NULL
     int.f.seq.post <- NULL
   }
+  if(convergence != 0) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
+                               degree,
+                               ", h.y = ",
+                               round(h[1],5),
+                               ", h.x = ",
+                               round(h[2],5),
+                               "]",
+                               immediate. = TRUE)
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
@@ -1711,6 +1723,7 @@ summary.bkcde <- function(object, ...) {
   if(object$optimize) {
     cat("Bandwidth selection criterion: ",object$bwmethod,"\n",sep="")
     cat("Optimization cross-validation method: ",object$cv,"\n",sep="")
+    cat("Convergence code: ",object$convergence,"\n",sep="")
     if(object$cv=="sub") {
       cat("Number of sub-cv resamples: ",object$resamples,"\n",sep="")
       cat("Sample size of sub-cv resamples: ",format(object$n.sub, big.mark=",", scientific=FALSE),"\n",sep="")
