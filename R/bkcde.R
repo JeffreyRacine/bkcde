@@ -912,14 +912,14 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- NULL
     int.f.seq.post <- NULL
   }
-  if(convergence != 0) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
-                               degree,
-                               ", h.y = ",
-                               round(h[1],5),
-                               ", h.x = ",
-                               round(h[2],5),
-                               "]",
-                               immediate. = TRUE)
+  if(!is.null(convergence) & convergence != 0) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
+                                                       degree,
+                                                       ", h.y = ",
+                                                       round(h[1],5),
+                                                       ", h.x = ",
+                                                       round(h[2],5),
+                                                       "]",
+                                                       immediate. = TRUE)
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
