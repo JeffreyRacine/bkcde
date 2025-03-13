@@ -563,6 +563,14 @@ bkcde.default <- function(h=NULL,
     secs.optim <- optim.out$secs.optim
     secs.optim.mat <- optim.out$secs.optim.mat
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
+    if(convergence != 0) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
+                                 degree,
+                                 ", h.y = ",
+                                 round(h[1],5),
+                                 ", h.x = ",
+                                 round(h[2],5),
+                                 "]",
+                                 immediate. = TRUE)
   } else if(is.null(h) & cv == "sub") { 
     ## Code recursion in R is a thing of beauty sub.cv() calls bkcde()...
     if(progress) cat("\rSub-sample optimization (",degree.max-degree.min+1," models, ",nmulti," restarts/model, n.sub = ",n.sub,", resamples = ", resamples, ")\n",sep="")
@@ -912,14 +920,6 @@ bkcde.default <- function(h=NULL,
     int.f.seq <- NULL
     int.f.seq.post <- NULL
   }
-  if(!is.null(convergence) & convergence != 0) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
-                                                       degree,
-                                                       ", h.y = ",
-                                                       round(h[1],5),
-                                                       ", h.x = ",
-                                                       round(h[2],5),
-                                                       "]",
-                                                       immediate. = TRUE)
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
