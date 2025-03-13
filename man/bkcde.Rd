@@ -304,6 +304,8 @@ a numeric vector of the response variable
 }
 \references{
 Racine, J.S. (1993), \dQuote{An Efficient Cross-Validation Algorithm For Window Width Selection for Nonparametric Kernel Regression,} Communications in Statistics, October, Volume 22, Issue 4, pages 1107-1114.
+
+Li, A. and Q. Li and J.S. Racine, \dQuote{Boundary Corrected Adaptive Conditional Kernel Density Estimation}.
 }
 \author{
 Jeffrey S. Racine <racinej@mcmaster.ca>
