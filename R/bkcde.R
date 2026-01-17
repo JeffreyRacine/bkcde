@@ -51,8 +51,13 @@ integrate.trapezoidal <- function(x, y) {
 ## accepted coding practice for a variety of languages
 
 NZD <- function(a) {
-  a[a < 0] <- pmin(-.Machine$double.eps, a[a < 0])
-  a[a >= 0] <- pmax(.Machine$double.eps, a[a >= 0])
+  eps <- .Machine$double.eps
+  if (length(a) == 1) {
+    if (a >= 0) { if (a < eps) return(eps) } else { if (a > -eps) return(-eps) }
+    return(a)
+  }
+  idx <- which(abs(a) < eps)
+  if (length(idx) > 0) a[idx] <- ifelse(a[idx] >= 0, eps, -eps)
   a
 }
 
