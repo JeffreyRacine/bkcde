@@ -1,0 +1,14 @@
+# Ignore R history files
+**/.Rhistory
+
+# Ignore R workspace files
+**/.RData
+
+# Ignore project user directories
+**/.Rproj.user/
+
+# Ignore agent workflow examples or generated files
+.agent/
+
+# macOS Finder
+.DS_Store
