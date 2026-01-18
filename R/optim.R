@@ -137,10 +137,31 @@ bkcde.optim.fn <- function(h=NULL,
 
   if(bwmethod == "cv.ml") {
     if(degree==0) {
-      f.loo <- as.numeric(mcmapply(function(i){
-        pdf.kernel.bk.x<-pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i]);
-        mean(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*pdf.kernel.bk.x)/NZD_pos(mean(pdf.kernel.bk.x))
-      },seq_along(y),mc.cores=optim.ksum.cores))
+      if(proper.cv) {
+        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+        if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+        if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+        if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+        denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+        Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
+        f.loo <- as.numeric(mcmapply(function(i){
+          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
+          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
+          f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
+          f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
+          f.seq[f.seq<0] <- 0
+          f.loo[f.loo<0] <- 0
+          f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+        },seq_along(y),mc.cores=optim.ksum.cores))
+      } else {
+        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
+        f.loo <- as.numeric(mcmapply(function(i){
+          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
+          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
+          beta.hat%*%t(X[i,,drop=FALSE])
+        },seq_along(y),mc.cores=optim.ksum.cores))
+      }
     } else {
       if(proper.cv) {
         if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
@@ -386,9 +407,16 @@ sub.cv <- function(x, y,
     sub.results <- vector("list", resamples)
     for(j in seq_len(resamples)) {
       ii <- sample(n, size=n.sub, replace=replace)
-      bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-      sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-      sub.results[[j]] <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+      ## Ensure robustness in serial branch as well
+      res <- tryCatch({
+        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+        list(index = j, sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+      }, error = function(e) {
+        warning(sprintf("sub.cv: resample %d failed with error: %s", j, conditionMessage(e)), immediate. = TRUE)
+        list(index = j, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
+      })
+      sub.results[[j]] <- res
       if(progress) pbb$tick()
     }
   } else {
@@ -401,13 +429,27 @@ sub.cv <- function(x, y,
       ## to workers as they finish (gives more frequent progress updates for
       ## long-running tasks). Also disable recursive forks inside workers
       ## (mc.allow.recursive = FALSE) to avoid explosion of processes.
-      sub.results <- mclapply.progress(seq_len(resamples), function(j) {
+      sub.results.raw <- mclapply.progress(seq_len(resamples), function(j) {
         ii <- sample(n, size=n.sub, replace=replace)
-        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-        res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-        return(res)
+        ## Ensure robustness: if bkcde fails on a resample, return NA-filled result
+        tryCatch({
+          bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+          sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+          list(index = j, sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+        }, error = function(e) {
+          warning(sprintf("sub.cv: resample %d failed with error: %s", j, conditionMessage(e)), immediate. = TRUE)
+          list(index = j, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
+        })
       }, mc.cores = resample.cores, mc.set.seed = TRUE, mc.style = "txt", mc.substyle = 3, mc.preschedule = FALSE, mc.allow.recursive = FALSE, ignore.interactive = TRUE, progress = TRUE)
+      ## Ensure the returned list is of length 'resamples' and ordered by index
+      sub.results <- vector("list", resamples)
+      for(k in seq_along(sub.results.raw)) {
+        idx <- sub.results.raw[[k]]$index
+        if(!is.null(idx) && idx >= 1 && idx <= resamples) sub.results[[idx]] <- sub.results.raw[[k]]
+      }
+      ## Fill any NULL slots with NA-filled entries
+      for(k in seq_len(resamples)) if(is.null(sub.results[[k]])) sub.results[[k]] <- list(index = k, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
+
     } else {
       ## No progress requested: use fast pbmclapply without rendering progress
       sub.results <- mclapply.progress(seq_len(resamples), function(j) {
@@ -421,9 +463,13 @@ sub.cv <- function(x, y,
   }
   
   for(j in seq_len(resamples)) {
-    sf.mat[j,] <- sub.results[[j]]$sf
-    degree.vec[j] <- sub.results[[j]]$degree
-    cv.vec[j] <- sub.results[[j]]$cv
+    sf_j <- sub.results[[j]]$sf
+    if(!(is.numeric(sf_j) && length(sf_j) == 2)) sf_j <- c(NA_real_, NA_real_)
+    sf.mat[j,] <- sf_j
+    degree_j <- sub.results[[j]]$degree
+    degree.vec[j] <- ifelse(is.null(degree_j) || is.na(degree_j), NA_integer_, as.integer(degree_j))
+    cv_j <- sub.results[[j]]$cv
+    cv.vec[j] <- ifelse(is.null(cv_j) || is.na(cv_j), NA_real_, as.numeric(cv_j))
   }
   h.mat <- sweep(sf.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
   degree <- min(find_mode(degree.vec))
