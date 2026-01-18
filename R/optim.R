@@ -371,114 +371,60 @@ sub.cv <- function(x, y,
                    n.sub = 300, 
                    progress = FALSE,
                    replace = FALSE,
-                   resamples = 10,
-                   resample.cores = parallel::detectCores(),
+                   resamples = 10, 
                    ...) {
   if(!is.numeric(x)) stop("x must be numeric in sub.cv()")
   if(!is.numeric(y)) stop("y must be numeric in sub.cv()")
   if(length(x) != length(y)) stop("length of x must be equal to length of y in sub.cv()")
   if(!is.numeric(n.sub)) stop("n.sub must be numeric in sub.cv()")
-  if(n.sub < 100 || n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in sub.cv()")
+  if(n.sub < 100 | n.sub > length(y)) stop("n.sub must be at least 100 and less than the length of y in sub.cv()")
   if(!is.logical(progress)) stop("progress must be logical in sub.cv()")
   if(!is.logical(replace)) stop("replace must be logical in sub.cv()")
-  if(replace == TRUE && resamples < 2) stop("resamples must be at least 2 when replace=TRUE in sub.cv()")
-  if(n.sub==length(y) && replace==FALSE && resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
+  ## If only 1 resample is specified it ought to be the original sample
+  ## returned, so check
+  if(replace == TRUE & resamples < 2) stop("resamples must be at least 2 when replace=TRUE in sub.cv()")
+  if(n.sub==length(y) & replace==FALSE & resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
   if(resamples < 1) stop("resamples must be at least 1 in sub.cv()")
-  if(!is.numeric(resample.cores) || resample.cores < 1) stop("resample.cores must be a positive integer in sub.cv()")
-  resample.cores <- as.integer(resample.cores)
   n <- length(y)
   sf.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
   cv.vec <- numeric()
-  
-  ## Use L'Ecuyer RNG for reproducible parallel RNG streams and explicitly
-  ## set child seed generation via mc.set.seed=TRUE. Save/restore RNG kind.
-  .old.RNG <- RNGkind()
-  on.exit(do.call(RNGkind, as.list(.old.RNG)), add = TRUE)
-  RNGkind("L'Ecuyer-CMRG")
-  
-  if(resample.cores == 1) {
-    ## Serial resampling (reliable, identical appearance to v1.30 progress bar)
-    if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
-                                                   clear = TRUE,
-                                                   force = TRUE,
-                                                   total = resamples)
-    if(progress) pbb$tick(0)
-    sub.results <- vector("list", resamples)
-    for(j in seq_len(resamples)) {
-      ii <- sample(n, size=n.sub, replace=replace)
-      ## Ensure robustness in serial branch as well
-      res <- tryCatch({
-        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-        list(index = j, sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-      }, error = function(e) {
-        warning(sprintf("sub.cv: resample %d failed with error: %s", j, conditionMessage(e)), immediate. = TRUE)
-        list(index = j, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
-      })
-      sub.results[[j]] <- res
-      if(progress) pbb$tick()
-    }
-  } else {
-    if(progress) cat("Resampling: 0%\n")
-    if(progress) {
-      ## Use pbmclapply for parallel resampling (fast) and use the 'txt' style
-      ## (txtProgressBar layout) so the progress output is more stable and similar
-      ## to the original pbb appearance while preserving speed.
-      ## Use dynamic scheduling (mc.preschedule = FALSE) so tasks are handed out
-      ## to workers as they finish (gives more frequent progress updates for
-      ## long-running tasks). Also disable recursive forks inside workers
-      ## (mc.allow.recursive = FALSE) to avoid explosion of processes.
-      sub.results.raw <- mclapply.progress(seq_len(resamples), function(j) {
-        ii <- sample(n, size=n.sub, replace=replace)
-        ## Ensure robustness: if bkcde fails on a resample, return NA-filled result
-        tryCatch({
-          bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-          sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-          list(index = j, sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-        }, error = function(e) {
-          warning(sprintf("sub.cv: resample %d failed with error: %s", j, conditionMessage(e)), immediate. = TRUE)
-          list(index = j, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
-        })
-      }, mc.cores = resample.cores, mc.set.seed = TRUE, mc.style = "txt", mc.substyle = 3, mc.preschedule = FALSE, mc.allow.recursive = FALSE, ignore.interactive = TRUE, progress = TRUE)
-      ## Ensure the returned list is of length 'resamples' and ordered by index
-      sub.results <- vector("list", resamples)
-      for(k in seq_along(sub.results.raw)) {
-        idx <- sub.results.raw[[k]]$index
-        if(!is.null(idx) && idx >= 1 && idx <= resamples) sub.results[[idx]] <- sub.results.raw[[k]]
-      }
-      ## Fill any NULL slots with NA-filled entries
-      for(k in seq_len(resamples)) if(is.null(sub.results[[k]])) sub.results[[k]] <- list(index = k, sf = c(NA_real_, NA_real_), degree = NA_integer_, cv = NA_real_)
-
-    } else {
-      ## No progress requested: use fast pbmclapply without rendering progress
-      sub.results <- mclapply.progress(seq_len(resamples), function(j) {
-        ii <- sample(n, size=n.sub, replace=replace)
-        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-        res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-        return(res)
-      }, mc.cores = resample.cores, mc.set.seed = TRUE, progress = FALSE)
-    }
+  if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
+                                                 clear = TRUE,
+                                                 force = TRUE,
+                                                 total = resamples)
+  if(progress) cat("\rResampling: 0%")
+  for(j in 1:resamples) {
+    ii <- sample(n,size=n.sub,replace=replace)
+    ## Since cross-validation in bkcde() appropriately deals with improper
+    ## densities, and since we are only using cross-validation in this call, we
+    ## set proper=FALSE. We retrieve the "scale factors" after removing scale
+    ## and sample size factors.
+    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,cv.only=TRUE,...)
+    sf.mat[j,] <- bkcde.out$h/(EssDee(cbind(y[ii],x[ii]))*n.sub^(-1/6))
+    degree.vec[j] <- bkcde.out$degree
+    cv.vec[j] <- bkcde.out$value
+    if(progress) pbb$tick()
   }
-  
-  for(j in seq_len(resamples)) {
-    sf_j <- sub.results[[j]]$sf
-    if(!(is.numeric(sf_j) && length(sf_j) == 2)) sf_j <- c(NA_real_, NA_real_)
-    sf.mat[j,] <- sf_j
-    degree_j <- sub.results[[j]]$degree
-    degree.vec[j] <- ifelse(is.null(degree_j) || is.na(degree_j), NA_integer_, as.integer(degree_j))
-    cv_j <- sub.results[[j]]$cv
-    cv.vec[j] <- ifelse(is.null(cv_j) || is.na(cv_j), NA_real_, as.numeric(cv_j))
-  }
+  ## Compute "typical" column elements of h.mat after rescaling for larger
+  ## sample size and scale of data.
   h.mat <- sweep(sf.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
+  ## We use robust "typical" measures of location for h and degree since,
+  ## importantly, bandwidth properties differ with degree of polynomial (rates
+  ## and values) and so it is not sensible to unconditionally return e.g. the
+  ## median across all degrees and bandwidths. We first select the "typical"
+  ## polynomial order (smallest degree mode) then take a robust measure of the
+  ## "typical" vector of bandwidths corresponding to the typical polynomial
+  ## order providing n > p+1 (min required by MCD). Note that the modal degrees,
+  ## when > 1 exist, may not be contiguous hence taking the mean degree may be
+  ## is ill-advised.
   degree <- min(find_mode(degree.vec))
   h.median <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,median)
   h.mean <- apply(h.mat[degree.vec==degree,,drop=FALSE],2,mean)
   if(length(degree.vec[degree.vec==degree]) < 4) {
     h.covMcd <- h.mean
   } else {
-    h.covMcd <- robustbase::covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
+    h.covMcd <- covMcd(h.mat[degree.vec==degree,,drop=FALSE])$center
   }
   h.ml <- (h.mat[degree.vec==degree,,drop=FALSE])[which.max(cv.vec[degree.vec==degree]),,drop=FALSE]
   return(list(cv.vec=cv.vec,
@@ -491,4 +437,6 @@ sub.cv <- function(x, y,
               h.median=h.median,
               h.ml=h.ml,
               sf.mat=sf.mat))
+  
 }
+
