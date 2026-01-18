@@ -373,13 +373,28 @@ sub.cv <- function(x, y,
   if(progress) pbb$tick(0)
   
   ## Parallelize the resamples
-  sub.results <- mclapply(seq_len(resamples), function(j) {
-    ii <- sample(n, size=n.sub, replace=replace)
-    bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-    sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-    res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-    return(res)
-  }, mc.cores = detectCores())
+  if(detectCores() > 1) {
+    ## Use L'Ecuyer RNG for reproducible parallel RNG streams and explicitly
+    ## set child seed generation via mc.set.seed=TRUE. Save/restore RNG kind.
+    .old.RNG <- RNGkind()
+    on.exit(do.call(RNGkind, as.list(.old.RNG)), add = TRUE)
+    RNGkind("L'Ecuyer-CMRG")
+    sub.results <- mclapply(seq_len(resamples), function(j) {
+      ii <- sample(n, size=n.sub, replace=replace)
+      bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+      sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+      res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+      return(res)
+    }, mc.cores = detectCores(), mc.set.seed = TRUE)
+  } else {
+    sub.results <- lapply(seq_len(resamples), function(j) {
+      ii <- sample(n, size=n.sub, replace=replace)
+      bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+      sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+      res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+      return(res)
+    })
+  }
   
   for(j in seq_len(resamples)) {
     sf.mat[j,] <- sub.results[[j]]$sf
