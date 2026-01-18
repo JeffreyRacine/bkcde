@@ -397,13 +397,17 @@ sub.cv <- function(x, y,
       ## Use pbmclapply for parallel resampling (fast) and use the 'txt' style
       ## (txtProgressBar layout) so the progress output is more stable and similar
       ## to the original pbb appearance while preserving speed.
+      ## Use dynamic scheduling (mc.preschedule = FALSE) so tasks are handed out
+      ## to workers as they finish (gives more frequent progress updates for
+      ## long-running tasks). Also disable recursive forks inside workers
+      ## (mc.allow.recursive = FALSE) to avoid explosion of processes.
       sub.results <- mclapply.progress(seq_len(resamples), function(j) {
         ii <- sample(n, size=n.sub, replace=replace)
         bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
         sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
         res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
         return(res)
-      }, mc.cores = resample.cores, mc.set.seed = TRUE, mc.style = "txt", mc.substyle = 3, ignore.interactive = TRUE, progress = TRUE)
+      }, mc.cores = resample.cores, mc.set.seed = TRUE, mc.style = "txt", mc.substyle = 3, mc.preschedule = FALSE, mc.allow.recursive = FALSE, ignore.interactive = TRUE, progress = TRUE)
     } else {
       ## No progress requested: use fast pbmclapply without rendering progress
       sub.results <- mclapply.progress(seq_len(resamples), function(j) {
