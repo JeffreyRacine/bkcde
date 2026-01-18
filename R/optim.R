@@ -350,7 +350,8 @@ sub.cv <- function(x, y,
                    n.sub = 300, 
                    progress = FALSE,
                    replace = FALSE,
-                   resamples = 10, 
+                   resamples = 10,
+                   resample.cores = parallel::detectCores(),
                    ...) {
   if(!is.numeric(x)) stop("x must be numeric in sub.cv()")
   if(!is.numeric(y)) stop("y must be numeric in sub.cv()")
@@ -362,45 +363,63 @@ sub.cv <- function(x, y,
   if(replace == TRUE && resamples < 2) stop("resamples must be at least 2 when replace=TRUE in sub.cv()")
   if(n.sub==length(y) && replace==FALSE && resamples > 1) stop("taking resamples with replace=FALSE when n.sub=n results in identical samples")
   if(resamples < 1) stop("resamples must be at least 1 in sub.cv()")
+  if(!is.numeric(resample.cores) || resample.cores < 1) stop("resample.cores must be a positive integer in sub.cv()")
+  resample.cores <- as.integer(resample.cores)
   n <- length(y)
   sf.mat <- matrix(NA,nrow=resamples,ncol=2)
   degree.vec <- numeric()
   cv.vec <- numeric()
-  if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
-                                                 clear = TRUE,
-                                                 force = TRUE,
-                                                 total = resamples)
-  if(progress) pbb$tick(0)
   
-  ## Parallelize the resamples
-  if(detectCores() > 1) {
-    ## Use L'Ecuyer RNG for reproducible parallel RNG streams and explicitly
-    ## set child seed generation via mc.set.seed=TRUE. Save/restore RNG kind.
-    .old.RNG <- RNGkind()
-    on.exit(do.call(RNGkind, as.list(.old.RNG)), add = TRUE)
-    RNGkind("L'Ecuyer-CMRG")
-    sub.results <- mclapply(seq_len(resamples), function(j) {
+  ## Use L'Ecuyer RNG for reproducible parallel RNG streams and explicitly
+  ## set child seed generation via mc.set.seed=TRUE. Save/restore RNG kind.
+  .old.RNG <- RNGkind()
+  on.exit(do.call(RNGkind, as.list(.old.RNG)), add = TRUE)
+  RNGkind("L'Ecuyer-CMRG")
+  
+  if(resample.cores == 1) {
+    ## Serial resampling (reliable, identical appearance to v1.30 progress bar)
+    if(progress) pbb <- progress::progress_bar$new(format = "[:bar] :percent ETA: :eta",
+                                                   clear = TRUE,
+                                                   force = TRUE,
+                                                   total = resamples)
+    if(progress) pbb$tick(0)
+    sub.results <- vector("list", resamples)
+    for(j in seq_len(resamples)) {
       ii <- sample(n, size=n.sub, replace=replace)
       bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
       sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-      res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-      return(res)
-    }, mc.cores = detectCores(), mc.set.seed = TRUE)
+      sub.results[[j]] <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+      if(progress) pbb$tick()
+    }
   } else {
-    sub.results <- lapply(seq_len(resamples), function(j) {
-      ii <- sample(n, size=n.sub, replace=replace)
-      bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
-      sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
-      res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
-      return(res)
-    })
+    if(progress) cat("Resampling: 0%\n")
+    if(progress) {
+      ## Use pbmclapply for parallel resampling (fast) and use the 'txt' style
+      ## (txtProgressBar layout) so the progress output is more stable and similar
+      ## to the original pbb appearance while preserving speed.
+      sub.results <- mclapply.progress(seq_len(resamples), function(j) {
+        ii <- sample(n, size=n.sub, replace=replace)
+        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+        res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+        return(res)
+      }, mc.cores = resample.cores, mc.set.seed = TRUE, mc.style = "txt", mc.substyle = 3, ignore.interactive = TRUE, progress = TRUE)
+    } else {
+      ## No progress requested: use fast pbmclapply without rendering progress
+      sub.results <- mclapply.progress(seq_len(resamples), function(j) {
+        ii <- sample(n, size=n.sub, replace=replace)
+        bkcde.out <- bkcde(x=x[ii], y=y[ii], proper=FALSE, cv.only=TRUE, ...)
+        sf <- bkcde.out$h/(EssDee(cbind(y[ii], x[ii])) * n.sub^(-1/6))
+        res <- list(sf=sf, degree=bkcde.out$degree, cv=bkcde.out$value)
+        return(res)
+      }, mc.cores = resample.cores, mc.set.seed = TRUE, progress = FALSE)
+    }
   }
   
   for(j in seq_len(resamples)) {
     sf.mat[j,] <- sub.results[[j]]$sf
     degree.vec[j] <- sub.results[[j]]$degree
     cv.vec[j] <- sub.results[[j]]$cv
-    if(progress) pbb$tick()
   }
   h.mat <- sweep(sf.mat,2,EssDee(cbind(y,x))*n^(-1/6),"*")
   degree <- min(find_mode(degree.vec))

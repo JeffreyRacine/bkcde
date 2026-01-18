@@ -13,6 +13,7 @@ sub.cv(x, y,
        progress = FALSE,
        replace = FALSE,
        resamples = 10, 
+       resample.cores = parallel::detectCores(),
        ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -34,6 +35,9 @@ A logical value indicating whether the sub-samples should be drawn with replacem
 }
   \item{resamples}{
 An integer specifying the number of resamples to use in the optimization.
+}
+  \item{resample.cores}{
+An integer specifying the number of cores to use when running the resamples in parallel. Set this to \code{1} to run resampling serially (this restores the original v1.30 progress behaviour), otherwise the default uses all available cores for speed.
 }
 
   \item{\dots}{
