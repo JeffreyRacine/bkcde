@@ -503,31 +503,35 @@ bkcde.default <- function(h=NULL,
         X <- cbind(1,X.poly)
         X.eval.unique <- cbind(1,predict(X.poly,x.eval.unique))
       }
+      ## Precompute kernels between unique x.eval values and sample x to avoid
+      ## re-evaluating pdf.kernel.bk() repeatedly (preserves numerical identity)
+      pdf.kernel.bk.x.mat <- sapply(x.eval.unique, function(xx) pdf.kernel.bk(xx, x, h[2], x.lb, x.ub))
+
       proper.out <- mclapply.progress(seq_along(x.eval.unique),function(j) {
         if(degree == 0) {
-          pdf.kernel.bk.x <- pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub);
-          f.seq <- colMeans(Y.seq.mat*pdf.kernel.bk.x/NZD_pos(mean(pdf.kernel.bk.x)))
+          pdf.kernel.bk.x <- pdf.kernel.bk.x.mat[, j]
+          f.seq <- colMeans(Y.seq.mat * pdf.kernel.bk.x / NZD_pos(mean(pdf.kernel.bk.x)))
         } else {
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x.eval.unique[j],x,h[2],x.lb,x.ub)))
-          beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
-          f.seq <- as.numeric(X.eval.unique[j,,drop=FALSE]%*%beta.hat)
+          w <- NZD_pos(sqrt(pdf.kernel.bk.x.mat[, j]))
+          beta.hat <- .lm.fit(X * w, Y.seq.mat * w)$coefficients
+          f.seq <- as.numeric(X.eval.unique[j, , drop = FALSE] %*% beta.hat)
         }
         ## Compute integral of f.seq including any possible negative values
-        int.f.seq.pre.neg[j]<- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+        int.f.seq.pre.neg[j] <- integrate.trapezoidal(y.seq, f.seq)[n.integrate]
         ## Set any possible negative f.seq values to 0
         f.seq[f.seq < 0] <- 0
         ## Compute integral of f.seq after setting any possible negative values to 0
-        int.f.seq[j] <- integrate.trapezoidal(y.seq,f.seq)[n.integrate]
+        int.f.seq[j] <- integrate.trapezoidal(y.seq, f.seq)[n.integrate]
         ## Compute integral of f.seq after setting any possible negative values to 0
         ## and correcting to ensure final estimate integrates to 1
-        int.f.seq.post.mat[j,] <- integrate.trapezoidal(y.seq,f.seq/int.f.seq[j])
-        int.f.seq.post[j] <- int.f.seq.post.mat[j,n.integrate]
-        E.yx[j] <- integrate.trapezoidal(y.seq,y.seq*f.seq/int.f.seq[j])[n.integrate]
-        return(list(int.f.seq.pre.neg=int.f.seq.pre.neg[j],
-                    int.f.seq=int.f.seq[j],
-                    int.f.seq.post=int.f.seq.post[j],
-                    int.f.seq.post.mat=int.f.seq.post.mat[j,],
-                    E.yx=E.yx[j]))
+        int.f.seq.post.mat[j, ] <- integrate.trapezoidal(y.seq, f.seq / int.f.seq[j])
+        int.f.seq.post[j] <- int.f.seq.post.mat[j, n.integrate]
+        E.yx[j] <- integrate.trapezoidal(y.seq, y.seq * f.seq / int.f.seq[j])[n.integrate]
+        return(list(int.f.seq.pre.neg = int.f.seq.pre.neg[j],
+                    int.f.seq = int.f.seq[j],
+                    int.f.seq.post = int.f.seq.post[j],
+                    int.f.seq.post.mat = int.f.seq.post.mat[j, ],
+                    E.yx = E.yx[j]))
       },mc.cores = ifelse(length(x.eval.unique)>1,proper.cores,1),progress=progress)
       ## Now gather the results, correct for negative entries then divide elements
       ## of f.xy by the corresponding integral (one for each x.eval.unique) to
