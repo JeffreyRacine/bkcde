@@ -51,10 +51,14 @@ bkcde(...)
       verbose = FALSE, 
       x.erf = 0,
       y.erf = 0,
+  seed = 42,
       ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
+  \item{seed}{
+  integer or NULL. The random seed used for reproducibility of multi-start optimization when \code{nmulti > 1}. Default is 42. Set to NULL to use the current random number generator state without modification, which is recommended when using \code{bkcde} in Monte Carlo simulations to avoid disrupting the simulation's random number sequence. Note: the global random number generator state is saved before any internal seed manipulation and restored upon function exit, ensuring that Monte Carlo simulations are not affected regardless of the seed value.
+}
   \item{h}{
   a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the \code{bkcde.optim} function.
 }
