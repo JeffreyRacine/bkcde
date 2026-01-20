@@ -378,7 +378,7 @@ bkcde.optim <- function(x=x,
   output.return$secs.optim <- sapply(degree.return, function(x) x$secs.optim)
   output.return$secs.optim.mat <- t(sapply(degree.return, function(x) x$secs.optim.vec))
   output.return$optim.y.init.mat <- t(sapply(degree.return, function(x) x$optim.y.init.vec))
-  output.return$optim.x.init.mat <- t(sapply(degree.return, function(x) x$optim.y.init.vec))
+  output.return$optim.x.init.mat <- t(sapply(degree.return, function(x) x$optim.x.init.vec))
   return(output.return)
 }
 
