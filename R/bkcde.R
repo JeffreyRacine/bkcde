@@ -84,6 +84,7 @@ bkcde.default <- function(h=NULL,
                           verbose=FALSE,
                           x.erf=0,
                           y.erf=0,
+                          seed=42,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -194,36 +195,47 @@ bkcde.default <- function(h=NULL,
   if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
+  
+  ## Save seed prior to any optimization that may set seed internally
+  ## This ensures Monte Carlo simulations are not disrupted
+  if(exists(".Random.seed", .GlobalEnv)) {
+    save.seed <- get(".Random.seed", .GlobalEnv)
+    exists.seed <- TRUE
+  } else {
+    exists.seed <- FALSE
+  }
+  
   secs.start.total <- Sys.time()
   ## If no bandwidth is provided, then either likelihood or least-squares
   ## cross-validation is used to obtain the bandwidths and polynomial order (use
   ## optim.ksum.cores, optim.degree.cores, optim.nmulti.cores)
   if(is.null(h) & cv == "full") {
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
-    optim.out <- bkcde.optim(x=x,
-                             y=y,
-                             x.eval=x.eval,
-                             y.eval=y.eval,
-                             y.lb=y.lb,
-                             y.ub=y.ub,
-                             x.lb=x.lb,
-                             x.ub=x.ub,
-                             bwmethod=bwmethod,
-                             cv.penalty.cutoff=cv.penalty.cutoff,
-                             cv.penalty.method=cv.penalty.method,
-                             degree.max=degree.max,
-                             degree.min=degree.min,
-                             nmulti=nmulti,
-                             n.integrate=n.integrate,
-                             optim.degree.cores=optim.degree.cores,
-                             optim.ksum.cores=optim.ksum.cores,
-                             optim.nmulti.cores=optim.nmulti.cores,
-                             optim.sf.y.lb=optim.sf.y.lb,
-                             optim.sf.x.lb=optim.sf.x.lb,
-                             poly.raw=poly.raw,
-                             proper.cv=proper.cv,
-                             verbose=verbose,
-                             ...)
+      optim.out <- bkcde.optim(x=x,
+                               y=y,
+                               x.eval=x.eval,
+                               y.eval=y.eval,
+                               y.lb=y.lb,
+                               y.ub=y.ub,
+                               x.lb=x.lb,
+                               x.ub=x.ub,
+                               bwmethod=bwmethod,
+                               cv.penalty.cutoff=cv.penalty.cutoff,
+                               cv.penalty.method=cv.penalty.method,
+                               degree.max=degree.max,
+                               degree.min=degree.min,
+                               nmulti=nmulti,
+                               n.integrate=n.integrate,
+                               optim.degree.cores=optim.degree.cores,
+                               optim.ksum.cores=optim.ksum.cores,
+                               optim.nmulti.cores=optim.nmulti.cores,
+                               optim.sf.y.lb=optim.sf.y.lb,
+                               optim.sf.x.lb=optim.sf.x.lb,
+                               poly.raw=poly.raw,
+                               proper.cv=proper.cv,
+                               verbose=verbose,
+                               seed=seed,
+                               ...)
     h <- optim.out$par
     h.mat <- optim.out$par.mat
     h.x.init.mat <- optim.out$optim.x.init.mat
@@ -276,6 +288,7 @@ bkcde.default <- function(h=NULL,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optim.sf.y.lb=optim.sf.y.lb,
                       optim.sf.x.lb=optim.sf.x.lb,
+                      seed=seed,
                       poly.raw=poly.raw,
                       progress=progress,
                       ...)
@@ -657,6 +670,10 @@ bkcde.default <- function(h=NULL,
                       y.ub=y.ub,
                       y=y)
   class(return.list) <- "bkcde"
+  
+  ## Restore seed before returning (if it was saved at the start)
+  if(exists.seed) assign(".Random.seed", save.seed, .GlobalEnv)
+  
   return(return.list)
 }
 

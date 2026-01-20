@@ -265,6 +265,7 @@ bkcde.optim <- function(x=x,
                         poly.raw=poly.raw,
                         proper.cv=proper.cv,
                         verbose=verbose,
+                        seed=NULL,
                         ...) {
   if(degree.min < 0 || degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
                                                     length(y)-1,
@@ -285,12 +286,24 @@ bkcde.optim <- function(x=x,
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
 
-  par.init <- matrix(NA,nmulti,2)
-  par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
-  if(nmulti>1) {
-    par.init[2:nmulti,] <- cbind(EssDee(y)*runif(nmulti-1,optim.sf.y.lb,10+optim.sf.y.lb),
-                                 EssDee(x)*runif(nmulti-1,optim.sf.x.lb,10+optim.sf.x.lb))*n^(-1/6)
-  }
+    par.init <- matrix(NA,nmulti,2)
+    seeds.used <- rep(NA, nmulti)
+    # First start
+    if (!is.null(seed)) {
+      set.seed(seed + 1)
+      seeds.used[1] <- seed + 1
+    }
+    par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
+    if(nmulti>1) {
+      for (i in 2:nmulti) {
+        if (!is.null(seed)) {
+          set.seed(seed + i)
+          seeds.used[i] <- seed + i
+        }
+        par.init[i,] <- c(EssDee(y)*runif(1,optim.sf.y.lb,10+optim.sf.y.lb),
+                          EssDee(x)*runif(1,optim.sf.x.lb,10+optim.sf.x.lb))*n^(-1/6)
+      }
+    }
 
   ## Search over polynomial degrees. Parallelized if optim.degree.cores > 1.
   ## Pre-calculating X and X.eval once per degree saves substantial computation 
@@ -311,34 +324,37 @@ bkcde.optim <- function(x=x,
     }
     
     nmulti.return <- mclapply(1:nmulti, function(i) {
+      # Set the same seed as used for par.init for reproducibility
+      if (!is.null(seed)) set.seed(seeds.used[i])
       st <- system.time(optim.return <- optim(par=par.init[i,],
-                                              fn=bkcde.optim.fn,
-                                              x=x,
-                                              y=y,
-                                              x.eval=x.eval,
-                                              y.eval=y.eval,
-                                              y.lb=y.lb,
-                                              y.ub=y.ub,
-                                              x.lb=x.lb,
-                                              x.ub=x.ub,
-                                              poly.raw=poly.raw,
-                                              bwmethod=bwmethod,
-                                              cv.penalty.method=cv.penalty.method,
-                                              cv.penalty.cutoff=cv.penalty.cutoff,
-                                              degree=p,
-                                              n.integrate=n.integrate,
-                                              optim.ksum.cores=optim.ksum.cores,
-                                              proper.cv=proper.cv,
-                                              verbose=verbose,
-                                              lower=lower,
-                                              upper=upper,
-                                              method="L-BFGS-B",
-                                              control=list(fnscale = -1),
-                                              X=X.p,
-                                              X.eval=X.eval.p))
+                                 fn=bkcde.optim.fn,
+                                 x=x,
+                                 y=y,
+                                 x.eval=x.eval,
+                                 y.eval=y.eval,
+                                 y.lb=y.lb,
+                                 y.ub=y.ub,
+                                 x.lb=x.lb,
+                                 x.ub=x.ub,
+                                 poly.raw=poly.raw,
+                                 bwmethod=bwmethod,
+                                 cv.penalty.method=cv.penalty.method,
+                                 cv.penalty.cutoff=cv.penalty.cutoff,
+                                 degree=p,
+                                 n.integrate=n.integrate,
+                                 optim.ksum.cores=optim.ksum.cores,
+                                 proper.cv=proper.cv,
+                                 verbose=verbose,
+                                 lower=lower,
+                                 upper=upper,
+                                 method="L-BFGS-B",
+                                 control=list(fnscale = -1),
+                                 X=X.p,
+                                 X.eval=X.eval.p))
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return$optim.par.init <- par.init[i,]
+      optim.return$seed <- seeds.used[i]
       optim.return
     },mc.cores = optim.nmulti.cores)
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
@@ -348,6 +364,7 @@ bkcde.optim <- function(x=x,
     optim.out$optim.x.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[2])
     optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
+      optim.out$seed.vec <- sapply(nmulti.return, function(x) x$seed)
     optim.out
   },mc.cores = optim.degree.cores)
 
