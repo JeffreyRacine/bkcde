@@ -71,7 +71,7 @@ bkcde.optim.fn <- function(h=NULL,
                            poly.raw=FALSE,
                            degree=NULL,
                            n.integrate=NULL,
-                           optim.ksum.cores=1,
+                           optim.ksum.cores=1, # Recommended: set to 1
                            cv.penalty.method=NULL,
                            cv.penalty.cutoff=NULL,
                            verbose=FALSE,
@@ -79,164 +79,125 @@ bkcde.optim.fn <- function(h=NULL,
                            proper.cv=NULL,
                            X=NULL,
                            X.eval=NULL) {
-  if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
-  if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
-  if(is.null(x)) stop("must provide x in bkcde.optim.fn()")
-  if(is.null(y)) stop("must provide y in bkcde.optim.fn()")
-  if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
-  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim.fn()")
-  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.optim.fn()")
-  if(is.null(cv.penalty.method)) stop("must provide cv.penalty.method in bkcde.optim.fn()")
-  if(is.null(cv.penalty.cutoff)) stop("must provide cv.penalty.cutoff in bkcde.optim.fn()")
-  if(is.null(bwmethod)) stop("must provide bwmethod in bkcde.optim.fn()")
-  if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
-  if(is.null(proper.cv)) stop("must provide proper in bkcde.optim.fn()")
-  if(degree < 0 || degree >= length(y)) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde.optim.fn()")
+  
+  ## 1. Fast boundary checks
+  if(y.lb >= y.ub || x.lb >= x.ub) stop("Boundaries are inconsistent.")
+  
+  n <- length(y)
+  
+  ## 2. Pre-calculate denominators (Vectorized)
+  ## These depend on h, so they must stay inside the optim function
+  denom.x <- h[2] * (if(is.infinite(x.ub)) 1 else pnorm((x.ub - x)/h[2]) - 
+                       (if(is.infinite(x.lb)) 0 else pnorm((x.lb - x)/h[2])))
+  denom.y <- h[1] * (if(is.infinite(y.ub)) 1 else pnorm((y.ub - y)/h[1]) - 
+                       (if(is.infinite(y.lb)) 0 else pnorm((y.lb - y)/h[1])))
 
-  denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
-  denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
-
-  ## When non-negativity penalty is requested for degree > 0 models, 
-  ## we must check if the density is negative at evaluation points.
-  if(cv.penalty.method=="nonneg" && degree>0) {
-    if(!identical(y,y.eval) || !identical(x,x.eval))  {
-      ## Local polynomial estimation at evaluation points
-      if(is.null(X)) {
-        if(degree > 0) {
-          X.poly <- poly(x,raw=poly.raw,degree=degree)
-          X <- cbind(1,X.poly)
-        } else {
-          X <- matrix(1,nrow=length(x),ncol=1)
-        }
-      }
-      if(is.null(X.eval)) {
-        if(degree > 0) {
-          if(!exists("X.poly")) X.poly <- poly(x,raw=poly.raw,degree=degree)
-          X.eval <- cbind(1,predict(X.poly,x.eval))
-        } else {
-          X.eval <- matrix(1,nrow=length(x.eval),ncol=1)
-        }
-      }
-      denom.x.eval <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x.eval)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x.eval)/h[2])))
-      denom.y.eval <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.eval)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.eval)/h[1])))
-      f <- as.numeric(mcmapply(function(i){
-        w <- NZD_pos(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub, denom=denom.x.eval[i])))
-        beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub, denom=denom.y.eval[i])*w)$coefficients
-        beta.hat%*%t(X.eval[i,,drop=FALSE])
-      },seq_along(y.eval),mc.cores=optim.ksum.cores))
-      if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+  ## 3. Non-negativity Check (Optimization)
+  if(cv.penalty.method == "nonneg" && degree > 0) {
+    # Helper to avoid code duplication
+    check_neg <- function(eval_x, eval_y, eval_X, d_x, d_y) {
+      f_vals <- sapply(seq_along(eval_y), function(i) {
+        w <- NZD_pos(sqrt(pdf.kernel.bk(eval_x[i], x, h[2], x.lb, x.ub, denom = d_x[i])))
+        # Use .lm.fit for speed, but avoid nested parallelization
+        beta.hat <- .lm.fit(X * w, pdf.kernel.bk(eval_y[i], y, h[1], y.lb, y.ub, denom = d_y[i]) * w)$coefficients
+        sum(beta.hat * eval_X[i, ])
+      })
+      return(any(f_vals < 0))
     }
-    if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-    f <- as.numeric(mcmapply(function(i){
-      w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
-      beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-      beta.hat%*%t(X[i,,drop=FALSE])
-    },seq_along(y),mc.cores=optim.ksum.cores))
-    if(any(f < 0)) return(-sqrt(.Machine$double.xmax))
+
+    if(!identical(y, y.eval) || !identical(x, x.eval)) {
+      denom.x.ev <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x.eval)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x.eval)/h[2])))
+      denom.y.ev <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.eval)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.eval)/h[1])))
+      if(check_neg(x.eval, y.eval, X.eval, denom.x.ev, denom.y.ev)) return(-sqrt(.Machine$double.xmax))
+    }
+    if(check_neg(x, y, X, denom.x, denom.y)) return(-sqrt(.Machine$double.xmax))
   }
 
+  ## 4. Cross-Validation Logic
   if(bwmethod == "cv.ml") {
-    if(degree==0) {
-      if(proper.cv) {
-        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-        if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-        if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-        if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-        denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
-        Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
-          f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
-          f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-          f.seq[f.seq<0] <- 0
-          f.loo[f.loo<0] <- 0
-          f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        },seq_along(y),mc.cores=optim.ksum.cores))
-      } else {
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-          beta.hat%*%t(X[i,,drop=FALSE])
-        },seq_along(y),mc.cores=optim.ksum.cores))
+    
+    # Handle the y.seq integration grid outside the loop
+    if(proper.cv) {
+      y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb, y.ub, length = n.integrate) else {
+        rng <- extendrange(y, f = 2)
+        seq(if(is.finite(y.lb)) y.lb else rng[1], if(is.finite(y.ub)) y.ub else rng[2], length = n.integrate)
       }
-    } else {
-      if(proper.cv) {
-        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-        if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-        if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-        if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-        denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
-        Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
-          f.loo <- X[i,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
-          f.seq <- as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:dim(beta.hat)[2],drop=FALSE])
-          f.seq[f.seq<0] <- 0
-          f.loo[f.loo<0] <- 0
-          f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-        },seq_along(y),mc.cores=optim.ksum.cores))
-      } else {
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-          beta.hat%*%t(X[i,,drop=FALSE])
-        },seq_along(y),mc.cores=optim.ksum.cores))
-      }
+      denom.y.seq <- h[1] * (if(is.infinite(y.ub)) 1 else pnorm((y.ub - y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb - y.seq)/h[1])))
+      Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom = denom.y.seq[i]), seq_along(y.seq))
     }
-    return(sum(log.likelihood(f.loo,cv.penalty.method=cv.penalty.method,cv.penalty.cutoff=cv.penalty.cutoff,verbose=verbose,degree=degree,h=h)))
+
+    # LOO Loop (Optimized with lapply/sapply instead of mcmapply)
+    f.loo <- sapply(1:n, function(i) {
+      w <- NZD_pos(sqrt(pdf.kernel.bk(x[i], x[-i], h[2], x.lb, x.ub, denom = denom.x[i])))
+      
+      if (proper.cv) {
+        # Joint fit for efficiency
+        target <- cbind(pdf.kernel.bk(y[i], y[-i], h[1], y.lb, y.ub, denom = denom.y[i]), Y.seq.mat[-i, , drop = FALSE])
+        beta.hat <- .lm.fit(X[-i, , drop = FALSE] * w, target * w)$coefficients
+        
+        f_val <- sum(X[i, ] * beta.hat[, 1])
+        f_seq <- as.numeric(X[i, , drop = FALSE] %*% beta.hat[, 2:ncol(beta.hat), drop = FALSE])
+        
+        f_val <- max(0, f_val)
+        f_seq[f_seq < 0] <- 0
+        return(f_val / integrate.trapezoidal(y.seq, f_seq)[n.integrate])
+      } else {
+        target <- pdf.kernel.bk(y[i], y[-i], h[1], y.lb, y.ub, denom = denom.y[i])
+        beta.hat <- .lm.fit(X[-i, , drop = FALSE] * w, target * w)$coefficients
+        return(sum(beta.hat * X[i, ]))
+      }
+    })
+    
+    return(sum(log.likelihood(f.loo, cv.penalty.method, cv.penalty.cutoff, verbose, degree, h)))
+
   } else {
-    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-    if(is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
-    if(!is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
-    if(!is.finite(y.lb) && !is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-    denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
-    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_len(n.integrate))
-    if(degree==0) {
-      int.f.sq <- mcmapply(function(j){
-        pdf.kernel.bk.x <- pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j]);
-        integrate.trapezoidal(y.seq,colMeans(Y.seq.mat*pdf.kernel.bk.x/NZD_pos(mean(pdf.kernel.bk.x)))^2)[n.integrate]
-      },seq_along(y),mc.cores = optim.ksum.cores)
-      f.loo <- as.numeric(mcmapply(function(i){
-        pdf.kernel.bk.x<-pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i]);
-        mean(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*pdf.kernel.bk.x)/NZD_pos(mean(pdf.kernel.bk.x))
-      },seq_along(y),mc.cores=optim.ksum.cores))
-    } else {
-      if(proper.cv) {
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        foo <- (mcmapply(function(j){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
-          beta.hat <- .lm.fit(X*w,cbind(pdf.kernel.bk(y[j],y[-j],h[1],y.lb,y.ub, denom=denom.y[j]),Y.seq.mat)*w)$coefficients
-          f.loo <- X[j,,drop=FALSE]%*%beta.hat[,1,drop=FALSE]
-          f.seq <- X[j,,drop=FALSE]%*%beta.hat[,2:(n.integrate+1)]
-          f.seq[f.seq<0] <- 0
-          f.seq <- f.seq/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-          f.loo[f.loo<0] <- 0
-          f.loo <- f.loo/integrate.trapezoidal(y.seq,f.seq)[n.integrate]
-          list(int.f.sq=integrate.trapezoidal(y.seq,f.seq^2)[n.integrate], f.loo=f.loo)
-        },seq_along(y),mc.cores = optim.ksum.cores))        
-        int.f.sq <- sapply(foo, function(x) x$int.f.sq)
-        f.loo <- sapply(foo, function(x) x$f.loo)
-      } else {
-        if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=length(x),ncol=1)
-        int.f.sq <- mcmapply(function(j){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
-          beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
-          integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
-        },seq_along(y),mc.cores = optim.ksum.cores)
-        f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-          beta.hat%*%t(X[i,,drop=FALSE])
-        },seq_along(y),mc.cores=optim.ksum.cores))
-      }
+    ## 5. LSCV Logic (Non-ML CV)
+    # y.seq setup for integration
+    y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb, y.ub, length = n.integrate) else {
+      rng <- extendrange(y, f = 2)
+      seq(if(is.finite(y.lb)) y.lb else rng[1], if(is.finite(y.ub)) y.ub else rng[2], length = n.integrate)
     }
-    return(-(mean(int.f.sq)-2*mean(f.loo)))
+    denom.y.seq <- h[1] * (if(is.infinite(y.ub)) 1 else pnorm((y.ub - y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb - y.seq)/h[1])))
+    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom = denom.y.seq[i]), seq_len(n.integrate))
+
+    res <- lapply(1:n, function(i) {
+      w <- NZD_pos(sqrt(pdf.kernel.bk(x[i], x, h[2], x.lb, x.ub, denom = denom.x[i])))
+      
+      if(degree == 0) {
+        # Simpler logic for degree 0
+        mean_w <- mean(w^2) # Since w is sqrt(kernel)
+        f_loo_w <- NZD_pos(sqrt(pdf.kernel.bk(x[i], x[-i], h[2], x.lb, x.ub, denom = denom.x[i])))
+        f_loo <- mean(pdf.kernel.bk(y[i], y[-i], h[1], y.lb, y.ub, denom = denom.y[i]) * f_loo_w^2) / NZD_pos(mean(f_loo_w^2))
+        
+        # Integration of f^2
+        f_seq_vals <- colMeans(Y.seq.mat * (w^2)) / NZD_pos(mean_w)
+        int_f_sq <- integrate.trapezoidal(y.seq, f_seq_vals^2)[n.integrate]
+        return(list(int_f_sq = int_f_sq, f.loo = f.loo))
+      } else {
+        # Degree > 0 Local Poly
+        if(proper.cv) {
+          beta.hat <- .lm.fit(X * w, cbind(pdf.kernel.bk(y[i], y[-i], h[1], y.lb, y.ub, denom = denom.y[i]), Y.seq.mat) * w)$coefficients
+          # Logic for scaling/proper CV
+          f_loo <- max(0, sum(X[i, ] * beta.hat[, 1]))
+          f_seq <- X[i, , drop = FALSE] %*% beta.hat[, 2:ncol(beta.hat)]
+          f_seq[f_seq < 0] <- 0
+          denom_int <- integrate.trapezoidal(y.seq, f_seq)[n.integrate]
+          f_seq <- f_seq / denom_int
+          return(list(int_f_sq = integrate.trapezoidal(y.seq, f_seq^2)[n.integrate], f.loo = f_loo / denom_int))
+        } else {
+          beta.hat_seq <- .lm.fit(X * w, Y.seq.mat * w)$coefficients
+          int_f_sq <- integrate.trapezoidal(y.seq, (X[i, , drop=FALSE] %*% beta.hat_seq)^2)[n.integrate]
+          
+          w_loo <- NZD_pos(sqrt(pdf.kernel.bk(x[i], x[-i], h[2], x.lb, x.ub, denom = denom.x[i])))
+          beta.hat_loo <- .lm.fit(X[-i, , drop=FALSE] * w_loo, pdf.kernel.bk(y[i], y[-i], h[1], y.lb, y.ub, denom = denom.y[i]) * w_loo)$coefficients
+          return(list(int_f_sq = int_f_sq, f.loo = sum(beta.hat_loo * X[i, ])))
+        }
+      }
+    })
+    
+    int.f.sq <- sapply(res, `[[`, "int_f_sq")
+    f.loo <- sapply(res, `[[`, "f.loo")
+    return(-(mean(int.f.sq) - 2 * mean(f.loo)))
   }
 }
 
