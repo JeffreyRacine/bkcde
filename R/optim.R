@@ -57,9 +57,272 @@ log.likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
-## bkcde.optim.fn() is the cross-validation objective function
+## bkcde.optim.fn() is the combined unbinned and linear binned cross-validation objective function Jan 21 Gemini enhanced
 
-bkcde.optim.fn <- function(h=NULL,
+bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
+                           y.lb=NULL, y.ub=NULL, x.lb=NULL, x.ub=NULL,
+                           poly.raw=FALSE, degree=NULL, n.integrate=NULL,
+                           optim.ksum.cores=1, cv.penalty.method=NULL,
+                           cv.penalty.cutoff=NULL, verbose=FALSE,
+                           bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
+                           optim.fn.type = c("linear-binning", "unbinned"),
+                           grid.n = 100) {
+
+  optim.fn.type <- match.arg(optim.fn.type)
+
+  # --- 1. Strict Input Validation (Original) ---
+  if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
+  if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
+  if(is.null(x) || is.null(y)) stop("must provide x and y in bkcde.optim.fn()")
+  if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1")
+  if(degree < 0 || degree >= length(y)) stop("degree error")
+
+  n.obs <- length(y)
+  # Original Denominators for Boundary Kernels
+  denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
+  denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
+
+  # --- 2. Non-Negativity Penalty (Original) ---
+  if(cv.penalty.method=="nonneg" && degree > 0) {
+    if(is.null(X)) X <- if(degree > 0) cbind(1, poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
+    f_check_orig <- as.numeric(mcmapply(function(i){
+      w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
+      beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
+      beta.hat%*%t(X[i,,drop=FALSE])
+    },seq_along(y),mc.cores=optim.ksum.cores))
+    if(any(f_check_orig < 0)) return(-sqrt(.Machine$double.xmax))
+  }
+
+  # --- 3. PATH: UNBINNED (Original Logic) ---
+  if (optim.fn.type == "unbinned") {
+    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+    else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+    
+    denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+    if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
+
+    if(bwmethod == "cv.ml") {
+      f.loo <- as.numeric(mcmapply(function(i){
+        w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
+        if(proper.cv) {
+          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
+          f.loo.val <- max(0, X[i,,drop=FALSE]%*%beta.hat[,1])
+          f.seq <- pmax(0, as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:ncol(beta.hat)]))
+          return(f.loo.val/NZD_pos(integrate.trapezoidal(y.seq,f.seq)[n.integrate]))
+        } else {
+          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
+          return(beta.hat%*%t(X[i,,drop=FALSE]))
+        }
+      },seq_along(y),mc.cores=optim.ksum.cores))
+      val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
+    } else {
+      # LSCV Unbinned
+      foo <- mcmapply(function(j){
+        w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
+        beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
+        int.f.sq <- integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
+        w_loo <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x[-j],h[2],x.lb,x.ub, denom=denom.x[j])))
+        beta.loo <- .lm.fit(X[-j,,drop=FALSE]*w_loo,pdf.kernel.bk(y[j],y[-j],h[1],y.lb,y.ub, denom=denom.y[j])*w_loo)$coefficients
+        return(list(int.f.sq=int.f.sq, f.loo=beta.loo%*%t(X[j,,drop=FALSE])))
+      },seq_along(y),mc.cores = optim.ksum.cores)
+      val <- -(mean(unlist(foo[1,])) - 2*mean(unlist(foo[2,])))
+    }
+  }
+
+  # --- 4. PATH: LINEAR BINNING (High Speed) ---
+  else {
+    x.grid <- seq(x.lb, x.ub, length.out = grid.n)
+    y.grid <- seq(y.lb, y.ub, length.out = grid.n)
+    delta.x <- x.grid[2] - x.grid[1]; delta.y <- y.grid[2] - y.grid[1]
+    
+    x.idx <- pmin(pmax(ceiling((x - x.lb) / delta.x), 1), grid.n)
+    y.idx <- pmin(pmax(ceiling((y - y.lb) / delta.y), 1), grid.n)
+    counts <- as.matrix(table(factor(x.idx, levels=1:grid.n), factor(y.idx, levels=1:grid.n)))
+    
+    active <- which(counts > 0, arr.ind = TRUE)
+    x.act <- x.grid[active[,1]]; y.act <- y.grid[active[,2]]; w.act <- counts[active]
+    X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
+
+    y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
+             seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+    denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
+
+    results <- mcmapply(function(i) {
+      denom.xi <- h[2] * (pnorm((x.ub - x.act[i])/h[2]) - pnorm((x.lb - x.act[i])/h[2]))
+      k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.xi)
+      w.loo <- w.act; w.loo[i] <- pmax(1e-7, w.loo[i] - 1)
+      W_vec <- sqrt(k.weights * w.loo)
+      
+      if (bwmethod == "cv.ml") {
+        denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
+        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+        if (proper.cv) {
+          beta <- .lm.fit(X.act * W_vec, cbind(target_y, Y.seq.mat) * (W_vec * w.loo))$coefficients
+          f_loo <- max(0, sum(X.act[i,] * beta[,1]))
+          f_seq <- pmax(0, as.numeric(X.act[i,] %*% beta[, 2:ncol(beta)]))
+          return(f_loo / NZD_pos(integrate.trapezoidal(y.seq, f_seq)[n.integrate]))
+        } else {
+          return(sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,]))
+        }
+      } else {
+        # LSCV
+        beta_seq <- .lm.fit(X.act * W_vec, (Y.seq.mat * w.loo) * W_vec)$coefficients
+        f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
+        denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
+        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+        f_loo <- sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,])
+        return(c(integrate.trapezoidal(y.seq, f_seq^2)[n.integrate], f_loo))
+      }
+    }, seq_along(x.act), mc.cores = optim.ksum.cores, SIMPLIFY = FALSE)
+
+    if (bwmethod == "cv.ml") {
+      val <- sum(w.act * log.likelihood(unlist(results), cv.penalty.method, cv.penalty.cutoff, verbose, degree, h))
+    } else {
+      res.mat <- do.call(rbind, results)
+      val <- -(sum(res.mat[,1] * w.act)/n.obs - 2 * sum(res.mat[,2] * w.act)/n.obs)
+    }
+  }
+
+  if (verbose) cat("Type:", optim.fn.type, "h:", h, "Objective:", val, "\n")
+  return(val)
+}
+
+## bkcde.optim.fn() is the linear binned cross-validation objective function Jan 21 Gemini enhanced
+
+bkcde.optim.fn.linear.binned <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
+                           y.lb=NULL, y.ub=NULL, x.lb=NULL, x.ub=NULL,
+                           poly.raw=FALSE, degree=NULL, n.integrate=NULL,
+                           optim.ksum.cores=1, cv.penalty.method=NULL,
+                           cv.penalty.cutoff=NULL, verbose=FALSE,
+                           bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
+                           grid.n = 100) {
+
+  # --- 1. Original Validations & Stops ---
+  if(y.lb>=y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
+  if(x.lb>=x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
+  if(is.null(x)) stop("must provide x in bkcde.optim.fn()")
+  if(is.null(y)) stop("must provide y in bkcde.optim.fn()")
+  if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
+  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim.fn()")
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde.optim.fn()")
+  if(is.null(cv.penalty.method)) stop("must provide cv.penalty.method in bkcde.optim.fn()")
+  if(is.null(cv.penalty.cutoff)) stop("must provide cv.penalty.cutoff in bkcde.optim.fn()")
+  if(is.null(bwmethod)) stop("must provide bwmethod in bkcde.optim.fn()")
+  if(is.null(n.integrate)) stop("must provide n.integrate in bkcde.optim.fn()")
+  if(is.null(proper.cv)) stop("must provide proper in bkcde.optim.fn()")
+  if(degree < 0 || degree >= length(y)) stop(paste0("degree must lie in [0,1,...,",length(y)-1,"] in bkcde.optim.fn()"))
+
+  n.obs <- length(y)
+  denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
+  denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
+
+  # --- 2. Original Non-Negativity Check ---
+  if(cv.penalty.method=="nonneg" && degree > 0) {
+    if(!identical(y,y.eval) || !identical(x,x.eval))  {
+      if(is.null(X)) X <- if(degree > 0) cbind(1, poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
+      if(is.null(X.eval)) {
+        X.poly.temp <- poly(x,raw=poly.raw,degree=degree)
+        X.eval <- if(degree > 0) cbind(1,predict(X.poly.temp,x.eval)) else matrix(1,nrow=length(x.eval),ncol=1)
+      }
+      denom.x.eval <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x.eval)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x.eval)/h[2])))
+      denom.y.eval <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.eval)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.eval)/h[1])))
+      f_check <- as.numeric(mcmapply(function(i){
+        w <- NZD_pos(sqrt(pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub, denom=denom.x.eval[i])))
+        beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub, denom=denom.y.eval[i])*w)$coefficients
+        beta.hat%*%t(X.eval[i,,drop=FALSE])
+      },seq_along(y.eval),mc.cores=optim.ksum.cores))
+      if(any(f_check < 0)) return(-sqrt(.Machine$double.xmax))
+    }
+    if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
+    f_check_orig <- as.numeric(mcmapply(function(i){
+      w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
+      beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
+      beta.hat%*%t(X[i,,drop=FALSE])
+    },seq_along(y),mc.cores=optim.ksum.cores))
+    if(any(f_check_orig < 0)) return(-sqrt(.Machine$double.xmax))
+  }
+
+  # --- 3. Setup Grids & Binning Logic ---
+  x.grid <- seq(x.lb, x.ub, length.out = grid.n)
+  y.grid <- seq(y.lb, y.ub, length.out = grid.n)
+  delta.x <- x.grid[2] - x.grid[1]
+  delta.y <- y.grid[2] - y.grid[1]
+
+  x.idx <- pmin(pmax(ceiling((x - x.lb) / delta.x), 1), grid.n)
+  y.idx <- pmin(pmax(ceiling((y - y.lb) / delta.y), 1), grid.n)
+  counts <- as.matrix(table(factor(x.idx, levels=1:grid.n), factor(y.idx, levels=1:grid.n)))
+  
+  active <- which(counts > 0, arr.ind = TRUE)
+  x.act <- x.grid[active[,1]]; y.act <- y.grid[active[,2]]; w.act <- counts[active]
+  num.act <- length(x.act)
+  X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, num.act, 1)
+
+  # --- 4. Integration Setup (Handling Infinite Boundaries) ---
+  if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+  else if(is.finite(y.lb)) y.seq <- seq(y.lb,extendrange(y,f=2)[2],length=n.integrate)
+  else if(is.finite(y.ub)) y.seq <- seq(extendrange(y,f=2)[1],y.ub,length=n.integrate)
+  else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+  
+  denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+  Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
+
+  # --- 5. Core Loop (Active Bins) ---
+  results <- mcmapply(function(i) {
+    denom.xi <- h[2] * (pnorm((x.ub - x.act[i])/h[2]) - pnorm((x.lb - x.act[i])/h[2]))
+    k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.xi)
+    
+    w.loo <- w.act
+    w.loo[i] <- pmax(1e-7, w.loo[i] - 1) # Prevent zero weights for .lm.fit
+    W_vec <- sqrt(k.weights * w.loo)
+    
+    if (bwmethod == "cv.ml") {
+      denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
+      target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+      
+      if (proper.cv) {
+        targets <- cbind(target_y, Y.seq.mat)
+        beta <- .lm.fit(X.act * W_vec, targets * (W_vec * w.loo))$coefficients
+        f_loo_val <- max(0, sum(X.act[i,] * beta[,1]))
+        f_seq <- pmax(0, as.numeric(X.act[i,] %*% beta[, 2:ncol(beta)]))
+        return(f_loo_val / NZD_pos(integrate.trapezoidal(y.seq, f_seq)[n.integrate]))
+      } else {
+        beta <- .lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients
+        return(sum(beta * X.act[i,]))
+      }
+    } else {
+      # LSCV Logic
+      beta_seq <- .lm.fit(X.act * W_vec, (Y.seq.mat * w.loo) * W_vec)$coefficients
+      f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
+      int_f_sq <- integrate.trapezoidal(y.seq, f_seq^2)[n.integrate]
+      
+      denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
+      target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+      beta_loo <- .lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients
+      f_loo_val <- sum(beta_loo * X.act[i,])
+      return(c(int_f_sq, f_loo_val))
+    }
+  }, seq_along(x.act), mc.cores = optim.ksum.cores, SIMPLIFY = FALSE)
+
+  # --- 6. Final Aggregation ---
+  if (bwmethod == "cv.ml") {
+    f.loo.vec <- unlist(results)
+    # Mirroring original log-likelihood replication
+    val <- sum(log.likelihood(rep(f.loo.vec, w.act), cv.penalty.method, cv.penalty.cutoff, verbose, degree, h))
+  } else {
+    res.mat <- do.call(rbind, results)
+    avg_int_f_sq <- sum(res.mat[,1] * w.act) / n.obs
+    avg_f_loo <- sum(res.mat[,2] * w.act) / n.obs
+    val <- -(avg_int_f_sq - 2 * avg_f_loo)
+  }
+
+  if (verbose) cat("Bandwidth h:", h, "Objective:", val, "\n")
+  return(val)
+}
+
+bkcde.optim.fn.unbinned <- function(h=NULL,
                            x=NULL,
                            y=NULL,
                            x.eval=NULL,
