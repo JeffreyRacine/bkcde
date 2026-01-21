@@ -12,7 +12,7 @@ pdf.kernel.bk <- function(x,X,h,a=-Inf,b=Inf,denom=NULL) {
     p2 <- if(is.infinite(a)) 0 else pnorm((a-x)/h)
     denom <- h*(p1-p2)
   }
-  (exp(-0.5 * z^2) * 0.3989422804014326779) / denom
+  (exp(-0.5 * z*z) * 0.3989422804014326779) / denom
 }
 
 ## cdf.kernel.bk() is the doubly truncated Gaussian boundary kernel function for
