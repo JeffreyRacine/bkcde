@@ -42,23 +42,22 @@ bkcde(...)
       optim.nmulti.cores = NULL, 
       optim.sf.y.lb=0.5,
       optim.sf.x.lb=0.5,
+      optim.fn.type = c("unbinned","linear-binning"),
+      bin.grid.n = 100,
       poly.raw = FALSE, 
       progress = FALSE,
       proper.cores = detectCores(),
       proper = FALSE, 
       proper.cv = FALSE, 
       resamples = 10,
+      seed = 42,
       verbose = FALSE, 
       x.erf = 0,
       y.erf = 0,
-  seed = 42,
       ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{seed}{
-  integer or NULL. The random seed used for reproducibility of multi-start optimization when \code{nmulti > 1}. Default is 42. Set to NULL to use the current random number generator state without modification, which is recommended when using \code{bkcde} in Monte Carlo simulations to avoid disrupting the simulation's random number sequence. Note: the global random number generator state is saved before any internal seed manipulation and restored upon function exit, ensuring that Monte Carlo simulations are not affected regardless of the seed value.
-}
   \item{h}{
   a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the \code{bkcde.optim} function.
 }
@@ -150,6 +149,12 @@ bkcde(...)
   \item{optim.sf.x.lb}{
   the lower bound for the scale factor for x when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
+  \item{optim.fn.type}{
+  cross-validation objective type passed to the optimizer. \code{"unbinned"} reproduces the original exact objective; \code{"linear-binning"} enables a faster approximate objective that bins \code{x} and \code{y} on a regular grid before evaluating the criterion. The default is \code{"unbinned"}.
+}
+  \item{bin.grid.n}{
+  integer bin count per dimension when \code{optim.fn.type="linear-binning"}. Defaults to 100; must be at least 2.
+}
   \item{poly.raw}{
   a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)
 }
@@ -168,6 +173,9 @@ bkcde(...)
 \item{resamples}{
   the number of resamples to use for cross-validation when \code{cv="sub"}. The default is 10
   }
+  \item{seed}{
+  integer or NULL. The random seed used for reproducibility of multi-start optimization when \code{nmulti > 1}. Default is 42. Set to NULL to use the current random number generator state without modification, which is recommended when using \code{bkcde} in Monte Carlo simulations to avoid disrupting the simulation's random number sequence. Note: the global random number generator state is saved before any internal seed manipulation and restored upon function exit, ensuring that Monte Carlo simulations are not affected regardless of the seed value.
+}  
   \item{verbose}{
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
 }

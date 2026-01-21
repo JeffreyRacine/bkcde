@@ -75,16 +75,18 @@ bkcde.default <- function(h=NULL,
                           optim.nmulti.cores=NULL,
                           optim.sf.y.lb=0.5,
                           optim.sf.x.lb=0.5,
+                          optim.fn.type=c("unbinned","linear-binning"),
+                          bin.grid.n=100,
                           poly.raw=FALSE,
                           progress=FALSE,
                           proper.cores=detectCores(),
                           proper=FALSE,
                           proper.cv=FALSE,
                           resamples=10,
+                          seed=42,
                           verbose=FALSE,
                           x.erf=0,
                           y.erf=0,
-                          seed=42,
                           ...) {
   ## Perform some argument checking. In this function parallel processing takes
   ## place over the number of multistarts, so ideally the number of cores
@@ -159,6 +161,8 @@ bkcde.default <- function(h=NULL,
   if(!is.logical(verbose)) stop("verbose must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
+  if(!is.numeric(bin.grid.n) || length(bin.grid.n) != 1 || bin.grid.n < 2) stop("bin.grid.n must be numeric and at least 2 in bkcde()")
+  bin.grid.n <- as.integer(bin.grid.n)
   if(!is.null(h) & is.null(degree)) stop("must provide degree in bkcde() when h is not NULL")
   if(!is.null(h) & length(h) != 2) stop("h must be a vector of length 2 in bkcde()")
   if(!is.null(degree) && (degree < 0 | degree >= length(y))) stop("degree must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
@@ -189,6 +193,7 @@ bkcde.default <- function(h=NULL,
   if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
   if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   cv.penalty.method <- match.arg(cv.penalty.method)
+  optim.fn.type <- match.arg(optim.fn.type)
   bwmethod <- match.arg(bwmethod)
   cv <- match.arg(cv)
   if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
@@ -231,6 +236,8 @@ bkcde.default <- function(h=NULL,
                                optim.nmulti.cores=optim.nmulti.cores,
                                optim.sf.y.lb=optim.sf.y.lb,
                                optim.sf.x.lb=optim.sf.x.lb,
+                               optim.fn.type=optim.fn.type,
+                               bin.grid.n=bin.grid.n,
                                poly.raw=poly.raw,
                                proper.cv=proper.cv,
                                verbose=verbose,
@@ -288,6 +295,8 @@ bkcde.default <- function(h=NULL,
                       optim.nmulti.cores=optim.nmulti.cores,
                       optim.sf.y.lb=optim.sf.y.lb,
                       optim.sf.x.lb=optim.sf.x.lb,
+                      optim.fn.type=optim.fn.type,
+                      bin.grid.n=bin.grid.n,
                       seed=seed,
                       poly.raw=poly.raw,
                       progress=progress,
