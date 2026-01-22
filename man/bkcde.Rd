@@ -52,6 +52,7 @@ bkcde(...)
       resamples = 10,
       seed = 42,
       verbose = FALSE, 
+      warnings = FALSE,
       x.erf = 0,
       y.erf = 0,
       ...)
@@ -178,6 +179,9 @@ bkcde(...)
 }  
   \item{verbose}{
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
+}
+  \item{warnings}{
+  a logical value indicating whether to display warning messages. The default is FALSE. When set to TRUE, warnings are displayed either immediately or otherwise as coded throughout the package.
 }
   \item{x.erf}{
   a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evaluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.
