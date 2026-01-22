@@ -8,7 +8,7 @@ M <- 100                    # Number of replications
 n_vec <- c(500, 1000, 1500)
 num_bins <- 50
 n_sub_val <- 250            # n.sub parameter for feasible resampling
-eval_grid_size <- 50        # Used to create evaluation data
+eval_grid_size <- 25        # Used to create evaluation data
 plot_enabled <- TRUE
 
 library(bkcde)

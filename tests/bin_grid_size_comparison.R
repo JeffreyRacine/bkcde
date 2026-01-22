@@ -1,13 +1,13 @@
 ################################################################################
 ## Bivariate Boundary Binning: Grid Resolution Comparison
-## Comparison of 25x25, 50x50, and 100x100 Binned CV
+## Comparison of 25x25, 50x50, and 100x100 Binned CV (Ordered Plots)
 ################################################################################
 
 ## User-defined parameters
 M <- 100                     
 n_vec <- c(500, 1000, 1500) 
-grid_sizes <- c(25, 50, 100) # The three resolutions to test
-eval_grid_size <- 20        
+grid_sizes <- c(25, 50, 100) # Resolutions to test
+eval_grid_size <- 25        
 plot_enabled <- TRUE        
 
 library(bkcde)
@@ -53,13 +53,12 @@ for (m in 1:M) {
     eval_grid <- expand.grid(x = x_seq, y = y_seq)
     f_true <- true_density(eval_grid$x, eval_grid$y)
     
-    # Loop through the three binning resolutions
     for (i in seq_along(grid_sizes)) {
       g_size <- grid_sizes[i]
       m_name <- methods_list[i]
       
       t_start <- proc.time()
-      # All cases now use cv="full" and cv.binned=TRUE
+      # Standard binned CV approach
       fit <- bkcde(x = data$x, y = data$y, 
                    x.eval = eval_grid$x, y.eval = eval_grid$y, 
                    x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
@@ -86,18 +85,27 @@ for (m in 1:M) {
       }
       legend("topleft", methods_list, col=cols, lty=1, bty="n", cex=0.8)
       
+      # FIX: Order MSE Boxplots by ascending bin size
+      results_mse$method <- factor(results_mse$method, levels = methods_list)
+      
       # 2. MSE Smallest n
       d_s <- results_mse[results_mse$n == min(n_vec) & !is.na(results_mse$mse), ]
-      boxplot(mse ~ method, data=d_s, main=paste("MSE (n =", min(n_vec), ")"), outline=FALSE, notch=TRUE, col="lightgray")
+      boxplot(mse ~ method, data=d_s, main=paste("MSE (n =", min(n_vec), ")"), 
+              outline=FALSE, notch=TRUE, col="lightgray")
       
       # 3. MSE Largest n
       d_l <- results_mse[results_mse$n == max(n_vec) & !is.na(results_mse$mse), ]
-      boxplot(mse ~ method, data=d_l, main=paste("MSE (n =", max(n_vec), ")"), outline=FALSE, notch=TRUE, col="lightblue")
+      boxplot(mse ~ method, data=d_l, main=paste("MSE (n =", max(n_vec), ")"), 
+              outline=FALSE, notch=TRUE, col="lightblue")
       
       # 4. Bandwidths
       bw_sub <- bw_storage[bw_storage$n == max(n_vec) & !is.na(bw_storage$hx), ]
-      bw_list <- list("25.hx"=bw_sub$hx[bw_sub$method==methods_list[1]], "50.hx"=bw_sub$hx[bw_sub$method==methods_list[2]], "100.hx"=bw_sub$hx[bw_sub$method==methods_list[3]],
-                      "25.hy"=bw_sub$hy[bw_sub$method==methods_list[1]], "50.hy"=bw_sub$hy[bw_sub$method==methods_list[2]], "100.hy"=bw_sub$hy[bw_sub$method==methods_list[3]])
+      bw_list <- list("25.hx"=bw_sub$hx[bw_sub$method==methods_list[1]], 
+                      "50.hx"=bw_sub$hx[bw_sub$method==methods_list[2]], 
+                      "100.hx"=bw_sub$hx[bw_sub$method==methods_list[3]],
+                      "25.hy"=bw_sub$hy[bw_sub$method==methods_list[1]], 
+                      "50.hy"=bw_sub$hy[bw_sub$method==methods_list[2]], 
+                      "100.hy"=bw_sub$hy[bw_sub$method==methods_list[3]])
       boxplot(bw_list, main="Bandwidths (Max n)", col=rep(cols, 2), las=2, cex.axis=0.7, outline=FALSE, notch=TRUE)
       abline(v=3.5, lty=2, col="gray")
       
@@ -107,13 +115,3 @@ for (m in 1:M) {
 }
 
 cat("\n\nSimulation Complete.\n")
-
-# Final summary table
-final_stats <- do.call(rbind, lapply(n_vec, function(n_val) {
-  mse_n <- results_mse[results_mse$n == n_val, ]
-  data.frame(n = n_val, 
-             Avg_MSE_25 = mean(mse_n$mse[mse_n$method==methods_list[1]]),
-             Avg_MSE_50 = mean(mse_n$mse[mse_n$method==methods_list[2]]),
-             Avg_MSE_100 = mean(mse_n$mse[mse_n$method==methods_list[3]]))
-}))
-print(final_stats, row.names = FALSE)

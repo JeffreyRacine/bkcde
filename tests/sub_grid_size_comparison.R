@@ -7,7 +7,7 @@
 M <- 100                     
 n_vec <- c(500, 1000, 1500) 
 n_sub_vec <- c(100, 150, 200) # The three subsample sizes to test
-eval_grid_size <- 20        
+eval_grid_size <- 25
 plot_enabled <- TRUE        
 
 library(bkcde)
