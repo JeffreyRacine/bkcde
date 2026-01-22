@@ -65,7 +65,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            optim.ksum.cores=1, cv.penalty.method=NULL,
                            cv.penalty.cutoff=NULL, verbose=FALSE,
                            bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
-                           X.act=NULL, # Pre-computed binned design matrix
+                           X.act=NULL, y.seq=NULL,
                            cv.binned = FALSE,
                            n.binned = 100,
                            binned.data = NULL) {
@@ -97,8 +97,11 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
 
   # --- 3. PATH: UNBINNED ---
   if (!cv.binned) {
-    if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-    else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+    ## Use pre-computed y.seq if provided, otherwise compute it
+    if(is.null(y.seq)) {
+      if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+      else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+    }
     
     denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
@@ -146,8 +149,11 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     denom.x.act <- h[2] * (pnorm((x.ub - x.act)/h[2]) - pnorm((x.lb - x.act)/h[2]))
     denom.y.act <- h[1] * (pnorm((y.ub - y.act)/h[1]) - pnorm((y.lb - y.act)/h[1]))
 
-    y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
-             seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
+    ## Use pre-computed y.seq if provided, otherwise compute it
+    if(is.null(y.seq)) {
+      y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
+               seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
+    }
     denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
 
@@ -213,6 +219,7 @@ bkcde.optim <- function(x=x,
                         proper.cv=proper.cv,
                         cv.binned=FALSE,
                         n.binned=100,
+                        y.seq=NULL,
                         verbose=verbose,
                         seed=NULL,
                         ...) {
@@ -311,6 +318,7 @@ bkcde.optim <- function(x=x,
                                  cv.binned=cv.binned,
                                  n.binned=n.binned,
                                  binned.data=binned.data,
+                                 y.seq=y.seq,
                                  lower=lower,
                                  upper=upper,
                                  method="L-BFGS-B",

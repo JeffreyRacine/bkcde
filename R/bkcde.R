@@ -203,6 +203,12 @@ bkcde.default <- function(h=NULL,
   if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   if(warnings && is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
+  
+  ## Pre-compute y.seq for integration if required (computed once to avoid redundant computation)
+  y.seq <- NULL
+  if(proper || proper.cv) {
+    y.seq <- seq(y.lb, y.ub, length.out = n.integrate)
+  }
   ## This ensures Monte Carlo simulations are not disrupted
   if(exists(".Random.seed", .GlobalEnv)) {
     save.seed <- get(".Random.seed", .GlobalEnv)
@@ -241,6 +247,7 @@ bkcde.default <- function(h=NULL,
                                n.binned=n.binned,
                                poly.raw=poly.raw,
                                proper.cv=proper.cv,
+                               y.seq=y.seq,
                                verbose=verbose,
                                seed=seed,
                                ...)
