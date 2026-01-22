@@ -1,18 +1,19 @@
 ################################################################################
 ## Bivariate Boundary Binning Performance Test
-## Jeff Racine
+## Jeff Racine - Feasible Resampling vs. Binned vs. Unbinned
 ################################################################################
 
 ## User-defined parameters
-M <- 10                     
+M <- 100                     # Number of replications
 n_vec <- c(200, 400, 800, 1600) 
 num_bins <- 32              
-n_sub_default <- 100        
+n_sub_default <- 100        # Fixed subsample size for feasible resampling
 eval_grid_size <- 20        
 plot_enabled <- TRUE        
 
 library(bkcde)
 
+# DGP: Beta distribution with parameters depending on X to create complex boundary
 dgp_beta <- function(n) {
   x <- runif(n)
   shape1 <- 2 + 5 * x
@@ -28,6 +29,8 @@ true_density <- function(x_grid, y_grid) {
 }
 
 methods_list <- c("Unbinned", "Binned", "Subsample")
+
+# Data frames to store simulation results
 results_time <- expand.grid(M = 1:M, n = n_vec, method = methods_list, stringsAsFactors = FALSE)
 results_time$seconds <- NA 
 
@@ -43,6 +46,7 @@ for (m in 1:M) {
     cat(sprintf("\rReplication %d of %d | n = %-4d", m, M, n_curr))
     flush.console()
     
+    # 1. Generate Data and Evaluation Grid
     data <- dgp_beta(n_curr)
     x.lb <- min(data$x); x.ub <- max(data$x)
     y.lb <- min(data$y); y.ub <- max(data$y)
@@ -55,7 +59,7 @@ for (m in 1:M) {
     y.eval <- as.numeric(eval_grid$y)
     f_true <- true_density(x.eval, y.eval)
     
-    # 1. Unbinned Full
+    # --- METHOD 1: Unbinned Full CV ---
     t1 <- proc.time()
     fit_unb <- bkcde(x = data$x, y = data$y, x.eval = x.eval, y.eval = y.eval, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
@@ -65,7 +69,7 @@ for (m in 1:M) {
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Unbinned", "hx"] <- fit_unb$h[1]
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Unbinned", "hy"] <- fit_unb$h[2]
     
-    # 2. Binned Full
+    # --- METHOD 2: Binned Full CV ---
     t2 <- proc.time()
     fit_bin <- bkcde(x = data$x, y = data$y, x.eval = x.eval, y.eval = y.eval, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
@@ -75,7 +79,8 @@ for (m in 1:M) {
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Binned", "hx"] <- fit_bin$h[1]
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Binned", "hy"] <- fit_bin$h[2]
     
-    # 3. Subsample Estimator
+    # --- METHOD 3: Feasible Resampling (Subsample CV) ---
+    # [cite_start]Resamples rows from the data to avoid O(n^2k) recomputation[cite: 1, 14, 94].
     t3 <- proc.time()
     fit_sub <- bkcde(x = data$x, y = data$y, x.eval = x.eval, y.eval = y.eval, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
@@ -85,6 +90,7 @@ for (m in 1:M) {
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Subsample", "hx"] <- fit_sub$h[1]
     bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Subsample", "hy"] <- fit_sub$h[2]
     
+    # Live Plotting
     if (plot_enabled && (m > 1 || n_curr >= max(n_vec))) {
       dev.hold()
       df_mse_sub <- results_mse[!is.na(results_mse$mse), ]
@@ -94,38 +100,76 @@ for (m in 1:M) {
       
       par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
       
-      # 1. SCALING PLOT with Raw Points and Median Lines
+      # 1. SCALING PLOT: Median Lines + Jittered Raw Points
       cols <- c("black", "blue", "red")
       medians_plot <- sapply(methods_list, function(meth) {
         sapply(n_vec, function(nv) median(df_time_sub$seconds[df_time_sub$method == meth & df_time_sub$n == nv], na.rm=TRUE))
       })
       
-      # Initialize plot with median trends
       matplot(n_vec, medians_plot, type = "l", col = cols, lty = 1, lwd = 2,
               xlab = "n", ylab = "Time (s)", main = paste("Scaling (M =", m, ")"))
       
-      # Add raw data points for each method
       for(i in seq_along(methods_list)) {
         sub_data <- df_time_sub[df_time_sub$method == methods_list[i], ]
-        # Add slight jitter to n for visibility if points overlap
-        points(jitter(sub_data$n, amount = 10), sub_data$seconds, col = cols[i], pch = 20, cex = 0.6)
+        points(jitter(sub_data$n, amount = 15), sub_data$seconds, col = cols[i], pch = 20, cex = 0.5)
       }
       legend("topleft", legend = methods_list, col = cols, lty = 1, lwd = 2, bty = "n", cex = 0.8)
       
-      # 2. MSE Smallest n
+      # 2. MSE at Smallest n (Added outline=FALSE, notch=TRUE)
       d_small <- df_mse_sub[abs(df_mse_sub$n - min(n_vec)) < 1e-7, ]
-      if(nrow(d_small) > 0) boxplot(mse ~ method, data = d_small, main = paste("MSE (n =", min(n_vec), ")"), col = "lightgray") else plot.new()
+      if(nrow(d_small) > 0) {
+        boxplot(mse ~ method, data = d_small, 
+                main = paste("MSE (n =", min(n_vec), ")"), 
+                col = "lightgray", outline = FALSE, notch = TRUE)
+      } else plot.new()
       
-      # 3. MSE Largest n
+      # 3. MSE at Largest n (Added outline=FALSE, notch=TRUE)
       d_large <- df_mse_sub[abs(df_mse_sub$n - max(n_vec)) < 1e-7, ]
-      if(nrow(d_large) > 0) boxplot(mse ~ method, data = d_large, main = paste("MSE (n =", max(n_vec), ")"), col = "lightblue") else plot.new()
+      if(nrow(d_large) > 0) {
+        boxplot(mse ~ method, data = d_large, 
+                main = paste("MSE (n =", max(n_vec), ")"), 
+                col = "lightblue", outline = FALSE, notch = TRUE)
+      } else plot.new()
       
-      # 4. Bandwidths
-      bw_subset_plot <- bw_storage[abs(bw_storage$n - max(n_vec)) < 1e-7 & bw_storage$method == "Binned" & !is.na(bw_storage$hx), ]
-      if(nrow(bw_subset_plot) > 0) boxplot(list(hx = bw_subset_plot$hx, hy = bw_subset_plot$hy), main = "Binned h (Max n)", col = c("orange", "green"), names = c("h.x", "h.y")) else plot.new()
+      # 4. BANDWIDTHS: Compare h.x and h.y for ALL methods (Added outline=FALSE, notch=TRUE)
+      bw_subset <- bw_storage[abs(bw_storage$n - max(n_vec)) < 1e-7 & !is.na(bw_storage$hx), ]
+      if(nrow(bw_subset) > 0) {
+        bw_list <- list(
+          "U.hx" = bw_subset$hx[bw_subset$method == "Unbinned"],
+          "B.hx" = bw_subset$hx[bw_subset$method == "Binned"],
+          "S.hx" = bw_subset$hx[bw_subset$method == "Subsample"],
+          "U.hy" = bw_subset$hy[bw_subset$method == "Unbinned"],
+          "B.hy" = bw_subset$hy[bw_subset$method == "Binned"],
+          "S.hy" = bw_subset$hy[bw_subset$method == "Subsample"]
+        )
+        bw_cols <- rep(c("black", "blue", "red"), 2)
+        boxplot(bw_list, main = "Bandwidths (Max n)", 
+                col = bw_cols, las = 2, cex.axis = 0.7, 
+                outline = FALSE, notch = TRUE)
+        abline(v = 3.5, lty = 2, col = "gray") 
+      } else {
+        plot.new()
+      }
       
       dev.flush()
     }
   }
 }
+
 cat("\n\nSimulation Complete.\n")
+
+## Final Summary and Export
+final_stats <- do.call(rbind, lapply(n_vec, function(n_val) {
+  idx_n <- abs(results_time$n - n_val) < 1e-7
+  t_unb <- results_time$seconds[idx_n & results_time$method == "Unbinned"]
+  t_bin <- results_time$seconds[idx_n & results_time$method == "Binned"]
+  speedup <- t_unb / t_bin
+  mse_bin <- results_mse$mse[abs(results_mse$n - n_val) < 1e-7 & results_mse$method == "Binned"]
+  data.frame(n = n_val, 
+             Avg_Speedup = mean(speedup, na.rm=TRUE), 
+             Med_Speedup = median(speedup, na.rm=TRUE),
+             Avg_MSE_Binned = mean(mse_bin, na.rm=TRUE))
+}))
+
+print(final_stats, row.names = FALSE)
+write.csv(final_stats, "benchmark_summary_table.csv", row.names = FALSE)
