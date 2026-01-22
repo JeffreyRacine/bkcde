@@ -67,35 +67,30 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
                            optim.fn.type = c("unbinned", "linear-binning"),
                            bin.grid.n = 100,
-                           binned.data = NULL) {
+                           binned.data = NULL,
+                           X.act = NULL) {
 
   optim.fn.type <- match.arg(optim.fn.type)
 
-  # --- 1. Strict Input Validation (Original) ---
+  # --- 1. Validation ---
   if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
   if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
   if(optim.fn.type == "unbinned" && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
-  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data when optim.fn.type='linear-binning' in bkcde.optim.fn()")
+  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data when type='linear-binning'")
   if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
-  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1")
-  if(optim.fn.type == "unbinned" && (degree < 0 || degree >= length(y))) stop("degree error")
 
-  # Set n.obs based on which path we're using
-  if(optim.fn.type == "unbinned") {
-    n.obs <- length(y)
-  } else {
-    n.obs <- binned.data$n.obs
-  }
+  # Set n.obs based on path
+  n.obs <- if(optim.fn.type == "unbinned") length(y) else binned.data$n.obs
   
-  # Original Denominators for Boundary Kernels (only for unbinned path)
+  # Denominators for unbinned path
   if(optim.fn.type == "unbinned") {
     denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
     denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
   }
 
-  # --- 2. Non-Negativity Penalty (Original) ---
-  if(cv.penalty.method=="nonneg" && degree > 0) {
-    if(is.null(X)) X <- if(degree > 0) cbind(1, poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
+  # --- 2. Non-Negativity Penalty (Original Logic) ---
+  if(cv.penalty.method=="nonneg" && degree > 0 && optim.fn.type == "unbinned") {
+    if(is.null(X)) X <- cbind(1, poly(x,raw=poly.raw,degree=degree))
     f_check_orig <- as.numeric(mcmapply(function(i){
       w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
       beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
@@ -104,7 +99,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     if(any(f_check_orig < 0)) return(-sqrt(.Machine$double.xmax))
   }
 
-  # --- 3. PATH: UNBINNED (Original Logic) ---
+  # --- 3. PATH: UNBINNED (Full Logic) ---
   if (optim.fn.type == "unbinned") {
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
@@ -141,30 +136,28 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     }
   }
 
-  # --- 4. PATH: LINEAR BINNING (High Speed) ---
+  # --- 4. PATH: LINEAR BINNING (Optimized Vectorized Denominators) ---
   else {
-    # Extract pre-binned data
     x.act <- binned.data$x.act
     y.act <- binned.data$y.act
     w.act <- binned.data$w.act
     
-    # Build polynomial design matrix (cannot be pre-computed since it depends on degree)
-    X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
+    # Pre-calculate Denominators once per fn evaluation
+    denom.x.act <- h[2] * (pnorm((x.ub - x.act)/h[2]) - pnorm((x.lb - x.act)/h[2]))
+    denom.y.act <- h[1] * (pnorm((y.ub - y.act)/h[1]) - pnorm((y.lb - y.act)/h[1]))
 
     y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
-             seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+             seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
     denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
 
     results <- mcmapply(function(i) {
-      denom.xi <- h[2] * (pnorm((x.ub - x.act[i])/h[2]) - pnorm((x.lb - x.act[i])/h[2]))
-      k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.xi)
+      k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.x.act[i])
       w.loo <- w.act; w.loo[i] <- pmax(1e-7, w.loo[i] - 1)
       W_vec <- sqrt(k.weights * w.loo)
       
       if (bwmethod == "cv.ml") {
-        denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
-        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
         if (proper.cv) {
           beta <- .lm.fit(X.act * W_vec, cbind(target_y, Y.seq.mat) * (W_vec * w.loo))$coefficients
           f_loo <- max(0, sum(X.act[i,] * beta[,1]))
@@ -177,8 +170,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         # LSCV
         beta_seq <- .lm.fit(X.act * W_vec, (Y.seq.mat * w.loo) * W_vec)$coefficients
         f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
-        denom.yi <- h[1] * (pnorm((y.ub - y.act[i])/h[1]) - pnorm((y.lb - y.act[i])/h[1]))
-        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.yi)
+        target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
         f_loo <- sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,])
         return(c(integrate.trapezoidal(y.seq, f_seq^2)[n.integrate], f_loo))
       }
@@ -242,7 +234,6 @@ bkcde.optim <- function(x=x,
   if(!is.numeric(bin.grid.n) || length(bin.grid.n) != 1 || bin.grid.n < 2) stop("bin.grid.n must be numeric and at least 2 in bkcde.optim()")
 
   bin.grid.n <- as.integer(bin.grid.n)
-
   optim.fn.type <- match.arg(optim.fn.type)
 
   n <- length(y)
@@ -257,28 +248,25 @@ bkcde.optim <- function(x=x,
     binned.data <- NULL
   }
 
-    par.init <- matrix(NA,nmulti,2)
-    seeds.used <- rep(NA, nmulti)
-    # First start
-    if (!is.null(seed)) {
-      set.seed(seed + 1)
-      seeds.used[1] <- seed + 1
-    }
-    par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
-    if(nmulti>1) {
-      for (i in 2:nmulti) {
-        if (!is.null(seed)) {
-          set.seed(seed + i)
-          seeds.used[i] <- seed + i
-        }
-        par.init[i,] <- c(EssDee(y)*runif(1,optim.sf.y.lb,10+optim.sf.y.lb),
-                          EssDee(x)*runif(1,optim.sf.x.lb,10+optim.sf.x.lb))*n^(-1/6)
+  par.init <- matrix(NA,nmulti,2)
+  seeds.used <- rep(NA, nmulti)
+  if (!is.null(seed)) {
+    set.seed(seed + 1)
+    seeds.used[1] <- seed + 1
+  }
+  par.init[1,] <- EssDee(cbind(y,x))*n^(-1/6)
+  if(nmulti>1) {
+    for (i in 2:nmulti) {
+      if (!is.null(seed)) {
+        set.seed(seed + i)
+        seeds.used[i] <- seed + i
       }
+      par.init[i,] <- c(EssDee(y)*runif(1,optim.sf.y.lb,10+optim.sf.y.lb),
+                        EssDee(x)*runif(1,optim.sf.x.lb,10+optim.sf.x.lb))*n^(-1/6)
     }
+  }
 
-  ## Search over polynomial degrees. Parallelized if optim.degree.cores > 1.
-  ## Pre-calculating X and X.eval once per degree saves substantial computation 
-  ## during the inner optimization multi-starts.
+  ## Search over polynomial degrees.
   degree.return <- mclapply(degree.min:degree.max, function(p) {
     if(p > 0) {
       poly.obj <- poly(x, raw=poly.raw, degree=p)
@@ -286,16 +274,21 @@ bkcde.optim <- function(x=x,
       X.eval.p <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
         cbind(1, predict(poly.obj, x.eval))
       } else NULL
+      # Pre-compute X.act for the binned path to avoid poly() calls in the optimizer
+      X.act.p <- if(!is.null(binned.data)) {
+        cbind(1, predict(poly.obj, binned.data$x.act))
+      } else NULL
     } else {
-      ## degree=0 handles are constant, poly() would error. X is just a vector of ones.
       X.p <- matrix(1, nrow=length(x), ncol=1)
       X.eval.p <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
         matrix(1, nrow=length(y.eval), ncol=1)
       } else NULL
+      X.act.p <- if(!is.null(binned.data)) {
+        matrix(1, nrow=length(binned.data$x.act), ncol=1)
+      } else NULL
     }
     
     nmulti.return <- mclapply(1:nmulti, function(i) {
-      # Set the same seed as used for par.init for reproducibility
       if (!is.null(seed)) set.seed(seeds.used[i])
       st <- system.time(optim.return <- optim(par=par.init[i,],
                                  fn=bkcde.optim.fn,
@@ -324,13 +317,15 @@ bkcde.optim <- function(x=x,
                                  method="L-BFGS-B",
                                  control=list(fnscale = -1),
                                  X=X.p,
-                                 X.eval=X.eval.p))
+                                 X.eval=X.eval.p,
+                                 X.act=X.act.p)) # Drop-in pre-computed X.act
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
-      optim.return$optim.par.init <- par.init[i,]
+      optim.return$optim.par.init <- par.init[i, ]
       optim.return$seed <- seeds.used[i]
       optim.return
-    },mc.cores = optim.nmulti.cores)
+    }, mc.cores = optim.nmulti.cores)
+    
     optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
     optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
     optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
@@ -338,9 +333,9 @@ bkcde.optim <- function(x=x,
     optim.out$optim.x.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[2])
     optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
     optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
-      optim.out$seed.vec <- sapply(nmulti.return, function(x) x$seed)
+    optim.out$seed.vec <- sapply(nmulti.return, function(x) x$seed)
     optim.out
-  },mc.cores = optim.degree.cores)
+  }, mc.cores = optim.degree.cores)
 
   output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
   output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
