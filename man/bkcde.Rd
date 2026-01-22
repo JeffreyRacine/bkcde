@@ -25,14 +25,16 @@ bkcde(...)
       bwscaling = FALSE,
       cv = c("auto","full","sub"),
       cv.auto.threshold = 5000,
+      cv.binned = FALSE,
       cv.only = FALSE,
       cv.penalty.cutoff = .Machine$double.xmin, 
       cv.penalty.method = c("smooth", "constant", "trim", "nonneg"), 
+      degree = NULL, 
       degree.max = 3, 
       degree.min = 0, 
-      degree = NULL, 
       fitted.cores = detectCores(),
       integrate.erf = 1,
+      n.binned = 100,
       n.grid = 25,
       n.integrate = 100, 
       n.sub = 300,
@@ -40,14 +42,12 @@ bkcde(...)
       optim.degree.cores = NULL, 
       optim.ksum.cores = 1, 
       optim.nmulti.cores = NULL, 
-      optim.sf.y.lb=0.5,
       optim.sf.x.lb=0.5,
-      cv.binned = FALSE,
-      n.binned = 100,
+      optim.sf.y.lb=0.5,
       poly.raw = FALSE, 
       progress = FALSE,
-      proper.cores = detectCores(),
       proper = FALSE, 
+      proper.cores = detectCores(),
       proper.cv = FALSE, 
       resamples = 10,
       seed = 42,
@@ -97,6 +97,9 @@ bkcde(...)
   \item{cv.auto.threshold}{
   the threshold sample size used to determine whether to use \code{"full"} or \code{"sub"} cross-validation when \code{cv="auto"}. The default is 5000
   }
+  \item{cv.binned}{
+  logical; if \code{FALSE} (default), uses the exact unbinned cross-validation objective during optimization. If \code{TRUE}, uses a faster approximate objective that bins \code{x} and \code{y} on a regular grid (linear binning) before evaluating the criterion. The default is \code{FALSE}.
+}
   \item{cv.only}{
   a logical value indicating whether to only use cross-validation to estimate the bandwidths and NOT also estimate the conditional density nor render it proper if specified (used if the ONLY thing to be extracted from the estimated object is the bandwidth vector; plot cannot be called when TRUE). The default is FALSE
   }
@@ -107,20 +110,23 @@ bkcde(...)
   \item{cv.penalty.method}{
   the method used to penalize negative density values in the log-likelihood when \code{bwmethod="cv.ml"}. The default is \code{"smooth"}. Note that \code{"nonneg"} applies an extreme penalty to negative density estimates on the sample realizations and evaluation grid data during cross-validation when \code{degree > 0} for both \code{bwmethod="cv.ml"} and \code{bwmethod="cv.ls"}. Also, note that \code{proper=TRUE} conducts any correction after bandwidth selection is completed and ensures total probability one, while \code{cv.penalty.method="nonneg"} only adjusts density estimates to be non-negative during cross-validation when \code{degree>0}, while \code{proper.cv=TRUE} adjusts both total probability one and non-negativity during cross-validation hence is the most computationally expensive option. See Details below for further clarification.
 }
+  \item{degree}{
+  the degree of the polynomial if specified manually. The default is NULL
+}
   \item{degree.max}{
   the maximum degree of the polynomial searched over. The default is 3
 }
   \item{degree.min}{
   the minimum degree of the polynomial searched. The default is 0
 }
-  \item{degree}{
-  the degree of the polynomial if specified manually. The default is NULL
-}
   \item{fitted.cores}{
   the number of cores to use for the fitted values. The default is \code{\link[parallel]{detectCores}}
 }
   \item{integrate.erf}{
     a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating the fraction of expansion of the integration evaluation grid when rendering the estimate proper beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
+}
+  \item{n.binned}{
+  integer bin count per dimension when \code{cv.binned=TRUE}. Defaults to 100; must be at least 2.
 }
   \item{n.grid}{
   the number of grid points to use for evaluation data grid when x.eval and y.eval are not provided. The default is 25
@@ -149,23 +155,17 @@ bkcde(...)
   \item{optim.sf.x.lb}{
   the lower bound for the scale factor for x when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
-  \item{cv.binned}{
-  logical; if \code{FALSE} (default), uses the exact unbinned cross-validation objective during optimization. If \code{TRUE}, uses a faster approximate objective that bins \code{x} and \code{y} on a regular grid (linear binning) before evaluating the criterion. The default is \code{FALSE}.
-}
-  \item{n.binned}{
-  integer bin count per dimension when \code{cv.binned=TRUE}. Defaults to 100; must be at least 2.
-}
   \item{poly.raw}{
   a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)
 }
 \item{progress}{
   a logical value indicating whether to print progress. The default is FALSE
 }
-  \item{proper.cores}{
-  the number of cores to use for the proper normalization. The default is \code{\link[parallel]{detectCores}}
-}
   \item{proper}{
   a logical value indicating whether to use proper normalization. The default is FALSE and a warning is issued if any negative values are detected in the estimate
+}
+  \item{proper.cores}{
+  the number of cores to use for the proper normalization. The default is \code{\link[parallel]{detectCores}}
 }
   \item{proper.cv}{
   a logical value indicating whether to use proper normalization during cross-validation. The default is FALSE and a warning is issued if any negative values are detected in the estimate
