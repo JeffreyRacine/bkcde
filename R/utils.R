@@ -73,6 +73,30 @@ find_mode <- function(x) {
   u[tab == max(tab)]
 }
 
+## bkcde.bin.data() pre-bins data for linear-binning optimization
+## This is called once before optimization to avoid re-binning on every
+## objective function evaluation
+
+bkcde.bin.data <- function(x, y, x.lb, x.ub, y.lb, y.ub, bin.grid.n) {
+  x.grid <- seq(x.lb, x.ub, length.out = bin.grid.n)
+  y.grid <- seq(y.lb, y.ub, length.out = bin.grid.n)
+  delta.x <- x.grid[2] - x.grid[1]
+  delta.y <- y.grid[2] - y.grid[1]
+  
+  x.idx <- pmin(pmax(ceiling((x - x.lb) / delta.x), 1), bin.grid.n)
+  y.idx <- pmin(pmax(ceiling((y - y.lb) / delta.y), 1), bin.grid.n)
+  counts <- as.matrix(table(factor(x.idx, levels=1:bin.grid.n), 
+                            factor(y.idx, levels=1:bin.grid.n)))
+  
+  active <- which(counts > 0, arr.ind = TRUE)
+  return(list(
+    x.act = x.grid[active[,1]], 
+    y.act = y.grid[active[,2]], 
+    w.act = as.numeric(counts[active]),
+    n.obs = length(x)
+  ))
+}
+
 ## Allow for progress to be displayed while running in parallel, use pbmcapply()
 ## instead of mcmapply() and pbmclapply() instead of mclapply() to display a
 ## progress bar. The progress bar is only displayed if progress=TRUE in the

@@ -66,22 +66,32 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            cv.penalty.cutoff=NULL, verbose=FALSE,
                            bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
                            optim.fn.type = c("unbinned", "linear-binning"),
-                           bin.grid.n = 100) {
+                           bin.grid.n = 100,
+                           binned.data = NULL) {
 
   optim.fn.type <- match.arg(optim.fn.type)
 
   # --- 1. Strict Input Validation (Original) ---
   if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
   if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
-  if(is.null(x) || is.null(y)) stop("must provide x and y in bkcde.optim.fn()")
+  if(optim.fn.type == "unbinned" && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
+  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data when optim.fn.type='linear-binning' in bkcde.optim.fn()")
   if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
   if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1")
-  if(degree < 0 || degree >= length(y)) stop("degree error")
+  if(optim.fn.type == "unbinned" && (degree < 0 || degree >= length(y))) stop("degree error")
 
-  n.obs <- length(y)
-  # Original Denominators for Boundary Kernels
-  denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
-  denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
+  # Set n.obs based on which path we're using
+  if(optim.fn.type == "unbinned") {
+    n.obs <- length(y)
+  } else {
+    n.obs <- binned.data$n.obs
+  }
+  
+  # Original Denominators for Boundary Kernels (only for unbinned path)
+  if(optim.fn.type == "unbinned") {
+    denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
+    denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
+  }
 
   # --- 2. Non-Negativity Penalty (Original) ---
   if(cv.penalty.method=="nonneg" && degree > 0) {
@@ -133,16 +143,12 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
 
   # --- 4. PATH: LINEAR BINNING (High Speed) ---
   else {
-    x.grid <- seq(x.lb, x.ub, length.out = bin.grid.n)
-    y.grid <- seq(y.lb, y.ub, length.out = bin.grid.n)
-    delta.x <- x.grid[2] - x.grid[1]; delta.y <- y.grid[2] - y.grid[1]
+    # Extract pre-binned data
+    x.act <- binned.data$x.act
+    y.act <- binned.data$y.act
+    w.act <- binned.data$w.act
     
-    x.idx <- pmin(pmax(ceiling((x - x.lb) / delta.x), 1), bin.grid.n)
-    y.idx <- pmin(pmax(ceiling((y - y.lb) / delta.y), 1), bin.grid.n)
-    counts <- as.matrix(table(factor(x.idx, levels=1:bin.grid.n), factor(y.idx, levels=1:bin.grid.n)))
-    
-    active <- which(counts > 0, arr.ind = TRUE)
-    x.act <- x.grid[active[,1]]; y.act <- y.grid[active[,2]]; w.act <- counts[active]
+    # Build polynomial design matrix (cannot be pre-computed since it depends on degree)
     X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
 
     y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
@@ -242,6 +248,14 @@ bkcde.optim <- function(x=x,
   n <- length(y)
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
+  
+  ## Pre-bin data once if using linear-binning to avoid re-binning on every
+  ## objective function evaluation
+  if(optim.fn.type == "linear-binning") {
+    binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, bin.grid.n)
+  } else {
+    binned.data <- NULL
+  }
 
     par.init <- matrix(NA,nmulti,2)
     seeds.used <- rep(NA, nmulti)
@@ -304,6 +318,7 @@ bkcde.optim <- function(x=x,
                                  verbose=verbose,
                                  optim.fn.type=optim.fn.type,
                                  bin.grid.n=bin.grid.n,
+                                 binned.data=binned.data,
                                  lower=lower,
                                  upper=upper,
                                  method="L-BFGS-B",
