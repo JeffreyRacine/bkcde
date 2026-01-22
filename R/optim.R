@@ -66,28 +66,26 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            cv.penalty.cutoff=NULL, verbose=FALSE,
                            bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
                            X.act=NULL, # Pre-computed binned design matrix
-                           optim.fn.type = c("unbinned", "linear-binning"),
-                           bin.grid.n = 100,
+                           cv.binned = FALSE,
+                           n.binned = 100,
                            binned.data = NULL) {
-
-  optim.fn.type <- match.arg(optim.fn.type)
 
   # --- 1. Validation ---
   if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
   if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
-  if(optim.fn.type == "unbinned" && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
-  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data in bkcde.optim.fn()")
+  if(!cv.binned && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
+  if(cv.binned && is.null(binned.data)) stop("must provide binned.data in bkcde.optim.fn()")
   if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
 
-  n.obs <- if(optim.fn.type == "unbinned") length(y) else binned.data$n.obs
+  n.obs <- if(!cv.binned) length(y) else binned.data$n.obs
   
-  if(optim.fn.type == "unbinned") {
+  if(!cv.binned) {
     denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
     denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
   }
 
   # --- 2. Non-Negativity Penalty ---
-  if(cv.penalty.method=="nonneg" && degree > 0 && optim.fn.type == "unbinned") {
+  if(cv.penalty.method=="nonneg" && degree > 0 && !cv.binned) {
     if(is.null(X)) X <- cbind(1, poly(x,raw=poly.raw,degree=degree))
     f_check_orig <- as.numeric(mcmapply(function(i){
       w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
@@ -98,7 +96,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   }
 
   # --- 3. PATH: UNBINNED ---
-  if (optim.fn.type == "unbinned") {
+  if (!cv.binned) {
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
     
@@ -185,7 +183,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     }
   }
 
-  if (verbose) cat("Type:", optim.fn.type, "h:", h, "Objective:", val, "\n")
+  if (verbose) cat("Type:", ifelse(cv.binned, "binned", "unbinned"), "h:", h, "Objective:", val, "\n")
   return(val)
 }
 
@@ -213,8 +211,8 @@ bkcde.optim <- function(x=x,
                         optim.sf.x.lb=optim.sf.x.lb,
                         poly.raw=poly.raw,
                         proper.cv=proper.cv,
-                        optim.fn.type=c("unbinned","linear-binning"),
-                        bin.grid.n=100,
+                        cv.binned=FALSE,
+                        n.binned=100,
                         verbose=verbose,
                         seed=NULL,
                         ...) {
@@ -232,18 +230,17 @@ bkcde.optim <- function(x=x,
   if(missing(x.lb)) stop("must provide x.lb in bkcde.optim()")
   if(missing(x.ub)) stop("must provide x.ub in bkcde.optim()")
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
-  if(!is.numeric(bin.grid.n) || length(bin.grid.n) != 1 || bin.grid.n < 2) stop("bin.grid.n must be numeric and at least 2 in bkcde.optim()")
+  if(!is.numeric(n.binned) || length(n.binned) != 1 || n.binned < 2) stop("n.binned must be numeric and at least 2 in bkcde.optim()")
 
-  bin.grid.n <- as.integer(bin.grid.n)
-  optim.fn.type <- match.arg(optim.fn.type)
+  n.binned <- as.integer(n.binned)
 
   n <- length(y)
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
   
   ## Pre-bin data once if using linear-binning
-  if(optim.fn.type == "linear-binning") {
-    binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, bin.grid.n)
+  if(cv.binned) {
+    binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, n.binned)
   } else {
     binned.data <- NULL
   }
@@ -311,8 +308,8 @@ bkcde.optim <- function(x=x,
                                  optim.ksum.cores=optim.ksum.cores,
                                  proper.cv=proper.cv,
                                  verbose=verbose,
-                                 optim.fn.type=optim.fn.type,
-                                 bin.grid.n=bin.grid.n,
+                                 cv.binned=cv.binned,
+                                 n.binned=n.binned,
                                  binned.data=binned.data,
                                  lower=lower,
                                  upper=upper,

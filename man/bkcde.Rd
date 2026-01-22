@@ -42,8 +42,8 @@ bkcde(...)
       optim.nmulti.cores = NULL, 
       optim.sf.y.lb=0.5,
       optim.sf.x.lb=0.5,
-      optim.fn.type = c("unbinned","linear-binning"),
-      bin.grid.n = 100,
+      cv.binned = FALSE,
+      n.binned = 100,
       poly.raw = FALSE, 
       progress = FALSE,
       proper.cores = detectCores(),
@@ -149,11 +149,11 @@ bkcde(...)
   \item{optim.sf.x.lb}{
   the lower bound for the scale factor for x when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
 }
-  \item{optim.fn.type}{
-  cross-validation objective type passed to the optimizer. \code{"unbinned"} reproduces the original exact objective; \code{"linear-binning"} enables a faster approximate objective that bins \code{x} and \code{y} on a regular grid before evaluating the criterion. The default is \code{"unbinned"}.
+  \item{cv.binned}{
+  logical; if \code{FALSE} (default), uses the exact unbinned cross-validation objective during optimization. If \code{TRUE}, uses a faster approximate objective that bins \code{x} and \code{y} on a regular grid (linear binning) before evaluating the criterion. The default is \code{FALSE}.
 }
-  \item{bin.grid.n}{
-  integer bin count per dimension when \code{optim.fn.type="linear-binning"}. Defaults to 100; must be at least 2.
+  \item{n.binned}{
+  integer bin count per dimension when \code{cv.binned=TRUE}. Defaults to 100; must be at least 2.
 }
   \item{poly.raw}{
   a logical value indicating whether to use raw or orthogonal polynomials. The default is FALSE (i.e., orthogonal polynomials are the default)
