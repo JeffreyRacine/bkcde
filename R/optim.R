@@ -65,10 +65,10 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            optim.ksum.cores=1, cv.penalty.method=NULL,
                            cv.penalty.cutoff=NULL, verbose=FALSE,
                            bwmethod=NULL, proper.cv=NULL, X=NULL, X.eval=NULL,
+                           X.act=NULL, # Pre-computed binned design matrix
                            optim.fn.type = c("unbinned", "linear-binning"),
                            bin.grid.n = 100,
-                           binned.data = NULL,
-                           X.act = NULL) {
+                           binned.data = NULL) {
 
   optim.fn.type <- match.arg(optim.fn.type)
 
@@ -76,19 +76,17 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
   if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
   if(optim.fn.type == "unbinned" && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
-  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data when type='linear-binning'")
+  if(optim.fn.type == "linear-binning" && is.null(binned.data)) stop("must provide binned.data in bkcde.optim.fn()")
   if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
 
-  # Set n.obs based on path
   n.obs <- if(optim.fn.type == "unbinned") length(y) else binned.data$n.obs
   
-  # Denominators for unbinned path
   if(optim.fn.type == "unbinned") {
     denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
     denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
   }
 
-  # --- 2. Non-Negativity Penalty (Original Logic) ---
+  # --- 2. Non-Negativity Penalty ---
   if(cv.penalty.method=="nonneg" && degree > 0 && optim.fn.type == "unbinned") {
     if(is.null(X)) X <- cbind(1, poly(x,raw=poly.raw,degree=degree))
     f_check_orig <- as.numeric(mcmapply(function(i){
@@ -99,7 +97,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     if(any(f_check_orig < 0)) return(-sqrt(.Machine$double.xmax))
   }
 
-  # --- 3. PATH: UNBINNED (Full Logic) ---
+  # --- 3. PATH: UNBINNED ---
   if (optim.fn.type == "unbinned") {
     if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
     else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
@@ -123,7 +121,6 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
       },seq_along(y),mc.cores=optim.ksum.cores))
       val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
     } else {
-      # LSCV Unbinned
       foo <- mcmapply(function(j){
         w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
         beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
@@ -136,13 +133,18 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     }
   }
 
-  # --- 4. PATH: LINEAR BINNING (Optimized Vectorized Denominators) ---
+  # --- 4. PATH: LINEAR BINNING ---
   else {
     x.act <- binned.data$x.act
     y.act <- binned.data$y.act
     w.act <- binned.data$w.act
     
-    # Pre-calculate Denominators once per fn evaluation
+    ## Use the pre-computed matrix passed from bkcde.optim
+    if(is.null(X.act)) {
+       X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
+    }
+
+    ## Vectorized denominator calculations for speed
     denom.x.act <- h[2] * (pnorm((x.ub - x.act)/h[2]) - pnorm((x.lb - x.act)/h[2]))
     denom.y.act <- h[1] * (pnorm((y.ub - y.act)/h[1]) - pnorm((y.lb - y.act)/h[1]))
 
@@ -167,7 +169,6 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           return(sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,]))
         }
       } else {
-        # LSCV
         beta_seq <- .lm.fit(X.act * W_vec, (Y.seq.mat * w.loo) * W_vec)$coefficients
         f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
         target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
@@ -240,8 +241,7 @@ bkcde.optim <- function(x=x,
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
   
-  ## Pre-bin data once if using linear-binning to avoid re-binning on every
-  ## objective function evaluation
+  ## Pre-bin data once if using linear-binning
   if(optim.fn.type == "linear-binning") {
     binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, bin.grid.n)
   } else {
@@ -268,13 +268,15 @@ bkcde.optim <- function(x=x,
 
   ## Search over polynomial degrees.
   degree.return <- mclapply(degree.min:degree.max, function(p) {
+    ## Pre-calculate design matrices for this specific degree
     if(p > 0) {
       poly.obj <- poly(x, raw=poly.raw, degree=p)
       X.p <- cbind(1, poly.obj)
       X.eval.p <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
         cbind(1, predict(poly.obj, x.eval))
       } else NULL
-      # Pre-compute X.act for the binned path to avoid poly() calls in the optimizer
+      
+      ## Pre-calculate the Active Design Matrix for binned data
       X.act.p <- if(!is.null(binned.data)) {
         cbind(1, predict(poly.obj, binned.data$x.act))
       } else NULL
@@ -318,7 +320,7 @@ bkcde.optim <- function(x=x,
                                  control=list(fnscale = -1),
                                  X=X.p,
                                  X.eval=X.eval.p,
-                                 X.act=X.act.p)) # Drop-in pre-computed X.act
+                                 X.act=X.act.p)) # Pass the pre-computed active matrix
       optim.return$secs.optim <- st["elapsed"]
       optim.return$degree <- p
       optim.return$optim.par.init <- par.init[i, ]
