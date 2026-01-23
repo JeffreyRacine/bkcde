@@ -101,38 +101,49 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
 
   # --- 3. PATH: UNBINNED ---
   if (!cv.binned) {
-    ## Use pre-computed y.seq if provided, otherwise compute it
-    if(is.null(y.seq)) {
-      if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
-      else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
-    }
-    
-    denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
-    Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
     if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
 
     if(bwmethod == "cv.ml") {
-      f.loo <- as.numeric(mcmapply(function(i){
-        w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-        if(proper.cv) {
+      if(proper.cv) {
+        ## Compute y.seq and Y.seq.mat only when needed for proper.cv
+        if(is.null(y.seq)) {
+          if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+          else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+        }
+        denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
+        Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+        
+        f.loo <- as.numeric(mcmapply(function(i){
+          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
           beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
           f.loo.val <- max(0, X[i,,drop=FALSE]%*%beta.hat[,1])
           f.seq <- pmax(0, as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:ncol(beta.hat)]))
-          return(f.loo.val/NZD_pos(integrate.trapezoidal(y.seq,f.seq)[n.integrate]))
-        } else {
+          f.loo.val/NZD_pos(integrate.trapezoidal(y.seq,f.seq)[n.integrate])
+        },seq_along(y),mc.cores=optim.ksum.cores))
+      } else {
+        f.loo <- as.numeric(mcmapply(function(i){
+          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
           beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-          return(beta.hat%*%t(X[i,,drop=FALSE]))
-        }
-      },seq_along(y),mc.cores=optim.ksum.cores))
+          beta.hat%*%t(X[i,,drop=FALSE])
+        },seq_along(y),mc.cores=optim.ksum.cores))
+      }
       val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
     } else {
+      ## For cv.ls, always need y.seq and Y.seq.mat
+      if(is.null(y.seq)) {
+        if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
+        else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
+      }
+      denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
+      Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+      
       foo <- mcmapply(function(j){
         w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
         beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
         int.f.sq <- integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
         w_loo <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x[-j],h[2],x.lb,x.ub, denom=denom.x[j])))
         beta.loo <- .lm.fit(X[-j,,drop=FALSE]*w_loo,pdf.kernel.bk(y[j],y[-j],h[1],y.lb,y.ub, denom=denom.y[j])*w_loo)$coefficients
-        return(list(int.f.sq=int.f.sq, f.loo=beta.loo%*%t(X[j,,drop=FALSE])))
+        list(int.f.sq=int.f.sq, f.loo=beta.loo%*%t(X[j,,drop=FALSE]))
       },seq_along(y),mc.cores = optim.ksum.cores)
       val <- -(mean(unlist(foo[1,])) - 2*mean(unlist(foo[2,])))
     }
