@@ -284,6 +284,15 @@ bkcde.optim <- function(x=x,
     binned.data <- NULL
   }
 
+  ## Pre-compute y.seq once per optimization call when provided or derivable
+  if(is.null(y.seq)) {
+    y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) {
+      seq(y.lb, y.ub, length = n.integrate)
+    } else {
+      seq(extendrange(y, f = 2)[1], extendrange(y, f = 2)[2], length = n.integrate)
+    }
+  }
+
   par.init <- matrix(NA,nmulti,2)
   seeds.used <- rep(NA, nmulti)
   if (!is.null(seed)) {
