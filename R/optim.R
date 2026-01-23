@@ -177,10 +177,21 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           return(sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,]))
         }
       } else {
-        beta_seq <- .lm.fit(X.act * W_vec, (Y.seq.mat * w.loo) * W_vec)$coefficients
-        f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
+        # Batch: Compute target_y early and combine both RHS for single .lm.fit call
         target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
-        f_loo <- sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,])
+        W_scaled <- W_vec * w.loo
+        
+        # Combine both RHS and solve once instead of twice
+        rhs_both <- cbind((Y.seq.mat * w.loo) * W_vec, (target_y * w.loo) * W_vec)
+        beta_both <- .lm.fit(X.act * W_vec, rhs_both)$coefficients
+        
+        # Extract individual results
+        n.seq.cols <- ncol(Y.seq.mat)
+        beta_seq <- beta_both[, 1:n.seq.cols, drop=FALSE]
+        beta_loo <- beta_both[, n.seq.cols + 1]
+        
+        f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
+        f_loo <- sum(X.act[i,] * beta_loo)
         return(c(integrate.trapezoidal(y.seq, f_seq^2)[n.integrate], f_loo))
       }
     }, seq_along(x.act), mc.cores = optim.ksum.cores, SIMPLIFY = FALSE)
