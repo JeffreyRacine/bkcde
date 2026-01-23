@@ -68,7 +68,11 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            X.act=NULL, y.seq=NULL,
                            cv.binned = FALSE,
                            n.binned = 100,
-                           binned.data = NULL) {
+                           binned.data = NULL,
+                           x.ub.finite = TRUE,
+                           x.lb.finite = TRUE,
+                           y.ub.finite = TRUE,
+                           y.lb.finite = TRUE) {
 
   # --- 1. Validation ---
   if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
@@ -80,8 +84,8 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   n.obs <- if(!cv.binned) length(y) else binned.data$n.obs
   
   if(!cv.binned) {
-    denom.x <- h[2]*(if(is.infinite(x.ub)) 1 else pnorm((x.ub-x)/h[2]) - (if(is.infinite(x.lb)) 0 else pnorm((x.lb-x)/h[2])))
-    denom.y <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y)/h[1])))
+    denom.x <- h[2]*(if(!x.ub.finite) 1 else pnorm((x.ub-x)/h[2]) - (if(x.lb.finite) pnorm((x.lb-x)/h[2]) else 0))
+    denom.y <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y)/h[1]) else 0))
   }
 
   # --- 2. Non-Negativity Penalty ---
@@ -103,7 +107,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
       else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
     }
     
-    denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+    denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
     if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
 
@@ -146,15 +150,15 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     }
 
     ## Vectorized denominator calculations for speed
-    denom.x.act <- h[2] * (pnorm((x.ub - x.act)/h[2]) - pnorm((x.lb - x.act)/h[2]))
-    denom.y.act <- h[1] * (pnorm((y.ub - y.act)/h[1]) - pnorm((y.lb - y.act)/h[1]))
+    denom.x.act <- h[2] * (if(!x.ub.finite) 1 else pnorm((x.ub - x.act)/h[2]) - (if(x.lb.finite) pnorm((x.lb - x.act)/h[2]) else 0))
+    denom.y.act <- h[1] * (if(!y.ub.finite) 1 else pnorm((y.ub - y.act)/h[1]) - (if(y.lb.finite) pnorm((y.lb - y.act)/h[1]) else 0))
 
     ## Use pre-computed y.seq if provided, otherwise compute it
     if(is.null(y.seq)) {
       y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
                seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
     }
-    denom.y.seq <- h[1]*(if(is.infinite(y.ub)) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(is.infinite(y.lb)) 0 else pnorm((y.lb-y.seq)/h[1])))
+    denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
 
     results <- mcmapply(function(i) {
@@ -245,6 +249,12 @@ bkcde.optim <- function(x=x,
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
   upper <- 10^(5)*EssDee(cbind(y,x))
   
+  ## Pre-compute bound finiteness flags once to avoid repeated is.infinite() checks
+  x.ub.finite <- is.finite(x.ub)
+  x.lb.finite <- is.finite(x.lb)
+  y.ub.finite <- is.finite(y.ub)
+  y.lb.finite <- is.finite(y.lb)
+  
   ## Pre-bin data once if using linear-binning
   if(cv.binned) {
     binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, n.binned)
@@ -319,6 +329,10 @@ bkcde.optim <- function(x=x,
                                  n.binned=n.binned,
                                  binned.data=binned.data,
                                  y.seq=y.seq,
+                                 x.ub.finite=x.ub.finite,
+                                 x.lb.finite=x.lb.finite,
+                                 y.ub.finite=y.ub.finite,
+                                 y.lb.finite=y.lb.finite,
                                  lower=lower,
                                  upper=upper,
                                  method="L-BFGS-B",
