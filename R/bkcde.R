@@ -199,10 +199,9 @@ bkcde.default <- function(h=NULL,
   bwmethod <- match.arg(bwmethod)
   cv <- match.arg(cv)
   if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
-  if(is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
-  if(warnings && is.null(h) & (length(y) > 10^4 & cv == "full")) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
+  if(warnings && is.null(h) && (length(y) > 1e4 && cv == "full" && !cv.binned)) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   
   ## Pre-compute y.seq for integration if required (computed once to avoid redundant computation)
   y.seq <- NULL
