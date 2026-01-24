@@ -1374,8 +1374,7 @@ summary.bkcde <- function(object, ...) {
     cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
   }
-cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
-  
+  cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   if(object$optimize & !object$cv.only & object$cv != "sub") {
     optim_time <- sum(object$secs.optim.mat)
     fit_time <- object$secs.estimate
@@ -1384,20 +1383,23 @@ cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," 
     
     # Wall-clock times for each stage
     optim_elapsed <- object$secs.optim.elapsed
-    fit_elapsed <- object$secs.estimate  # This is already wall-clock time
+    fit_elapsed <- object$secs.estimate
     
-    # Speedup for each stage using their actual wall-clock times
+    # Speedup for each stage
     speedup_opt <- optim_time / max(1e-9, optim_elapsed)
     speedup_fit <- fit_time / max(1e-9, fit_elapsed)
     speedup_overall <- (optim_time + fit_time) / max(1e-9, object$secs.elapsed)
     
-    # Efficiency
+    # Efficiency (but report actual cores used, not allocated cores)
     eff_opt <- speedup_opt / opt_cores
-    eff_fit <- speedup_fit / fit_cores
+    
+    # For fitting: if speedup ~= 1, only 1 core was effectively used
+    actual_fit_cores <- if(speedup_fit < 1.5) 1 else fit_cores
+    eff_fit <- speedup_fit / actual_fit_cores
     
     # Weighted overall efficiency
-    time_frac_opt <- optim_time / (optim_time + fit_time)
-    time_frac_fit <- fit_time / (optim_time + fit_time)
+    time_frac_opt <- optim_time / max(1e-9, optim_time + fit_time)
+    time_frac_fit <- fit_time / max(1e-9, optim_time + fit_time)
     eff_overall <- (time_frac_opt * eff_opt) + (time_frac_fit * eff_fit)
     
     cat("Optimization: ",formatC(optim_time,format="f",digits=2),
@@ -1405,7 +1407,9 @@ cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," 
         " elapsed-sec (cores = ",opt_cores,")\n",sep="")
     cat("Fitting: ",formatC(fit_time,format="f",digits=2),
         " CPU-sec in ",formatC(fit_elapsed,format="f",digits=2),
-        " elapsed-sec (cores = ",fit_cores,")\n",sep="")
+        " elapsed-sec (cores = ",fit_cores,
+        if(actual_fit_cores != fit_cores) paste0(", ~",actual_fit_cores," effective") else "",
+        ")\n",sep="")
     cat("Speedup achieved (opt / fit / overall): ",
         formatC(speedup_opt,format="f",digits=2),"x / ",
         formatC(speedup_fit,format="f",digits=2),"x / ",
@@ -1414,20 +1418,6 @@ cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," 
         formatC(eff_opt*100,format="f",digits=1),"% / ",
         formatC(eff_fit*100,format="f",digits=1),"% / ",
         formatC(eff_overall*100,format="f",digits=1),"%\n",sep="")
-    
-  } else if(object$optimize & object$cv.only & object$cv != "sub") {
-    optim_time <- sum(object$secs.optim.mat)
-    opt_cores <- max(1, object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores)
-    
-    seq_time_opt <- optim_time
-    speedup_opt <- seq_time_opt / max(1e-9, object$secs.elapsed)
-    eff_opt <- speedup_opt / opt_cores
-
-    cat("Optimization time: ",formatC(optim_time,format="f",digits=2),
-        " CPU-seconds (cores = ",opt_cores,
-        ", per-core = ",formatC(optim_time/opt_cores,format="f",digits=3),")\n",sep="")
-    cat("Speedup achieved: ",formatC(speedup_opt,format="f",digits=2),"x\n",sep="")
-    cat("Parallel efficiency: ",formatC(eff_opt*100,format="f",digits=1),"%\n",sep="")
   }
   cat("\n")
   invisible()
