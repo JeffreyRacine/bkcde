@@ -63,11 +63,11 @@ for (m in 1:M) {
       fit <- bkcde(x = data$x, y = data$y, 
                    x.eval = eval_grid$x, y.eval = eval_grid$y, 
                    x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
-                   cv = "sub", n.sub = sub_size)
+                   cv = "sub", n.sub = sub_size, display.warnings = FALSE)
       
       results_time[results_time$n == n_curr & results_time$M == m & results_time$method == m_name, "seconds"] <- (proc.time() - t_start)[3]
       results_mse[results_mse$n == n_curr & results_mse$M == m & results_mse$method == m_name, "mse"] <- mean((fit$f - f_true)^2)
-      bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == m_name, c("hx","hy")] <- fit$h[1:2]
+      bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == m_name, c("hy","hx")] <- fit$h[1:2]
     }
     
     if (plot_enabled && (m > 2)) {

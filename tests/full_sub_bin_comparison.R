@@ -55,28 +55,28 @@ for (m in 1:M) {
     t1 <- proc.time()
     fit_unb <- bkcde(x = data$x, y = data$y, x.eval = eval_grid$x, y.eval = eval_grid$y, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
-                     cv = "full", cv.binned = FALSE)
+                     cv = "full", cv.binned = FALSE, display.warnings = FALSE)
     results_time[results_time$n == n_curr & results_time$M == m & results_time$method == "Unbinned", "seconds"] <- (proc.time() - t1)[3]
     results_mse[results_mse$n == n_curr & results_mse$M == m & results_mse$method == "Unbinned", "mse"] <- mean((fit_unb$f - f_true)^2)
-    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Unbinned", c("hx","hy")] <- fit_unb$h[1:2]
+    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Unbinned", c("hy","hx")] <- fit_unb$h[1:2]
     
     # --- METHOD 2: Binned ---
     t2 <- proc.time()
     fit_bin <- bkcde(x = data$x, y = data$y, x.eval = eval_grid$x, y.eval = eval_grid$y, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
-                     cv = "full", cv.binned = TRUE, n.binned = num_bins)
+                     cv = "full", cv.binned = TRUE, n.binned = num_bins, display.warnings = FALSE)
     results_time[results_time$n == n_curr & results_time$M == m & results_time$method == "Binned", "seconds"] <- (proc.time() - t2)[3]
     results_mse[results_mse$n == n_curr & results_mse$M == m & results_mse$method == "Binned", "mse"] <- mean((fit_bin$f - f_true)^2)
-    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Binned", c("hx","hy")] <- fit_bin$h[1:2]
+    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Binned", c("hy","hx")] <- fit_bin$h[1:2]
     
     # --- METHOD 3: Subsample ---
     t3 <- proc.time()
     fit_sub <- bkcde(x = data$x, y = data$y, x.eval = eval_grid$x, y.eval = eval_grid$y, 
                      x.lb = x.lb, x.ub = x.ub, y.lb = y.lb, y.ub = y.ub,
-                     cv = "sub", n.sub = n_sub_val)
+                     cv = "sub", n.sub = n_sub_val, display.warnings = FALSE)
     results_time[results_time$n == n_curr & results_time$M == m & results_time$method == "Subsample", "seconds"] <- (proc.time() - t3)[3]
     results_mse[results_mse$n == n_curr & results_mse$M == m & results_mse$method == "Subsample", "mse"] <- mean((fit_sub$f - f_true)^2)
-    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Subsample", c("hx","hy")] <- fit_sub$h[1:2]
+    bw_storage[bw_storage$n == n_curr & bw_storage$M == m & bw_storage$method == "Subsample", c("hy","hx")] <- fit_sub$h[1:2]
     
     if (plot_enabled && (m > 2)) {
       dev.hold()
