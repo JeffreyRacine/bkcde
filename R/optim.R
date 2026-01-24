@@ -114,17 +114,43 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
         
         f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,cbind(pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i]),Y.seq.mat[-i,,drop=FALSE])*w)$coefficients
-          f.loo.val <- max(0, X[i,,drop=FALSE]%*%beta.hat[,1])
-          f.seq <- pmax(0, as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:ncol(beta.hat)]))
+          ## Avoid re-allocating x[-i] and y[-i] (O(n^2) memory churn). 
+          ## Use zero-weighting for LOO.
+          w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
+          w <- NZD_pos(sqrt(w.vec))
+          w[i] <- 0
+          
+          Ky.vec <- pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])
+
+          if(degree==0) {
+            ## Optimize degree 0: replace .lm.fit with weighted means
+            w2 <- w^2
+            sum_w2 <- sum(w2)
+            f.loo.val <- max(0, sum(Ky.vec * w2)/NZD_pos(sum_w2))
+            f.seq <- pmax(0, colSums(Y.seq.mat * w2)/NZD_pos(sum_w2))
+          } else {
+            ## Use .lm.fit on full weighted matrix (w[i]=0 handles LOO)
+            beta.hat <- .lm.fit(X*w,cbind(Ky.vec,Y.seq.mat)*w)$coefficients
+            f.loo.val <- max(0, sum(beta.hat[,1] * X[i,]))
+            f.seq <- pmax(0, as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:ncol(beta.hat)]))
+          }
           f.loo.val/NZD_pos(integrate.trapezoidal(y.seq,f.seq)[n.integrate])
         },seq_along(y),mc.cores=optim.ksum.cores))
       } else {
         f.loo <- as.numeric(mcmapply(function(i){
-          w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x[-i],h[2],x.lb,x.ub, denom=denom.x[i])))
-          beta.hat <- .lm.fit(X[-i,,drop=FALSE]*w,pdf.kernel.bk(y[i],y[-i],h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
-          beta.hat%*%t(X[i,,drop=FALSE])
+          w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
+          w <- NZD_pos(sqrt(w.vec))
+          w[i] <- 0
+          
+          Ky.vec <- pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])
+          
+          if(degree==0) {
+             w2 <- w^2
+             sum(Ky.vec * w2)/NZD_pos(sum(w2))
+          } else {
+             beta.hat <- .lm.fit(X*w,Ky.vec*w)$coefficients
+             sum(beta.hat * X[i,])
+          }
         },seq_along(y),mc.cores=optim.ksum.cores))
       }
       val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
@@ -138,12 +164,33 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
       Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
       
       foo <- mcmapply(function(j){
-        w <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])))
-        beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
-        int.f.sq <- integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
-        w_loo <- NZD_pos(sqrt(pdf.kernel.bk(x[j],x[-j],h[2],x.lb,x.ub, denom=denom.x[j])))
-        beta.loo <- .lm.fit(X[-j,,drop=FALSE]*w_loo,pdf.kernel.bk(y[j],y[-j],h[1],y.lb,y.ub, denom=denom.y[j])*w_loo)$coefficients
-        list(int.f.sq=int.f.sq, f.loo=beta.loo%*%t(X[j,,drop=FALSE]))
+        w.vec <- pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])
+        w <- NZD_pos(sqrt(w.vec))
+        
+        ## Full fit for int.f.sq
+        if(degree==0) {
+           w2 <- w^2
+           sum_w2 <- sum(w2)
+           f_full_seq <- colSums(Y.seq.mat * w2)/NZD_pos(sum_w2)
+           int.f.sq <- integrate.trapezoidal(y.seq, f_full_seq^2)[n.integrate]
+        } else {
+           beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
+           int.f.sq <- integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
+        }
+
+        ## LOO fit
+        w[j] <- 0
+        Ky.vec <- pdf.kernel.bk(y[j],y,h[1],y.lb,y.ub, denom=denom.y[j])
+        
+        if(degree==0) {
+           w2 <- w^2
+           f.loo <- sum(Ky.vec * w2)/NZD_pos(sum(w2))
+        } else {
+           beta.loo <- .lm.fit(X*w,Ky.vec*w)$coefficients
+           f.loo <- sum(beta.loo * X[j,])
+        }
+        
+        list(int.f.sq=int.f.sq, f.loo=f.loo)
       },seq_along(y),mc.cores = optim.ksum.cores)
       val <- -(mean(unlist(foo[1,])) - 2*mean(unlist(foo[2,])))
     }
