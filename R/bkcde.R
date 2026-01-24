@@ -72,8 +72,11 @@ bkcde.default <- function(h=NULL,
                           n.integrate=100,
                           n.sub=300,
                           nmulti=3,
+                          optim.cores=c("auto","manual"),
                           optim.degree.cores=NULL,
-                          optim.ksum.cores=1,
+                          optim.ksum.cores=NULL,
+                          optim.ksum.auto.thresholds=c(2000,4000),
+                          optim.ksum.auto.max=4,
                           optim.nmulti.cores=NULL,
                           optim.sf.x.lb=0.5,
                           optim.sf.y.lb=0.5,
@@ -171,7 +174,6 @@ bkcde.default <- function(h=NULL,
   if(degree.min < 0 | degree.min >= length(y)) stop("degree.min must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.max < 0 | degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",length(y)-1,"] (i.e., [0,1,dots, n-1]) in bkcde()")
   if(degree.min > degree.max) stop("degree.min must be <= degree.max in bkcde()")
-  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde()")
   if(proper.cores < 1) stop("proper.cores must be at least 1 in bkcde()")
   if(fitted.cores < 1) stop("fitted.cores must be at least 1 in bkcde()")
   if(!is.null(optim.degree.cores) && optim.degree.cores < 1) stop("optim.degree.cores must be at least 1 in bkcde()")
@@ -185,15 +187,83 @@ bkcde.default <- function(h=NULL,
   ## balance the load between the two, attempting to make full use of the
   ## available cores.
   nmodels <- degree.max-degree.min+1
-  if(nmodels==1 & nmulti==1) {
-    combn.out <- 1
-  } else {
-    combn.out <- combn(max(nmodels,nmulti),2)
-    combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores()),drop=FALSE]
-    combn.out <- combn.out[,ncol(combn.out)]
+  n.obs <- length(y)
+  optim.cores <- match.arg(optim.cores)
+
+  ## Manual (default) core allocation mirrors previous behavior
+  if(optim.cores == "manual") {
+    if(is.null(optim.ksum.cores)) {
+      optim.ksum.cores <- 1L
+    } else {
+      optim.ksum.cores <- as.integer(optim.ksum.cores)
+    }
+    if(nmodels==1 & nmulti==1) {
+      combn.out <- 1
+    } else {
+      combn.out <- combn(max(nmodels,nmulti),2)
+      combn.out <- combn.out[,which(apply(combn.out,2,prod)<=detectCores()),drop=FALSE]
+      combn.out <- combn.out[,ncol(combn.out)]
+    }
+    if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
+    if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   }
-  if(is.null(optim.degree.cores)) optim.degree.cores <- ifelse(nmodels >= nmulti,max(combn.out),min(combn.out))
-  if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
+
+  ## Auto mode: scale cores using detectCores(), sample size, and degree range
+  if(optim.cores == "auto" && .Platform$OS.type=="unix") {
+    C <- detectCores()
+    ksum_max <- max(1L, as.integer(optim.ksum.auto.max))
+    ksum_thresholds <- optim.ksum.auto.thresholds
+    if(is.null(ksum_thresholds)) ksum_thresholds <- integer(0)
+    ksum_thresholds <- sort(unique(as.integer(ksum_thresholds[ksum_thresholds > 0])))
+    total_tasks <- nmodels * nmulti
+    if(is.null(optim.ksum.cores)) {
+      ## If the outer grid already saturates available cores and n is below the first threshold, avoid ksum overhead
+      if(total_tasks <= C && length(ksum_thresholds) > 0 && n.obs < ksum_thresholds[1]) {
+        optim.ksum.cores <- 1L
+      } else {
+        tier_levels <- pmin(ksum_max, 2L^(0:length(ksum_thresholds)))
+        tier_idx <- findInterval(n.obs, ksum_thresholds) + 1L
+        tier_idx <- min(tier_idx, length(tier_levels))
+        target <- tier_levels[tier_idx]
+        cap <- max(1L, floor(C/2))
+        if(degree.max < 3 || C < 4) target <- 1L
+        optim.ksum.cores <- max(1L, min(target, cap, ksum_max))
+      }
+    } else {
+      optim.ksum.cores <- max(1L, as.integer(optim.ksum.cores))
+    }
+    limit <- max(1L, floor(C / optim.ksum.cores))
+
+    ## Derive a balanced split within the available limit
+    if(nmodels==1 & nmulti==1) {
+      base_deg <- base_nmulti <- 1L
+    } else {
+      combn.out <- combn(max(nmodels,nmulti),2)
+      combn.out <- combn.out[,which(apply(combn.out,2,prod)<=limit),drop=FALSE]
+      if(ncol(combn.out)==0) combn.out <- matrix(c(1L,1L),nrow=2)
+      choice <- combn.out[,ncol(combn.out)]
+      base_deg <- if(nmodels >= nmulti) choice[1] else choice[2]
+      base_nmulti <- if(nmodels >= nmulti) choice[2] else choice[1]
+    }
+
+    if(is.null(optim.degree.cores) || optim.degree.cores == detectCores()) optim.degree.cores <- base_deg
+    if(is.null(optim.nmulti.cores) || optim.nmulti.cores == detectCores()) optim.nmulti.cores <- base_nmulti
+
+    ## Ensure we do not exceed available cores after ksum split
+    if(optim.degree.cores * optim.nmulti.cores > limit) {
+      while(optim.degree.cores * optim.nmulti.cores > limit && optim.nmulti.cores > 1) {
+        optim.nmulti.cores <- max(1L, floor(optim.nmulti.cores/2))
+      }
+      while(optim.degree.cores * optim.nmulti.cores > limit && optim.degree.cores > 1) {
+        optim.degree.cores <- max(1L, floor(optim.degree.cores/2))
+      }
+      if(optim.degree.cores * optim.nmulti.cores > limit) {
+        optim.nmulti.cores <- 1L
+        optim.degree.cores <- 1L
+      }
+    }
+  }
+  if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde()")
   cv.penalty.method <- match.arg(cv.penalty.method)
   if(!is.logical(cv.binned)) stop("cv.binned must be logical in bkcde()")
   bwmethod <- match.arg(bwmethod)
@@ -636,6 +706,7 @@ bkcde.default <- function(h=NULL,
   return.list <- list(convergence.mat=convergence.mat,
                       convergence.vec=convergence.vec,
                       convergence=convergence,
+                      optim.cores=optim.cores,
                       cv=cv,
                       cv.binned=cv.binned,
                       cv.only=cv.only,
@@ -1280,6 +1351,7 @@ summary.bkcde <- function(object, ...) {
       cat("Number of sub-cv resamples: ",object$resamples,"\n",sep="")
       cat("Sample size of sub-cv resamples: ",format(object$n.sub, big.mark=",", scientific=FALSE),"\n",sep="")
     }
+    cat("Core allocation mode: ",object$optim.cores,"\n",sep="")
     cat("Number of cores used for optimization in parallel processing for degree selection: ",object$optim.degree.cores,"\n",sep="")
     cat("Number of cores used for optimization in parallel processing for multistart optimization: ",object$optim.nmulti.cores,"\n",sep="")
     cat("Total number of cores used for optimization in parallel processing: ",object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores,"\n",sep="")
@@ -1287,19 +1359,31 @@ summary.bkcde <- function(object, ...) {
   if(!object$cv.only) {
     if(object$proper) cat("Number of cores used in parallel processing for ensuring proper density: ",object$proper.cores,"\n",sep="")
     cat("Number of cores used in parallel processing for fitting density: ",object$fitted.cores,"\n",sep="")
-    if(object$optim.ksum.cores>1) cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
+    cat("Number of cores used in parallel processing for kernel sum: ",object$optim.ksum.cores,"\n",sep="")
   }
   cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," seconds\n",sep="")
   if(object$optimize & !object$cv.only & object$cv != "sub") {
-    cat("Optimization and estimation time: ",formatC(object$secs.estimate+sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization and estimation time per core: ",formatC((object$secs.estimate+sum(object$secs.optim.mat))/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
-    cat("Parallel efficiency: ",formatC(object$secs.elapsed/(object$secs.estimate+sum(object$secs.optim.mat)),format="f",digits=2),
-        " (allow for overhead and blocking, ideal = ",formatC(1/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+    optim_time <- sum(object$secs.optim.mat)
+    fit_time <- object$secs.estimate
+    opt_cores <- max(1, object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores)
+    fit_cores <- max(1, object$fitted.cores)
+    ideal_elapsed <- optim_time/opt_cores + fit_time/fit_cores
+    eff_overall <- ideal_elapsed / max(1e-9, object$secs.elapsed)
+
+    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds\n",sep="")
+    cat("Optimization time per core: ",formatC(optim_time/opt_cores,format="f",digits=2)," seconds/core\n",sep="")
+    cat("Fitting time: ",formatC(fit_time,format="f",digits=2)," seconds\n",sep="")
+    cat("Fitting time per core: ",formatC(fit_time/fit_cores,format="f",digits=2)," seconds/core\n",sep="")
+    cat("Overall parallel efficiency (ideal = 1): ",formatC(eff_overall,format="f",digits=2),"\n",sep="")
   } else if(object$optimize & object$cv.only & object$cv != "sub") {
-    cat("Optimization time: ",formatC(sum(object$secs.optim.mat),format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization time per core: ",formatC((sum(object$secs.optim.mat))/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2)," seconds/core\n",sep="")
-    cat("Parallel efficiency: ",formatC(object$secs.elapsed/sum(object$secs.optim.mat),format="f",digits=2),
-        " (allow for overhead and blocking, ideal = ",formatC(1/(object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores),format="f",digits=2),")\n",sep="")
+    optim_time <- sum(object$secs.optim.mat)
+    opt_cores <- max(1, object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores)
+    ideal_elapsed <- optim_time/opt_cores
+    eff_overall <- ideal_elapsed / max(1e-9, object$secs.elapsed)
+
+    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds\n",sep="")
+    cat("Optimization time per core: ",formatC(ideal_elapsed,format="f",digits=2)," seconds/core\n",sep="")
+    cat("Parallel efficiency (optimization only, ideal = 1): ",formatC(eff_overall,format="f",digits=2),"\n",sep="")
   }
   cat("\n")
   invisible()

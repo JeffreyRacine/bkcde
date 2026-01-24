@@ -293,6 +293,7 @@ bkcde.optim <- function(x=x,
     }
   }
 
+  ## Generate initial parameter values for all multistarts
   par.init <- matrix(NA,nmulti,2)
   seeds.used <- rep(NA, nmulti)
   if (!is.null(seed)) {
@@ -311,95 +312,167 @@ bkcde.optim <- function(x=x,
     }
   }
 
-  ## Search over polynomial degrees.
-  degree.return <- mclapply(degree.min:degree.max, function(p) {
-    ## Pre-calculate design matrices for this specific degree
+  ## Pre-compute all design matrices for all degrees (avoids redundant computation)
+  degree.vec <- degree.min:degree.max
+  n.degrees <- length(degree.vec)
+  X.list <- vector("list", n.degrees)
+  X.eval.list <- vector("list", n.degrees)
+  X.act.list <- vector("list", n.degrees)
+  
+  for(idx in seq_along(degree.vec)) {
+    p <- degree.vec[idx]
     if(p > 0) {
       poly.obj <- poly(x, raw=poly.raw, degree=p)
-      X.p <- cbind(1, poly.obj)
-      X.eval.p <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
+      X.list[[idx]] <- cbind(1, poly.obj)
+      X.eval.list[[idx]] <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
         cbind(1, predict(poly.obj, x.eval))
       } else NULL
-      
-      ## Pre-calculate the Active Design Matrix for binned data
-      X.act.p <- if(!is.null(binned.data)) {
+      X.act.list[[idx]] <- if(!is.null(binned.data)) {
         cbind(1, predict(poly.obj, binned.data$x.act))
       } else NULL
     } else {
-      X.p <- matrix(1, nrow=length(x), ncol=1)
-      X.eval.p <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
+      X.list[[idx]] <- matrix(1, nrow=length(x), ncol=1)
+      X.eval.list[[idx]] <- if(!identical(y,y.eval) || !identical(x,x.eval)) {
         matrix(1, nrow=length(y.eval), ncol=1)
       } else NULL
-      X.act.p <- if(!is.null(binned.data)) {
+      X.act.list[[idx]] <- if(!is.null(binned.data)) {
         matrix(1, nrow=length(binned.data$x.act), ncol=1)
       } else NULL
     }
+  }
+  
+  ## FLAT APPROACH: Create single task grid with all degree x restart combinations
+  task_grid <- expand.grid(restart = 1:nmulti, degree = degree.vec)
+  task_grid$degree <- as.integer(task_grid$degree)
+  num_tasks <- nrow(task_grid)
+  total_cores <- optim.degree.cores * optim.nmulti.cores
+  
+  if(verbose) cat(sprintf("Flat optimization: %d tasks (%d degrees × %d restarts) using %d cores with dynamic scheduling\n",
+                          num_tasks, n.degrees, nmulti, total_cores))
+  
+  ## Run single parallel loop over flat grid with dynamic load balancing
+  all_results <- mclapply(1:num_tasks, function(task_idx) {
+    d_curr <- task_grid$degree[task_idx]
+    r_curr <- task_grid$restart[task_idx]
+    d_idx <- match(d_curr, degree.vec)
+    if (is.na(d_idx) || d_idx < 1 || d_idx > length(degree.vec)) stop("Invalid degree index computed in flat scheduler")
     
-    nmulti.return <- mclapply(1:nmulti, function(i) {
-      if (!is.null(seed)) set.seed(seeds.used[i])
-      st <- system.time(optim.return <- optim(par=par.init[i,],
-                                 fn=bkcde.optim.fn,
-                                 x=x,
-                                 y=y,
-                                 x.eval=x.eval,
-                                 y.eval=y.eval,
-                                 y.lb=y.lb,
-                                 y.ub=y.ub,
-                                 x.lb=x.lb,
-                                 x.ub=x.ub,
-                                 poly.raw=poly.raw,
-                                 bwmethod=bwmethod,
-                                 cv.penalty.method=cv.penalty.method,
-                                 cv.penalty.cutoff=cv.penalty.cutoff,
-                                 degree=p,
-                                 n.integrate=n.integrate,
-                                 optim.ksum.cores=optim.ksum.cores,
-                                 proper.cv=proper.cv,
-                                 verbose=verbose,
-                                 cv.binned=cv.binned,
-                                 n.binned=n.binned,
-                                 binned.data=binned.data,
-                                 y.seq=y.seq,
-                                 x.ub.finite=x.ub.finite,
-                                 x.lb.finite=x.lb.finite,
-                                 y.ub.finite=y.ub.finite,
-                                 y.lb.finite=y.lb.finite,
-                                 lower=lower,
-                                 upper=upper,
-                                 method="L-BFGS-B",
-                                 control=list(fnscale = -1),
-                                 X=X.p,
-                                 X.eval=X.eval.p,
-                                 X.act=X.act.p)) # Pass the pre-computed active matrix
-      optim.return$secs.optim <- st["elapsed"]
-      optim.return$degree <- p
-      optim.return$optim.par.init <- par.init[i, ]
-      optim.return$seed <- seeds.used[i]
-      optim.return
-    }, mc.cores = optim.nmulti.cores)
+    ## Set reproducible seed for this specific task
+    if (!is.null(seed)) set.seed(seeds.used[r_curr])
     
-    optim.out <- nmulti.return[[which.max(sapply(nmulti.return, function(x) x$value))]]
-    optim.out$value.vec <- sapply(nmulti.return, function(x) x$value)
-    optim.out$degree.vec <- sapply(nmulti.return, function(x) x$degree)
-    optim.out$optim.y.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[1])
-    optim.out$optim.x.init.vec <- sapply(nmulti.return, function(x) x$optim.par.init[2])
-    optim.out$convergence.vec <- sapply(nmulti.return, function(x) x$convergence)
-    optim.out$secs.optim.vec <- sapply(nmulti.return, function(x) x$secs.optim)
-    optim.out$seed.vec <- sapply(nmulti.return, function(x) x$seed)
-    optim.out
-  }, mc.cores = optim.degree.cores)
-
-  output.return <- degree.return[[which.max(sapply(degree.return, function(x) x$value))]]
-  output.return$par.mat <- t(sapply(degree.return, function(x) x$par))
-  output.return$value.vec <- sapply(degree.return, function(x) x$value)
-  output.return$value.mat <- t(sapply(degree.return, function(x) x$value.vec))
-  output.return$convergence.vec <- sapply(degree.return, function(x) x$convergence)
-  output.return$convergence.mat <- t(sapply(degree.return, function(x) x$convergence.vec))
-  output.return$degree.mat <- t(sapply(degree.return, function(x) x$degree.vec))
-  output.return$secs.optim <- sapply(degree.return, function(x) x$secs.optim)
-  output.return$secs.optim.mat <- t(sapply(degree.return, function(x) x$secs.optim.vec))
-  output.return$optim.y.init.mat <- t(sapply(degree.return, function(x) x$optim.y.init.vec))
-  output.return$optim.x.init.mat <- t(sapply(degree.return, function(x) x$optim.x.init.vec))
+    ## Get pre-computed design matrices for this degree
+    X.p <- if (length(X.list) >= d_idx) X.list[[d_idx]] else NULL
+    X.eval.p <- if (length(X.eval.list) >= d_idx) X.eval.list[[d_idx]] else NULL
+    X.act.p <- if (length(X.act.list) >= d_idx) X.act.list[[d_idx]] else NULL
+    
+    ## Run optimization
+    st <- system.time(optim.return <- optim(par=par.init[r_curr,],
+                               fn=bkcde.optim.fn,
+                               x=x,
+                               y=y,
+                               x.eval=x.eval,
+                               y.eval=y.eval,
+                               y.lb=y.lb,
+                               y.ub=y.ub,
+                               x.lb=x.lb,
+                               x.ub=x.ub,
+                               poly.raw=poly.raw,
+                               bwmethod=bwmethod,
+                               cv.penalty.method=cv.penalty.method,
+                               cv.penalty.cutoff=cv.penalty.cutoff,
+                               degree=d_curr,
+                               n.integrate=n.integrate,
+                               optim.ksum.cores=optim.ksum.cores,
+                               proper.cv=proper.cv,
+                               verbose=verbose,
+                               cv.binned=cv.binned,
+                               n.binned=n.binned,
+                               binned.data=binned.data,
+                               y.seq=y.seq,
+                               x.ub.finite=x.ub.finite,
+                               x.lb.finite=x.lb.finite,
+                               y.ub.finite=y.ub.finite,
+                               y.lb.finite=y.lb.finite,
+                               lower=lower,
+                               upper=upper,
+                               method="L-BFGS-B",
+                               control=list(fnscale = -1),
+                               X=X.p,
+                               X.eval=X.eval.p,
+                               X.act=X.act.p))
+    
+    ## Return result with metadata for reconstruction
+    list(par = optim.return$par,
+         value = optim.return$value,
+         convergence = optim.return$convergence,
+         degree = d_curr,
+         restart = r_curr,
+         secs.optim = st["elapsed"],
+         optim.par.init = par.init[r_curr, ],
+         seed = seeds.used[r_curr],
+         task_idx = task_idx)
+  }, mc.cores = total_cores, mc.preschedule = FALSE)
+  
+  ## Reconstruct nested structure for backward compatibility
+  ## Initialize matrices to hold results by degree and restart
+  value.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  convergence.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  secs.optim.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  par.mat <- matrix(NA, nrow=n.degrees, ncol=2)
+  degree.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  optim.y.init.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  optim.x.init.mat <- matrix(NA, nrow=n.degrees, ncol=nmulti)
+  
+  ## Populate matrices from flat results
+  for(res in all_results) {
+    d_idx <- which(degree.vec == res$degree)
+    r_idx <- res$restart
+    value.mat[d_idx, r_idx] <- res$value
+    convergence.mat[d_idx, r_idx] <- res$convergence
+    secs.optim.mat[d_idx, r_idx] <- res$secs.optim
+    degree.mat[d_idx, r_idx] <- res$degree
+    optim.y.init.mat[d_idx, r_idx] <- res$optim.par.init[1]
+    optim.x.init.mat[d_idx, r_idx] <- res$optim.par.init[2]
+  }
+  
+  ## Find best result for each degree (best across restarts)
+  value.vec <- numeric(n.degrees)
+  convergence.vec <- numeric(n.degrees)
+  secs.optim <- numeric(n.degrees)
+  best_results_by_degree <- vector("list", n.degrees)
+  
+  for(d_idx in 1:n.degrees) {
+    degree_results <- all_results[sapply(all_results, function(r) which(degree.vec == r$degree) == d_idx)]
+    best_for_degree <- degree_results[[which.max(sapply(degree_results, function(r) r$value))]]
+    value.vec[d_idx] <- best_for_degree$value
+    par.mat[d_idx, ] <- best_for_degree$par
+    convergence.vec[d_idx] <- best_for_degree$convergence
+    secs.optim[d_idx] <- best_for_degree$secs.optim
+    best_results_by_degree[[d_idx]] <- best_for_degree
+  }
+  
+  ## Find overall best (best across all degrees)
+  best_overall_idx <- which.max(value.vec)
+  best_overall <- best_results_by_degree[[best_overall_idx]]
+  
+  ## Return in same format as nested approach for compatibility
+  output.return <- list(
+    par = best_overall$par,
+    value = best_overall$value,
+    convergence = best_overall$convergence,
+    degree = best_overall$degree,
+    par.mat = par.mat,
+    value.vec = value.vec,
+    value.mat = value.mat,
+    convergence.vec = convergence.vec,
+    convergence.mat = convergence.mat,
+    degree.mat = degree.mat,
+    secs.optim = secs.optim,
+    secs.optim.mat = secs.optim.mat,
+    optim.y.init.mat = optim.y.init.mat,
+    optim.x.init.mat = optim.x.init.mat
+  )
+  
   return(output.return)
 }
 

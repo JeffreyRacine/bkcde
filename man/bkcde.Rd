@@ -39,8 +39,11 @@ bkcde(...)
       n.integrate = 100, 
       n.sub = 300,
       nmulti = 3, 
+      optim.cores = c("auto","manual"),
       optim.degree.cores = NULL, 
-      optim.ksum.cores = 1, 
+      optim.ksum.cores = NULL, 
+      optim.ksum.auto.thresholds = c(2000,4000),
+      optim.ksum.auto.max = 4,
       optim.nmulti.cores = NULL, 
       optim.sf.x.lb=0.5,
       optim.sf.y.lb=0.5,
@@ -141,14 +144,23 @@ bkcde(...)
   \item{nmulti}{
   the number of multi-starts to use for optimization. The default is 3
 }
+  \item{optim.cores}{
+  a character string, one of \code{"auto"} (default) or \code{"manual"}. When \code{optim.cores="auto"}, NULL core arguments are filled automatically using sample size, \code{degree.max}, and \code{\link[parallel]{detectCores}}. When \code{optim.cores="manual"}, user-specified or default values are used without automatic adjustment.
+}
   \item{optim.degree.cores}{
-  manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{\link[parallel]{detectCores}}, otherwise set to balance the load across the cores. The default is NULL
+  manually set the number of cores to use for the optimization of the degree and override the default that depends on \code{\link[parallel]{detectCores}}, otherwise set to balance the load across the cores. The default is NULL. When \code{optim.cores="auto"}, this is automatically rebalanced with \code{optim.nmulti.cores} to respect the cores budget after \code{optim.ksum.cores} allocation.
 }
   \item{optim.ksum.cores}{
-  the number of cores to use for the kernel sum when conducting optimization. The default is 1
+  the number of cores to use for the kernel sum when conducting optimization. The default is NULL, which resolves to 1 when \code{optim.cores="manual"}. When \code{optim.cores="auto"} on Unix platforms and degree.max >= 3, a NULL value is set using \code{optim.ksum.auto.thresholds}, \code{optim.ksum.auto.max}, \code{floor(detectCores()/2)}, and the available cores; if the outer degree * nmulti grid already saturates \code{detectCores()} and \eqn{n} lies below the largest threshold, it stays at 1 to avoid extra overhead.
+}
+  \item{optim.ksum.auto.max}{
+  a positive integer specifying the maximum value for \code{optim.ksum.cores} when \code{optim.cores="auto"}. Default is 4; still bounded by \code{floor(detectCores()/2)} to leave cores for other parallel loops.
+}
+  \item{optim.ksum.auto.thresholds}{
+  a numeric vector of positive, ascending sample-size thresholds used when \code{optim.cores="auto"} to step \code{optim.ksum.cores} upward (doubling by default). With the default \code{c(2000,4000)}, \code{optim.ksum.cores} stays at 1 for \eqn{n < 2000}, moves to 2 for \eqn{2000 <= n < 4000}, and to 4 for \eqn{n >= 4000}, subject to \code{optim.ksum.auto.max}, \code{floor(detectCores()/2)}, and the degree.max >= 3 requirement; the guard prevents ksum activation when the outer degree * nmulti grid already saturates available cores and \eqn{n} remains below the first threshold. Each objective function evaluation remains \eqn{O(n^2)} under \code{cv="full"}.
 }
   \item{optim.nmulti.cores}{
-  manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{\link[parallel]{detectCores}},  otherwise set to balance the load across the cores. The default is NULL
+  manually set the number of cores to use for the optimization of the multi-starts and override the default that depends on \code{\link[parallel]{detectCores}}, otherwise set to balance the load across the cores. The default is NULL. When \code{optim.cores="auto"}, this is automatically rebalanced with \code{optim.degree.cores} to respect the cores budget after \code{optim.ksum.cores} allocation.
 }
   \item{optim.sf.y.lb}{
   the lower bound for the scale factor for y when conducting search (must be positive, i.e., the constant which, when multiplied by \eqn{\sigma\times n^{-1/6}}, delivers the bandwidth) 
