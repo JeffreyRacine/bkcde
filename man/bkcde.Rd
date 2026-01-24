@@ -31,7 +31,8 @@ bkcde(...)
       cv.penalty.method = c("smooth", "constant", "trim", "nonneg"), 
       degree = NULL, 
       degree.max = 3, 
-      degree.min = 0, 
+      degree.min = 0,
+      display.warnings = TRUE,
       fitted.cores = detectCores(),
       integrate.erf = 1,
       n.binned = 100,
@@ -55,7 +56,6 @@ bkcde(...)
       resamples = 10,
       seed = 42,
       verbose = FALSE, 
-      warnings = TRUE,
       x.erf = 0,
       y.erf = 0,
       ...)
@@ -122,6 +122,9 @@ bkcde(...)
 }
   \item{degree.min}{
   the minimum degree of the polynomial searched. The default is 0
+}
+  \item{display.warnings}{
+  a logical value indicating whether to display warning messages. The default is TRUE. When set to TRUE, warnings are displayed either immediately or otherwise as coded throughout the package.
 }
   \item{fitted.cores}{
   the number of cores to use for the fitted values. The default is \code{\link[parallel]{detectCores}}
@@ -191,9 +194,6 @@ bkcde(...)
 }  
   \item{verbose}{
   a logical value indicating whether to print warnings and issue other low-level messages. The default is FALSE
-}
-  \item{warnings}{
-  a logical value indicating whether to display warning messages. The default is TRUE. When set to TRUE, warnings are displayed either immediately or otherwise as coded throughout the package.
 }
   \item{x.erf}{
   a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evaluation grid beyond the empirical support when either \code{x.lb}, \code{x.ub}, or both are infinite.

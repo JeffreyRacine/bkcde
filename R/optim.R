@@ -387,7 +387,7 @@ bkcde.optim <- function(x=x,
   num_tasks <- nrow(task_grid)
   total_cores <- optim.degree.cores * optim.nmulti.cores
   
-  if(verbose) cat(sprintf("Flat optimization: %d tasks (%d degrees × %d restarts) using %d cores with dynamic scheduling\n",
+  if(verbose) cat(sprintf("Flat optimization: %d tasks (%d degrees x %d restarts) using %d cores with dynamic scheduling\n",
                           num_tasks, n.degrees, nmulti, total_cores))
   
   ## Run single parallel loop over flat grid with dynamic load balancing
@@ -519,6 +519,7 @@ bkcde.optim <- function(x=x,
 ## sub.cv() implements sub-sampling cross-validation for large datasets
 
 sub.cv <- function(x, y, 
+                   display.warnings = TRUE,
                    n.sub = 300, 
                    progress = FALSE,
                    replace = FALSE,
@@ -551,7 +552,7 @@ sub.cv <- function(x, y,
     ## densities, and since we are only using cross-validation in this call, we
     ## set proper=FALSE. We retrieve the "scale factors" after removing scale
     ## and sample size factors.
-    bkcde.out <- bkcde(x=x[ii],y=y[ii],proper=FALSE,cv.only=TRUE,...)
+    bkcde.out <- bkcde(x=x[ii],y=y[ii],display.warnings=display.warnings,proper=FALSE,cv.only=TRUE,...)
     sf.mat[j,] <- bkcde.out$h/(EssDee(cbind(y[ii],x[ii]))*n.sub^(-1/6))
     degree.vec[j] <- bkcde.out$degree
     cv.vec[j] <- bkcde.out$value

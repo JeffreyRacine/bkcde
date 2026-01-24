@@ -9,6 +9,7 @@ This function optimizes the bandwidth vector and polynomial degree for the \code
 }
 \usage{
 sub.cv(x, y, 
+       display.warnings = TRUE,
        n.sub = 300, 
        progress = FALSE,
        replace = FALSE,
@@ -22,6 +23,9 @@ A numeric vector of data values.
 }
   \item{y}{
 A numeric vector of data values.
+}
+  \item{display.warnings}{
+  a logical value indicating whether to display warning messages. The default is TRUE. When set to TRUE, warnings are displayed either immediately or otherwise as coded throughout the package.
 }
   \item{n.sub}{
 An integer specifying the sub-sample size to use (\eqn{n_{sub}} must be \eqn{\le n}, the length of x and y).

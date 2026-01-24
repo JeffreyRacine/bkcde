@@ -65,6 +65,7 @@ bkcde.default <- function(h=NULL,
                           degree=NULL,
                           degree.max=3,
                           degree.min=0,
+                          display.warnings=TRUE,
                           fitted.cores=detectCores(),
                           integrate.erf=1,
                           n.binned=100,
@@ -88,7 +89,6 @@ bkcde.default <- function(h=NULL,
                           resamples=10,
                           seed=42,
                           verbose=FALSE,
-                          warnings=TRUE,
                           x.erf=0,
                           y.erf=0,
                           ...) {
@@ -117,7 +117,7 @@ bkcde.default <- function(h=NULL,
   ## Test if non-unix type OS like Windows is running and set all cores to 1
   if(.Platform$OS.type=="unix") {
   } else {
-    if(warnings) warning("non-unix type OS detected, setting all cores to 1 in bkcde() (no support for forking)")
+    if(display.warnings) warning("non-unix type OS detected, setting all cores to 1 in bkcde() (no support for forking)")
     fitted.cores <- 1
     proper.cores <- 1
     optim.degree.cores <- 1
@@ -163,7 +163,7 @@ bkcde.default <- function(h=NULL,
   if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde()")
   if(!is.logical(proper)) stop("proper must be logical in bkcde()")
   if(!is.logical(verbose)) stop("verbose must be logical in bkcde()")
-  if(!is.logical(warnings)) stop("warnings must be logical in bkcde()")
+  if(!is.logical(display.warnings)) stop("display.warnings must be logical in bkcde()")
   if(nmulti < 1) stop("nmulti must be at least 1 in bkcde()")
   if(n.integrate < 1) stop("n.integrate must be at least 1 in bkcde()")
   if(!is.numeric(n.binned) || length(n.binned) != 1 || n.binned < 2) stop("n.binned must be numeric and at least 2 in bkcde()")
@@ -278,7 +278,7 @@ bkcde.default <- function(h=NULL,
   if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
 
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
-  if(warnings && is.null(h) && (length(y) > 1e4 && cv == "full" && !cv.binned)) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
+  if(display.warnings && is.null(h) && (length(y) > 1e4 && cv == "full" && !cv.binned)) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   
   ## Pre-compute y.seq for integration if required (computed once to avoid redundant computation)
   y.seq <- NULL
@@ -312,6 +312,7 @@ bkcde.default <- function(h=NULL,
                                cv.penalty.method=cv.penalty.method,
                                degree.max=degree.max,
                                degree.min=degree.min,
+                               display.warnings=display.warnings,
                                nmulti=nmulti,
                                n.integrate=n.integrate,
                                optim.degree.cores=optim.degree.cores,
@@ -346,7 +347,7 @@ bkcde.default <- function(h=NULL,
     secs.optim <- optim.out$secs.optim
     secs.optim.mat <- optim.out$secs.optim.mat
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
-    if(convergence != 0 && warnings) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
+    if(convergence != 0 && display.warnings) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
                                  degree,
                                  ", h.y = ",
                                  round(h[1],5),
@@ -373,6 +374,7 @@ bkcde.default <- function(h=NULL,
                       cv.penalty.method=cv.penalty.method,
                       degree.max=degree.max,
                       degree.min=degree.min,
+                      display.warnings=display.warnings,
                       n.integrate=n.integrate,
                       optim.degree.cores=optim.degree.cores,
                       optim.ksum.cores=optim.ksum.cores,
@@ -642,7 +644,7 @@ bkcde.default <- function(h=NULL,
       ## Now gather the results, correct for negative entries then divide elements
       ## of f.xy by the corresponding integral (one for each x.eval.unique) to
       ## ensure the estimate is proper
-      if(verbose & any(f.yx < 0)) if(warnings) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
+      if(verbose & any(f.yx < 0)) warning("negative density estimate reset to 0 via option proper=TRUE in bkcde() [degree = ",
                                           degree,
                                           ", j = ",
                                           length(f.yx[f.yx < 0]),
@@ -683,7 +685,7 @@ bkcde.default <- function(h=NULL,
       f.yx.unadjusted <- NULL
       E.yx.unadjusted <- NULL
       F.yx.unadjusted <- NULL
-      if(any(f.yx < 0)) if(warnings) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
+      if(any(f.yx < 0)) if(display.warnings) warning("negative density estimate encountered, consider option proper=TRUE in bkcde() [degree = ",
                                 degree,
                                 ", ", 
                                 length(f.yx[f.yx < 0]),
@@ -717,6 +719,7 @@ bkcde.default <- function(h=NULL,
                       cv=cv,
                       cv.binned=cv.binned,
                       cv.only=cv.only,
+                      display.warnings=display.warnings,
                       bwmethod=bwmethod,
                       degree.mat=degree.mat,
                       degree.max=degree.max,
@@ -757,7 +760,6 @@ bkcde.default <- function(h=NULL,
                       value.mat=value.mat,
                       value.vec=value.vec,
                       value=value,
-                      warnings=warnings,
                       x.eval=x.eval,
                       x.lb=x.lb,
                       x.ub=x.ub,
@@ -1344,7 +1346,7 @@ summary.bkcde <- function(object, ...) {
   cat("Bandwidths: h.y = ",object$h[1],", h.x = ",object$h[2],"\n",sep="")
   cat("Bandwidth scale factors: sf.y = ",object$h.sf[1],", sf.x = ",object$h.sf[2],"\n",sep="")
   cat("Degree of local polynomial: ",object$degree,"\n",sep="")
-  cat("Warnings enabled: ",object$warnings,"\n",sep="")
+  cat("Display warnings enabled: ",object$display.warnings,"\n",sep="")
   if(!is.null(object$f.yx.integral.pre.neg)) cat("Integral of estimate (pre any negativity correction): ",formatC(object$f.yx.integral.pre.neg,format="f",digits=12),"\n",sep="")
   if(!is.null(object$f.yx.integral)) cat("Integral of estimate (post negativity, prior to integration to 1 correction): ",formatC(object$f.yx.integral,format="f",digits=12),"\n",sep="")
   if(!is.null(object$f.yx.integral.post)) cat("Integral of estimate (post all corrections): ",formatC(object$f.yx.integral.post,format="f",digits=12),"\n",sep="")
