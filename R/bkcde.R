@@ -346,6 +346,7 @@ bkcde.default <- function(h=NULL,
     convergence.mat <- optim.out$convergence.mat
     secs.optim <- optim.out$secs.optim
     secs.optim.mat <- optim.out$secs.optim.mat
+    secs.optim.elapsed <- as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))
     if(progress) cat("\rNested optimization complete (",degree.max-degree.min+1," models with ",nmulti," multistarts) in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
     if(convergence != 0 && display.warnings) warning("optimization did not converge in bkcde(), consider increasing nmulti [degree = ",
                                  degree,
@@ -401,6 +402,7 @@ bkcde.default <- function(h=NULL,
     convergence.mat <- NULL
     secs.optim <- NULL
     secs.optim.mat <- NULL
+    secs.optim.elapsed <- as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))
     if(progress) cat("\rSub-sample optimization (",degree.max-degree.min+1," models, ",nmulti," restarts/model, n.sub = ",n.sub,", resamples = ", resamples, ") in ",round(as.numeric(difftime(Sys.time(),secs.start.total,units="secs"))), " seconds\n",sep="")
   } else {
     h.mat <- NULL
@@ -415,6 +417,7 @@ bkcde.default <- function(h=NULL,
     convergence.mat <- NULL
     secs.optim <- NULL
     secs.optim.mat <- NULL
+    secs.optim.elapsed <- NULL
   }
   if(!cv.only) {
     if(progress) cat("\rFitting conditional density estimate...",sep="")
@@ -756,6 +759,7 @@ bkcde.default <- function(h=NULL,
                       resamples=resamples,
                       secs.elapsed=as.numeric(difftime(Sys.time(),secs.start.total,units="secs")),
                       secs.estimate=ifelse(cv.only,NA,as.numeric(difftime(Sys.time(),secs.start.estimate,units="secs"))),
+                      secs.optim.elapsed=secs.optim.elapsed,
                       secs.optim.mat=secs.optim.mat,
                       value.mat=value.mat,
                       value.vec=value.vec,
@@ -1378,35 +1382,30 @@ cat("Elapsed time (total): ",formatC(object$secs.elapsed,format="f",digits=2)," 
     opt_cores <- max(1, object$optim.ksum.cores*object$optim.degree.cores*object$optim.nmulti.cores)
     fit_cores <- max(1, object$fitted.cores)
     
-    # Calculate what the sequential (1-core) time would have been
-    # This is the total CPU time used
-    seq_time_opt <- optim_time
-    seq_time_fit <- fit_time
-    seq_time_total <- seq_time_opt + seq_time_fit
+    # Wall-clock times for each stage
+    optim_elapsed <- object$secs.optim.elapsed
+    fit_elapsed <- object$secs.estimate  # This is already wall-clock time
     
-    # Calculate speedup: (sequential time) / (actual elapsed time)
-    speedup_opt <- seq_time_opt / max(1e-9, object$secs.elapsed)
-    speedup_fit <- seq_time_fit / max(1e-9, object$secs.elapsed)
-    speedup_overall <- seq_time_total / max(1e-9, object$secs.elapsed)
+    # Speedup for each stage using their actual wall-clock times
+    speedup_opt <- optim_time / max(1e-9, optim_elapsed)
+    speedup_fit <- fit_time / max(1e-9, fit_elapsed)
+    speedup_overall <- (optim_time + fit_time) / max(1e-9, object$secs.elapsed)
     
-    # Calculate efficiency: (actual speedup) / (number of cores)
-    # Efficiency of 1.0 (100%) means perfect linear scaling
+    # Efficiency
     eff_opt <- speedup_opt / opt_cores
     eff_fit <- speedup_fit / fit_cores
     
-    # For overall efficiency, use weighted average based on time contribution
-    # or use the simpler approach: total speedup / total cores used
-    # We'll use the more nuanced approach:
-    time_frac_opt <- seq_time_opt / seq_time_total
-    time_frac_fit <- seq_time_fit / seq_time_total
+    # Weighted overall efficiency
+    time_frac_opt <- optim_time / (optim_time + fit_time)
+    time_frac_fit <- fit_time / (optim_time + fit_time)
     eff_overall <- (time_frac_opt * eff_opt) + (time_frac_fit * eff_fit)
     
-    cat("Optimization time: ",formatC(optim_time,format="f",digits=2),
-        " CPU-seconds (cores = ",opt_cores,
-        ", per-core = ",formatC(optim_time/opt_cores,format="f",digits=3),")\n",sep="")
-    cat("Fitting time: ",formatC(fit_time,format="f",digits=2),
-        " CPU-seconds (cores = ",fit_cores,
-        ", per-core = ",formatC(fit_time/fit_cores,format="f",digits=3),")\n",sep="")
+    cat("Optimization: ",formatC(optim_time,format="f",digits=2),
+        " CPU-sec in ",formatC(optim_elapsed,format="f",digits=2),
+        " elapsed-sec (cores = ",opt_cores,")\n",sep="")
+    cat("Fitting: ",formatC(fit_time,format="f",digits=2),
+        " CPU-sec in ",formatC(fit_elapsed,format="f",digits=2),
+        " elapsed-sec (cores = ",fit_cores,")\n",sep="")
     cat("Speedup achieved (opt / fit / overall): ",
         formatC(speedup_opt,format="f",digits=2),"x / ",
         formatC(speedup_fit,format="f",digits=2),"x / ",

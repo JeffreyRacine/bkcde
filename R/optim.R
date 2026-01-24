@@ -306,6 +306,8 @@ bkcde.optim <- function(x=x,
   if(!is.numeric(n.binned) || length(n.binned) != 1 || n.binned < 2) stop("n.binned must be numeric and at least 2 in bkcde.optim()")
 
   n.binned <- as.integer(n.binned)
+  
+  secs.start <- Sys.time()
 
   n <- length(y)
   lower <- c(optim.sf.y.lb*EssDee(y),optim.sf.x.lb*EssDee(x))*n^(-1/6)
@@ -509,6 +511,7 @@ bkcde.optim <- function(x=x,
     degree.mat = degree.mat,
     secs.optim = secs.optim,
     secs.optim.mat = secs.optim.mat,
+    secs.optim.elapsed = as.numeric(difftime(Sys.time(), secs.start, units="secs")),
     optim.y.init.mat = optim.y.init.mat,
     optim.x.init.mat = optim.x.init.mat
   )
