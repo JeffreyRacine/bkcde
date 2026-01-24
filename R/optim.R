@@ -104,18 +104,17 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     if(is.null(X)) X <- if(degree>0) cbind(1,poly(x,raw=poly.raw,degree=degree)) else matrix(1,nrow=n.obs,ncol=1)
 
     if(bwmethod == "cv.ml") {
+      # For cv.ml, we only need integration if proper.cv=TRUE
       if(proper.cv) {
-        ## Compute y.seq and Y.seq.mat only when needed for proper.cv
         if(is.null(y.seq)) {
           if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
           else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
         }
         denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
         Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+        int.weights <- get.integral.weights(y.seq)
         
         f.loo <- as.numeric(mcmapply(function(i){
-          ## Avoid re-allocating x[-i] and y[-i] (O(n^2) memory churn). 
-          ## Use zero-weighting for LOO.
           w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
           w <- NZD_pos(sqrt(w.vec))
           w[i] <- 0
@@ -123,20 +122,19 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           Ky.vec <- pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])
 
           if(degree==0) {
-            ## Optimize degree 0: replace .lm.fit with weighted means
             w2 <- w^2
             sum_w2 <- sum(w2)
             f.loo.val <- max(0, sum(Ky.vec * w2)/NZD_pos(sum_w2))
             f.seq <- pmax(0, colSums(Y.seq.mat * w2)/NZD_pos(sum_w2))
           } else {
-            ## Use .lm.fit on full weighted matrix (w[i]=0 handles LOO)
             beta.hat <- .lm.fit(X*w,cbind(Ky.vec,Y.seq.mat)*w)$coefficients
             f.loo.val <- max(0, sum(beta.hat[,1] * X[i,]))
             f.seq <- pmax(0, as.numeric(X[i,,drop=FALSE]%*%beta.hat[,2:ncol(beta.hat)]))
           }
-          f.loo.val/NZD_pos(integrate.trapezoidal(y.seq,f.seq)[n.integrate])
+          f.loo.val/NZD_pos(sum(f.seq * int.weights))
         },seq_along(y),mc.cores=optim.ksum.cores))
       } else {
+        # Standard cv.ml (no integration)
         f.loo <- as.numeric(mcmapply(function(i){
           w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
           w <- NZD_pos(sqrt(w.vec))
@@ -155,30 +153,30 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
       }
       val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
     } else {
-      ## For cv.ls, always need y.seq and Y.seq.mat
+      # cv.ls (Least Squares) - always uses integration
       if(is.null(y.seq)) {
         if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
         else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
       }
       denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
       Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
+      int.weights <- get.integral.weights(y.seq)
       
       foo <- mcmapply(function(j){
         w.vec <- pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])
         w <- NZD_pos(sqrt(w.vec))
         
-        ## Full fit for int.f.sq
         if(degree==0) {
            w2 <- w^2
            sum_w2 <- sum(w2)
            f_full_seq <- colSums(Y.seq.mat * w2)/NZD_pos(sum_w2)
-           int.f.sq <- integrate.trapezoidal(y.seq, f_full_seq^2)[n.integrate]
+           int.f.sq <- sum(f_full_seq^2 * int.weights)
         } else {
            beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
-           int.f.sq <- integrate.trapezoidal(y.seq,(X[j,,drop=FALSE]%*%beta.hat)^2)[n.integrate]
+           f_vals <- as.numeric(X[j,,drop=FALSE]%*%beta.hat)
+           int.f.sq <- sum(f_vals^2 * int.weights)
         }
 
-        ## LOO fit
         w[j] <- 0
         Ky.vec <- pdf.kernel.bk(y[j],y,h[1],y.lb,y.ub, denom=denom.y[j])
         
@@ -202,22 +200,20 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     y.act <- binned.data$y.act
     w.act <- binned.data$w.act
     
-    ## Use the pre-computed matrix passed from bkcde.optim
     if(is.null(X.act)) {
        X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
     }
 
-    ## Vectorized denominator calculations for speed
     denom.x.act <- h[2] * (if(!x.ub.finite) 1 else pnorm((x.ub - x.act)/h[2]) - (if(x.lb.finite) pnorm((x.lb - x.act)/h[2]) else 0))
     denom.y.act <- h[1] * (if(!y.ub.finite) 1 else pnorm((y.ub - y.act)/h[1]) - (if(y.lb.finite) pnorm((y.lb - y.act)/h[1]) else 0))
 
-    ## Use pre-computed y.seq if provided, otherwise compute it
     if(is.null(y.seq)) {
       y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
                seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
     }
     denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
+    int.weights <- get.integral.weights(y.seq)
 
     results <- mcmapply(function(i) {
       k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.x.act[i])
@@ -230,27 +226,24 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           beta <- .lm.fit(X.act * W_vec, cbind(target_y, Y.seq.mat) * (W_vec * w.loo))$coefficients
           f_loo <- max(0, sum(X.act[i,] * beta[,1]))
           f_seq <- pmax(0, as.numeric(X.act[i,] %*% beta[, 2:ncol(beta)]))
-          return(f_loo / NZD_pos(integrate.trapezoidal(y.seq, f_seq)[n.integrate]))
+          return(f_loo / NZD_pos(sum(f_seq * int.weights)))
         } else {
           return(sum(.lm.fit(X.act * W_vec, (target_y * w.loo) * W_vec)$coefficients * X.act[i,]))
         }
       } else {
-        # Batch: Compute target_y early and combine both RHS for single .lm.fit call
         target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
         W_scaled <- W_vec * w.loo
         
-        # Combine both RHS and solve once instead of twice
         rhs_both <- cbind((Y.seq.mat * w.loo) * W_vec, (target_y * w.loo) * W_vec)
         beta_both <- .lm.fit(X.act * W_vec, rhs_both)$coefficients
         
-        # Extract individual results
         n.seq.cols <- ncol(Y.seq.mat)
         beta_seq <- beta_both[, 1:n.seq.cols, drop=FALSE]
         beta_loo <- beta_both[, n.seq.cols + 1]
         
         f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
         f_loo <- sum(X.act[i,] * beta_loo)
-        return(c(integrate.trapezoidal(y.seq, f_seq^2)[n.integrate], f_loo))
+        return(c(sum(f_seq^2 * int.weights), f_loo))
       }
     }, seq_along(x.act), mc.cores = optim.ksum.cores, SIMPLIFY = FALSE)
 

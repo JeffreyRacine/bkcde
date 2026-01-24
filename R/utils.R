@@ -26,6 +26,47 @@ integrate.trapezoidal <- function(x, y) {
   int.vec[order(order.x)]
 }
 
+## get.integral.weights() returns the vector of weights such that the integral
+## can be computed as a dot product sum(y * w). This allows pre-computation
+## for fixed grids, avoiding repeated overhead in optimization loops.
+
+get.integral.weights <- function(x) {
+  n <- length(x)
+  # Ensure x is sorted for the weights calculation, though we assume the input
+  # grid (y.seq) in optim is already sorted.
+  if(is.unsorted(x)) x <- sort(x)
+  
+  dx <- diff(x)
+  w <- numeric(n)
+  
+  # Standard trapezoidal weights: dx[i]/2 for ends, (dx[i-1] + dx[i])/2 for interior
+  w[1] <- dx[1]/2
+  w[n] <- dx[n-1]/2
+  if(n > 2) {
+    w[2:(n-1)] <- (dx[1:(n-2)] + dx[2:(n-1)])/2
+  }
+  
+  # Boundary correction terms matching integrate.trapezoidal
+  # Correction CF = (cx^2 / 12) * ( (y[n]-y[n-1])/cx - (y[2]-y[1])/cx )
+  # We subtract CF from the integral.
+  # CF = (cx/12) * y[n] - (cx/12) * y[n-1] - (cx/12) * y[2] + (cx/12) * y[1]
+  # So we adjust weights:
+  # w[n] -= cx/12
+  # w[n-1] += cx/12
+  # w[2] += cx/12
+  # w[1] -= cx/12
+  
+  cx <- dx[1]
+  c_term <- cx/12
+  
+  w[1] <- w[1] - c_term
+  w[2] <- w[2] + c_term
+  w[n-1] <- w[n-1] + c_term
+  w[n] <- w[n] - c_term
+  
+  return(w)
+}
+
 ## NZD() is the "No Zero Divide" (NZD) function (so e.g., 0/0 = 0) based on
 ## accepted coding practice for a variety of languages
 
