@@ -55,7 +55,7 @@ bkcde(...)
       resamples = 10,
       seed = 42,
       verbose = FALSE, 
-      warnings = FALSE,
+      warnings = TRUE,
       x.erf = 0,
       y.erf = 0,
       ...)

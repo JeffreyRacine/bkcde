@@ -88,7 +88,7 @@ bkcde.default <- function(h=NULL,
                           resamples=10,
                           seed=42,
                           verbose=FALSE,
-                          warnings=FALSE,
+                          warnings=TRUE,
                           x.erf=0,
                           y.erf=0,
                           ...) {
@@ -1369,11 +1369,12 @@ summary.bkcde <- function(object, ...) {
     fit_cores <- max(1, object$fitted.cores)
     ideal_elapsed <- optim_time/opt_cores + fit_time/fit_cores
     eff_overall <- ideal_elapsed / max(1e-9, object$secs.elapsed)
+    eff_opt <- (optim_time/opt_cores) / max(1e-9, object$secs.elapsed)
+    eff_fit <- ifelse(fit_time > 0, (fit_time/fit_cores) / max(1e-9, object$secs.elapsed), 0)
 
-    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization time per core: ",formatC(optim_time/opt_cores,format="f",digits=2)," seconds/core\n",sep="")
-    cat("Fitting time: ",formatC(fit_time,format="f",digits=2)," seconds\n",sep="")
-    cat("Fitting time per core: ",formatC(fit_time/fit_cores,format="f",digits=2)," seconds/core\n",sep="")
+    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds (cores = ",opt_cores,", per-core = ",formatC(optim_time/opt_cores,format="f",digits=3),")\n",sep="")
+    cat("Fitting time: ",formatC(fit_time,format="f",digits=2)," seconds (cores = ",fit_cores,", per-core = ",formatC(fit_time/fit_cores,format="f",digits=3),")\n",sep="")
+    cat("Stage efficiencies (opt / fit, ideal = 1): ",formatC(eff_opt,format="f",digits=2)," / ",formatC(eff_fit,format="f",digits=2),"\n",sep="")
     cat("Overall parallel efficiency (ideal = 1): ",formatC(eff_overall,format="f",digits=2),"\n",sep="")
   } else if(object$optimize & object$cv.only & object$cv != "sub") {
     optim_time <- sum(object$secs.optim.mat)
@@ -1381,8 +1382,7 @@ summary.bkcde <- function(object, ...) {
     ideal_elapsed <- optim_time/opt_cores
     eff_overall <- ideal_elapsed / max(1e-9, object$secs.elapsed)
 
-    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds\n",sep="")
-    cat("Optimization time per core: ",formatC(ideal_elapsed,format="f",digits=2)," seconds/core\n",sep="")
+    cat("Optimization time: ",formatC(optim_time,format="f",digits=2)," seconds (cores = ",opt_cores,", per-core = ",formatC(ideal_elapsed,format="f",digits=3),")\n",sep="")
     cat("Parallel efficiency (optimization only, ideal = 1): ",formatC(eff_overall,format="f",digits=2),"\n",sep="")
   }
   cat("\n")
