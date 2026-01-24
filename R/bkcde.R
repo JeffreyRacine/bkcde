@@ -190,6 +190,17 @@ bkcde.default <- function(h=NULL,
   n.obs <- length(y)
   optim.cores <- match.arg(optim.cores)
 
+  ## Resolve cv mode first to determine effective sample size for auto
+  cv.penalty.method <- match.arg(cv.penalty.method)
+  if(!is.logical(cv.binned)) stop("cv.binned must be logical in bkcde()")
+  bwmethod <- match.arg(bwmethod)
+  cv <- match.arg(cv)
+  if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
+  
+  ## Determine effective sample size for auto core allocation
+  ## When sub-sampling CV is used, the optimization operates on n.sub-sized resamples, not the full sample
+  effective_n <- if(cv == "sub") as.integer(n.sub) else n.obs
+
   ## Manual (default) core allocation mirrors previous behavior
   if(optim.cores == "manual") {
     if(is.null(optim.ksum.cores)) {
@@ -208,7 +219,7 @@ bkcde.default <- function(h=NULL,
     if(is.null(optim.nmulti.cores)) optim.nmulti.cores <- ifelse(nmodels < nmulti,max(combn.out),min(combn.out))
   }
 
-  ## Auto mode: scale cores using detectCores(), sample size, and degree range
+  ## Auto mode: scale cores using detectCores(), effective sample size, and degree range
   if(optim.cores == "auto" && .Platform$OS.type=="unix") {
     C <- detectCores()
     ksum_max <- max(1L, as.integer(optim.ksum.auto.max))
@@ -217,12 +228,12 @@ bkcde.default <- function(h=NULL,
     ksum_thresholds <- sort(unique(as.integer(ksum_thresholds[ksum_thresholds > 0])))
     total_tasks <- nmodels * nmulti
     if(is.null(optim.ksum.cores)) {
-      ## If the outer grid already saturates available cores and n is below the first threshold, avoid ksum overhead
-      if(total_tasks <= C && length(ksum_thresholds) > 0 && n.obs < ksum_thresholds[1]) {
+      ## If the outer grid already saturates available cores and effective_n is below the first threshold, avoid ksum overhead
+      if(total_tasks <= C && length(ksum_thresholds) > 0 && effective_n < ksum_thresholds[1]) {
         optim.ksum.cores <- 1L
       } else {
         tier_levels <- pmin(ksum_max, 2L^(0:length(ksum_thresholds)))
-        tier_idx <- findInterval(n.obs, ksum_thresholds) + 1L
+        tier_idx <- findInterval(effective_n, ksum_thresholds) + 1L
         tier_idx <- min(tier_idx, length(tier_levels))
         target <- tier_levels[tier_idx]
         cap <- max(1L, floor(C/2))
@@ -264,12 +275,8 @@ bkcde.default <- function(h=NULL,
     }
   }
   if(optim.ksum.cores < 1) stop("optim.ksum.cores must be at least 1 in bkcde()")
-  cv.penalty.method <- match.arg(cv.penalty.method)
-  if(!is.logical(cv.binned)) stop("cv.binned must be logical in bkcde()")
-  bwmethod <- match.arg(bwmethod)
-  cv <- match.arg(cv)
-  if(cv == "auto") cv <- ifelse(length(y) > cv.auto.threshold,"sub","full")
   if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in bkcde()")
+
   if(!is.null(h) & bwscaling) h <- h*EssDee(cbind(y,x))*length(y)^(-1/6)
   if(warnings && is.null(h) && (length(y) > 1e4 && cv == "full" && !cv.binned)) warning("large sample size for full sample cross-validation, consider cv='sub' in bkcde() [n = ",length(y),"]",immediate. = TRUE)
   
