@@ -11,24 +11,24 @@ Core Allocation Benchmarking for bkcde
 }
 \usage{
 \method{bkcde}{co}(x, y,
-         optim.degree.cores.min = 1,
-         optim.degree.cores.max = parallel::detectCores(),
-         optim.degree.cores.by  = 1,
-         optim.nmulti.cores.min = 1,
-         optim.nmulti.cores.max = parallel::detectCores(),
-         optim.nmulti.cores.by  = 1,
-         optim.ksum.cores.min   = 1,
-         optim.ksum.cores.max   = 2,
-         optim.ksum.cores.by    = 1,
-         fitted.cores.min = 1,
-         fitted.cores.max = parallel::detectCores(),
-         fitted.cores.by  = 1,
-         proper.cores.min = 1,
-         proper.cores.max = parallel::detectCores(),
-         proper.cores.by  = 1,
-         progress = TRUE,
-         display.warnings = FALSE,
-         ...)
+      optim.degree.cores.min = 1,
+      optim.degree.cores.max = parallel::detectCores(),
+      optim.degree.cores.by  = 1,
+      optim.nmulti.cores.min = 1,
+      optim.nmulti.cores.max = parallel::detectCores(),
+      optim.nmulti.cores.by  = 1,
+      optim.ksum.cores.min   = 1,
+      optim.ksum.cores.max   = 2,
+      optim.ksum.cores.by    = 1,
+      fitted.cores.min = 1,
+      fitted.cores.max = parallel::detectCores(),
+      fitted.cores.by  = 1,
+      proper.cores.min = 1,
+      proper.cores.max = parallel::detectCores(),
+      proper.cores.by  = 1,
+      progress = TRUE,
+      display.warnings = FALSE,
+      ...)
 
 \method{summary}{bkcde.co}(object, ...)
 
