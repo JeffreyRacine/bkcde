@@ -3,7 +3,6 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(purrr)
   library(tidyr)
-  library(ggplot2)
   library(parallel)
 })
 
@@ -13,21 +12,21 @@ suppressPackageStartupMessages({
 
 # Data generation
 set.seed(42)
-n <- 1000
+n <- 250
 
 # Core sweep parameters for optimization
 # Note: Going beyond detectCores() can help if tasks finish at different rates
 # (e.g., lower-degree polynomials finish faster, allowing idle cores to pick up work)
 optim.degree.cores.min <- 1
-optim.degree.cores.max <- 1.5*detectCores()
-optim.degree.cores.by  <- 2
+optim.degree.cores.max <- 2
+optim.degree.cores.by  <- 1
 
 optim.nmulti.cores.min <- 1
-optim.nmulti.cores.max <- 1.5*detectCores()
-optim.nmulti.cores.by  <- 2
+optim.nmulti.cores.max <- 2
+optim.nmulti.cores.by  <- 1
 
 optim.ksum.cores.min <- 1
-optim.ksum.cores.max <- 2  # Keep modest; ksum parallelism often has overhead
+optim.ksum.cores.max <- 2
 optim.ksum.cores.by  <- 1
 
 # Core sweep parameters for fitting
@@ -259,7 +258,7 @@ if (nrow(best) == 1) {
       
       # Final summary: all five parameters
       cat("\n", strrep("=", 70), "\n", sep = "")
-      cat("FINAL RECOMMENDATIONS\n")
+      cat("FINAL RECOMMENDATIONS (TUNED)\n")
       cat(strrep("=", 70), "\n", sep = "")
       cat("\nOptimization (cv.only) parameters:\n")
       cat("  optim.degree.cores =", best$optim.degree.cores, "\n")
@@ -268,7 +267,7 @@ if (nrow(best) == 1) {
       cat("\nFitting parameters:\n")
       cat("  fitted.cores =", best_fitted$fitted.cores, "\n")
       cat("  proper.cores =", best_proper$proper.cores, "\n")
-      cat("\nSuggested bkcde() call:\n")
+      cat("\nSuggested bkcde() call (tuned):\n")
       cat("  f.yx <- bkcde(x=x, y=y, bwmethod='cv.ml',\n")
       cat("               optim.cores='manual',\n")
       cat("               optim.degree.cores=", best$optim.degree.cores, ",\n", sep = "")
@@ -277,22 +276,91 @@ if (nrow(best) == 1) {
       cat("               fitted.cores=", best_fitted$fitted.cores, ",\n", sep = "")
       cat("               proper=TRUE, proper.cores=", best_proper$proper.cores, ")\n", sep = "")
       cat("\n", strrep("=", 70), "\n", sep = "")
+      
+      # Now run with default options (optim.cores='auto')
+      cat("\n=== Running with DEFAULT options (optim.cores='auto') ===\n")
+      
+      fit_default <- tryCatch({
+        bkcde(
+          x = x, y = y,
+          bwmethod = "cv.ml",
+          proper = TRUE
+          # All other params use defaults, optim.cores='auto'
+        )
+      }, error = function(e) {
+        cat("Error running default configuration:", conditionMessage(e), "\n")
+        NULL
+      })
+      
+      if (!is.null(fit_default)) {
+        cat("\nDefault configuration completed.\n")
+        cat("Optimal h.y =", fit_default$h[1], ", h.x =", fit_default$h[2], 
+            ", degree =", fit_default$degree, "\n")
+        
+        # Compare timings: tuned should include optimization + fitting + proper
+        # Best optimization time (cv.only stage)
+        best_optim_elapsed <- best$optim_elapsed
+        # Best fitting time (already included in proper stage)
+        best_fit_elapsed <- best_fitted$elapsed_fit
+        # Best proper time (includes fitting)
+        best_proper_elapsed <- best_proper$elapsed_total
+        
+        # Total tuned: optimization stage + proper stage (proper includes fitting)
+        tuned_total <- best_optim_elapsed + best_proper_elapsed
+        default_total <- fit_default$secs.elapsed
+        speedup_factor <- default_total / tuned_total
+        time_saved <- default_total - tuned_total
+        
+        cat("\n", strrep("=", 70), "\n", sep = "")
+        cat("PERFORMANCE COMPARISON (FULL WORKFLOW)\n")
+        cat(strrep("=", 70), "\n", sep = "")
+        cat("\nTuned configuration breakdown:\n")
+        cat("  Optimization (cv.only):  ", formatC(best_optim_elapsed, format="f", digits=4), " sec\n", sep = "")
+        cat("  Fitting + Proper:        ", formatC(best_proper_elapsed, format="f", digits=4), " sec\n", sep = "")
+        cat("  ────────────────────────────────\n")
+        cat("  TOTAL (tuned):           ", formatC(tuned_total, format="f", digits=4), " sec\n\n", sep = "")
+        cat("Default (auto) configuration: ", formatC(default_total, format="f", digits=4), " sec\n", sep = "")
+        
+        if (speedup_factor > 1) {
+          cat("\nResult: Tuned is FASTER\n")
+          cat("  ", formatC(speedup_factor, format="f", digits=2), "x faster\n", sep = "")
+          cat("  Time saved: ", formatC(time_saved, format="f", digits=4), " sec\n", sep = "")
+        } else if (speedup_factor < 1) {
+          cat("\nResult: Tuned is SLOWER\n")
+          cat("  ", formatC(1/speedup_factor, format="f", digits=2), "x slower\n", sep = "")
+          cat("  Time cost: ", formatC(-time_saved, format="f", digits=4), " sec\n", sep = "")
+        } else {
+          cat("\nResult: Equivalent performance\n")
+        }
+        cat("\n", strrep("=", 70), "\n", sep = "")
+        
+        cat("\n", strrep("=", 70), "\n", sep = "")
+        cat("PARAMETER COMPARISON\n")
+        cat(strrep("=", 70), "\n", sep = "")
+        cat("\nTuned configuration:\n")
+        cat("  degree =", fit_opt$degree, "\n")
+        cat("  h.y    =", formatC(fit_opt$h[1], format="f", digits=8), "\n")
+        cat("  h.x    =", formatC(fit_opt$h[2], format="f", digits=8), "\n")
+        cat("\nDefault (auto) configuration:\n")
+        cat("  degree =", fit_default$degree, "\n")
+        cat("  h.y    =", formatC(fit_default$h[1], format="f", digits=8), "\n")
+        cat("  h.x    =", formatC(fit_default$h[2], format="f", digits=8), "\n")
+        
+        # Check if parameters match
+        params_match <- (fit_opt$degree == fit_default$degree &&
+                         abs(fit_opt$h[1] - fit_default$h[1]) < 1e-6 &&
+                         abs(fit_opt$h[2] - fit_default$h[2]) < 1e-6)
+        
+        if (params_match) {
+          cat("\nNote: Both configurations converged to THE SAME parameters.\n")
+        } else {
+          cat("\nNote: Configurations converged to DIFFERENT parameters.\n")
+        }
+        cat("\n", strrep("=", 70), "\n", sep = "")
+      }
     }
     
     write.csv(fitted_results, "benchmark_fitted_results.csv", row.names = FALSE)
     write.csv(proper_results, "benchmark_proper_results.csv", row.names = FALSE)
   }
 }
-
-# Optional: simple heat map of optimization elapsed time by degree/nmulti, faceted by ksum
-p <- ggplot(results, aes(x = factor(optim.degree.cores),
-                        y = factor(optim.nmulti.cores),
-                        fill = optim_elapsed)) +
-  geom_tile(color = "white") +
-  facet_wrap(~ optim.ksum.cores, labeller = label_both) +
-  scale_fill_viridis_c(name = "Elapsed (s)") +
-  labs(x = "optim.degree.cores", y = "optim.nmulti.cores",
-       title = "bkcde cv-only elapsed time by core allocation")
-
-ggsave("benchmark_heatmap.png", p, width = 8, height = 4, dpi = 150)
-cat("\nSaved results to benchmark_results.csv and plot to benchmark_heatmap.png\n")
