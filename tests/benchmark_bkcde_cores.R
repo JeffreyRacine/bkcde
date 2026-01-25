@@ -4,20 +4,63 @@ suppressPackageStartupMessages({
   library(purrr)
   library(tidyr)
   library(ggplot2)
+  library(parallel)
 })
 
-set.seed(42)
+## ============================================================================
+## Configuration: adjust these to suit your machine and exploration needs
+## ============================================================================
 
-n <- 500
+# Data generation
+set.seed(42)
+n <- 100
+
+# Core sweep parameters for optimization
+# Note: Going beyond detectCores() can help if tasks finish at different rates
+# (e.g., lower-degree polynomials finish faster, allowing idle cores to pick up work)
+optim.degree.cores.min <- 1
+optim.degree.cores.max <- 3 # detectCores()
+optim.degree.cores.by  <- 2
+
+optim.nmulti.cores.min <- 1
+optim.nmulti.cores.max <- 3 #detectCores()
+optim.nmulti.cores.by  <- 2
+
+optim.ksum.cores.min <- 1
+optim.ksum.cores.max <- 2  # Keep modest; ksum parallelism often has overhead
+optim.ksum.cores.by  <- 1
+
+# Core sweep parameters for fitting
+fitted.cores.min <- 1
+fitted.cores.max <- min(4, detectCores())  # Fitting often benefits less from parallelism
+fitted.cores.by  <- 1
+
+## ============================================================================
+## Data generation
+## ============================================================================
+
 x <- runif(n, 0, 1)
 y <- rnorm(n, mean = 2 * sin(4 * pi * x), sd = 1 + abs(x))
 
-# Adjust the grids to suit your machine.
+## ============================================================================
+## Build optimization grid
+## ============================================================================
+
 grid <- expand_grid(
-  optim.degree.cores = c(1, 2, 4, 8),
-  optim.nmulti.cores = c(1, 2, 4, 8),
-  optim.ksum.cores   = c(1, 2)
+  optim.degree.cores = seq(optim.degree.cores.min, optim.degree.cores.max, by = optim.degree.cores.by),
+  optim.nmulti.cores = seq(optim.nmulti.cores.min, optim.nmulti.cores.max, by = optim.nmulti.cores.by),
+  optim.ksum.cores   = seq(optim.ksum.cores.min, optim.ksum.cores.max, by = optim.ksum.cores.by)
 )
+
+cat("Detected cores:", detectCores(), "\n")
+cat("Optimization grid size:", nrow(grid), "configurations\n")
+cat("Core ranges: degree=[", min(grid$optim.degree.cores), ",", max(grid$optim.degree.cores),
+    "], nmulti=[", min(grid$optim.nmulti.cores), ",", max(grid$optim.nmulti.cores),
+    "], ksum=[", min(grid$optim.ksum.cores), ",", max(grid$optim.ksum.cores), "]\n\n", sep = "")
+
+## ============================================================================
+## Benchmark optimization (cv.only)
+## ============================================================================
 
 run_one <- function(optim.degree.cores, optim.nmulti.cores, optim.ksum.cores) {
   cat(sprintf("Running deg=%d nmulti=%d ksum=%d ...\n",
@@ -111,7 +154,9 @@ if (nrow(best) == 1) {
   
   cat("Optimal h.y =", fit_opt$h[1], ", h.x =", fit_opt$h[2], ", degree =", fit_opt$degree, "\n")
   
-  fitted_grid <- tibble(fitted.cores = c(1, 2, 4, 8))
+  fitted_grid <- tibble(
+    fitted.cores = seq(fitted.cores.min, fitted.cores.max, by = fitted.cores.by)
+  )
   
   run_fitted <- function(fitted.cores) {
     cat(sprintf("  Testing fitted.cores=%d ...\n", fitted.cores))
