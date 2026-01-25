@@ -3,8 +3,8 @@ Imports: MCPAN, parallel, pbmcapply, robustbase, stats
 Suggests: lpcde, progress
 Type: Package
 Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
-Version: 1.46
-Date: 2026-01-22
+Version: 1.47
+Date: 2026-01-25
 Author: Jeffrey S. Racine
 Maintainer: Jeffrey S. Racine <racinej@mcmaster.ca>
 Description: This package contains functions to estimate an unknown smooth conditional density function f(y|x) using nonparametric kernel methods when the response may be bounded in [a,b] but the bounds may be unknown to the practitioner. It uses data-driven methods to jointly determine bandwidths, the polynomial order, and can approximate unknown bounds freeing the user from having to select any of these in applied settings. If the bounds are known, naturally they should and can be used. A computationally efficient method is also provided allowing for likelihood cross-validated choice of the bandwidths and polynomial order for large data samples.

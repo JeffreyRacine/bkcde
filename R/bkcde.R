@@ -794,6 +794,292 @@ bkcde.default <- function(h=NULL,
 ## function calls.
 
 
+## bkcde.co(): core allocation benchmarking and recommendation helper
+
+bkcde.co <- function(x, y,
+                     optim.degree.cores.min = 1,
+                     optim.degree.cores.max = parallel::detectCores(),
+                     optim.degree.cores.by  = 1,
+                     optim.nmulti.cores.min = 1,
+                     optim.nmulti.cores.max = parallel::detectCores(),
+                     optim.nmulti.cores.by  = 1,
+                     optim.ksum.cores.min   = 1,
+                     optim.ksum.cores.max   = 2,
+                     optim.ksum.cores.by    = 1,
+                     fitted.cores.min = 1,
+                     fitted.cores.max = parallel::detectCores(),
+                     fitted.cores.by  = 1,
+                     proper.cores.min = 1,
+                     proper.cores.max = parallel::detectCores(),
+                     proper.cores.by  = 1,
+                     progress = TRUE,
+                     display.warnings = FALSE,
+                     ...) {
+  if(!is.numeric(x)) stop("x must be numeric in bkcde.co()")
+  if(!is.numeric(y)) stop("y must be numeric in bkcde.co()")
+  if(length(x) != length(y)) stop("length of x must equal length of y in bkcde.co()")
+  if(!is.logical(display.warnings) || length(display.warnings) != 1) stop("display.warnings must be a single logical in bkcde.co()")
+  if(progress && !requireNamespace("progress", quietly = TRUE)) stop("progress package required when progress=TRUE")
+  ## Build grids
+  optim.grid <- expand.grid(
+    optim.degree.cores = seq(optim.degree.cores.min, optim.degree.cores.max, by = optim.degree.cores.by),
+    optim.nmulti.cores = seq(optim.nmulti.cores.min, optim.nmulti.cores.max, by = optim.nmulti.cores.by),
+    optim.ksum.cores   = seq(optim.ksum.cores.min, optim.ksum.cores.max, by = optim.ksum.cores.by)
+  )
+  fitted.grid <- data.frame(fitted.cores = seq(fitted.cores.min, fitted.cores.max, by = fitted.cores.by))
+  proper.grid <- data.frame(proper.cores = seq(proper.cores.min, proper.cores.max, by = proper.cores.by))
+  ## Helper to tick progress
+  new_pb <- function(total) {
+    if(!progress) return(NULL)
+    progress::progress_bar$new(format = "[:bar] :percent ETA: :eta", clear = TRUE, force = TRUE, total = total)
+  }
+  ## Stage 1: optimization grid (cv.only)
+  pb1 <- new_pb(nrow(optim.grid))
+  run_one <- function(row) {
+    if(progress && !is.null(pb1)) pb1$tick()
+    oc <- optim.grid[row, , drop = FALSE]
+    res <- tryCatch({
+      fit <- bkcde(x = x, y = y,
+                   cv.only = TRUE,
+                   optim.cores = "manual",
+                   optim.degree.cores = oc$optim.degree.cores,
+                   optim.nmulti.cores = oc$optim.nmulti.cores,
+                   optim.ksum.cores = oc$optim.ksum.cores,
+                   fitted.cores = 1,
+                   proper.cores = 1,
+                   progress = FALSE,
+                   display.warnings = display.warnings,
+                   ...)
+      optim_cpu <- sum(fit$secs.optim.mat, na.rm = TRUE)
+      optim_elapsed <- fit$secs.optim.elapsed
+      opt_cores <- max(1, fit$optim.ksum.cores * fit$optim.degree.cores * fit$optim.nmulti.cores)
+      speedup_opt <- optim_cpu / max(1e-9, optim_elapsed)
+      eff_opt <- speedup_opt / opt_cores
+      cbind(oc,
+            data.frame(elapsed_total = fit$secs.elapsed,
+                       optim_cpu = optim_cpu,
+                       optim_elapsed = optim_elapsed,
+                       speedup_opt = speedup_opt,
+                       eff_opt = eff_opt,
+                       convergence = fit$convergence,
+                       error = NA_character_))
+    }, error = function(e) {
+      cbind(oc,
+            data.frame(elapsed_total = NA_real_,
+                       optim_cpu = NA_real_,
+                       optim_elapsed = NA_real_,
+                       speedup_opt = NA_real_,
+                       eff_opt = NA_real_,
+                       convergence = NA_integer_,
+                       error = conditionMessage(e)))
+    })
+    res
+  }
+  optim.results <- do.call(rbind, lapply(seq_len(nrow(optim.grid)), run_one))
+  best.optim <- subset(optim.results,
+                       (is.na(error) | error == "") & !is.na(optim_elapsed) & !is.na(convergence) & convergence == 0)
+  if(nrow(best.optim) == 0) {
+    warning("No convergence==0 optimization runs; selecting fastest non-error run (may be non-converged)")
+    fallback <- subset(optim.results, (is.na(error) | error == "") & !is.na(optim_elapsed))
+    if(nrow(fallback) == 0) {
+      warning("No successful optimization runs in bkcde.co(); returning results table for inspection")
+      ret <- list(call = match.call(),
+                  optim.grid = optim.grid,
+                  optim.results = optim.results,
+                  error = "no-success")
+      class(ret) <- "bkcde.co"
+      return(ret)
+    }
+    best.optim <- fallback[order(fallback$optim_elapsed), , drop = FALSE][1, , drop = FALSE]
+    best.optim$note <- "non-converged"
+  } else {
+    best.optim <- best.optim[order(best.optim$optim_elapsed), , drop = FALSE][1, , drop = FALSE]
+    best.optim$note <- "converged"
+  }
+  ## Stage 2: fit to get h/degree
+  fit.opt <- bkcde(x = x, y = y,
+                   cv.only = TRUE,
+                   optim.cores = "manual",
+                   optim.degree.cores = best.optim$optim.degree.cores,
+                   optim.nmulti.cores = best.optim$optim.nmulti.cores,
+                   optim.ksum.cores = best.optim$optim.ksum.cores,
+                   fitted.cores = 1,
+                   proper.cores = 1,
+                   progress = FALSE,
+                   display.warnings = display.warnings,
+                   ...)
+  ## Stage 3: fitted.cores sweep
+  pb2 <- new_pb(nrow(fitted.grid))
+  run_fitted <- function(row) {
+    if(progress && !is.null(pb2)) pb2$tick()
+    fc <- fitted.grid$fitted.cores[row]
+    out <- tryCatch({
+      fit <- bkcde(x = x, y = y,
+                   h = fit.opt$h,
+                   degree = fit.opt$degree,
+                   fitted.cores = fc,
+                   proper.cores = 1,
+                   progress = FALSE,
+                   display.warnings = display.warnings,
+                   ...)
+      data.frame(fitted.cores = fc,
+                 elapsed_total = fit$secs.elapsed,
+                 elapsed_fit = fit$secs.estimate,
+                 error = NA_character_)
+    }, error = function(e) {
+      data.frame(fitted.cores = fc,
+                 elapsed_total = NA_real_,
+                 elapsed_fit = NA_real_,
+                 error = conditionMessage(e))
+    })
+    out
+  }
+  fitted.results <- do.call(rbind, lapply(seq_len(nrow(fitted.grid)), run_fitted))
+  best.fitted <- subset(fitted.results, (is.na(error) | error == "") & !is.na(elapsed_fit))
+  best.fitted <- best.fitted[order(best.fitted$elapsed_fit, best.fitted$fitted.cores), , drop = FALSE][1, , drop = FALSE]
+  ## Stage 4: proper.cores sweep
+  pb3 <- new_pb(nrow(proper.grid))
+  run_proper <- function(row) {
+    if(progress && !is.null(pb3)) pb3$tick()
+    pc <- proper.grid$proper.cores[row]
+    out <- tryCatch({
+      fit <- bkcde(x = x, y = y,
+                   h = fit.opt$h,
+                   degree = fit.opt$degree,
+                   proper = TRUE,
+                   fitted.cores = best.fitted$fitted.cores,
+                   proper.cores = pc,
+                   progress = FALSE,
+                   display.warnings = display.warnings,
+                   ...)
+      data.frame(proper.cores = pc,
+                 elapsed_total = fit$secs.elapsed,
+                 elapsed_proper = fit$secs.elapsed - fit$secs.estimate,
+                 error = NA_character_)
+    }, error = function(e) {
+      data.frame(proper.cores = pc,
+                 elapsed_total = NA_real_,
+                 elapsed_proper = NA_real_,
+                 error = conditionMessage(e))
+    })
+    out
+  }
+  proper.results <- do.call(rbind, lapply(seq_len(nrow(proper.grid)), run_proper))
+  best.proper <- subset(proper.results, (is.na(error) | error == "") & !is.na(elapsed_total))
+  best.proper <- best.proper[order(best.proper$elapsed_total, best.proper$proper.cores), , drop = FALSE][1, , drop = FALSE]
+  ## Tuned totals: re-run full pipeline with tuned settings to include full overhead
+  tuned.fit <- tryCatch({
+    bkcde(x = x, y = y,
+          bwmethod = "cv.ml",
+          optim.cores = "manual",
+          optim.degree.cores = best.optim$optim.degree.cores,
+          optim.nmulti.cores = best.optim$optim.nmulti.cores,
+          optim.ksum.cores = best.optim$optim.ksum.cores,
+          fitted.cores = best.fitted$fitted.cores,
+          proper = TRUE,
+          proper.cores = best.proper$proper.cores,
+          progress = progress,
+          display.warnings = display.warnings,
+          ...)
+  }, error = function(e) NULL)
+  tuned_total <- if(!is.null(tuned.fit)) tuned.fit$secs.elapsed else NA_real_
+  tuned_breakdown <- list(
+    optim = if(!is.null(tuned.fit)) tuned.fit$secs.optim.elapsed else NA_real_,
+    proper = if(!is.null(tuned.fit) && !is.null(tuned.fit$secs.elapsed) && !is.null(tuned.fit$secs.optim.elapsed))
+               tuned.fit$secs.elapsed - tuned.fit$secs.optim.elapsed else NA_real_
+  )
+  ## Default (auto) run
+  fit.default <- tryCatch({
+    bkcde(x = x, y = y,
+          bwmethod = "cv.ml",
+          proper = TRUE,
+      progress = progress,
+      display.warnings = display.warnings,
+          ...)
+  }, error = function(e) NULL)
+  default_total <- if(!is.null(fit.default)) fit.default$secs.elapsed else NA_real_
+  speedup_factor <- if(is.finite(default_total) && is.finite(tuned_total) && tuned_total > 0) default_total / tuned_total else NA_real_
+  time_saved <- if(is.finite(default_total) && is.finite(tuned_total)) default_total - tuned_total else NA_real_
+  params_match <- FALSE
+  if(!is.null(fit.default)) {
+    params_match <- (fit.opt$degree == fit.default$degree &&
+                     abs(fit.opt$h[1] - fit.default$h[1]) < 1e-6 &&
+                     abs(fit.opt$h[2] - fit.default$h[2]) < 1e-6)
+  }
+  ret <- list(call = match.call(),
+              optim.grid = optim.grid,
+              optim.results = optim.results,
+              best.optim = best.optim,
+              fit.opt = fit.opt,
+              fitted.grid = fitted.grid,
+              fitted.results = fitted.results,
+              best.fitted = best.fitted,
+              proper.grid = proper.grid,
+              proper.results = proper.results,
+              best.proper = best.proper,
+              tuned_total = tuned_total,
+              tuned_breakdown = tuned_breakdown,
+              tuned.fit = tuned.fit,
+              default.fit = fit.default,
+              default_total = default_total,
+              speedup_factor = speedup_factor,
+              time_saved = time_saved,
+              params_match = params_match)
+  class(ret) <- "bkcde.co"
+  return(ret)
+}
+
+print.bkcde.co <- function(x, ...) {
+  summary(x, ...)
+}
+
+summary.bkcde.co <- function(object, ...) {
+  if(!is.null(object$error)) {
+    cat("bkcde core optimization summary\n\n")
+    cat("No successful optimization runs. Inspect object$optim.results for details.\n")
+    invisible(object)
+    return(invisible(object))
+  }
+  cat("bkcde core optimization summary\n\n")
+  cat("Best optimization cores: degree=", object$best.optim$optim.degree.cores,
+      ", nmulti=", object$best.optim$optim.nmulti.cores,
+      ", ksum=", object$best.optim$optim.ksum.cores, "\n", sep = "")
+  cat("Best fitted.cores: ", object$best.fitted$fitted.cores, "\n", sep = "")
+  cat("Best proper.cores: ", object$best.proper$proper.cores, "\n", sep = "")
+  cat("\n")
+  if(is.finite(object$tuned_total)) {
+    cat("Tuned total (sec): ", formatC(object$tuned_total, format="f", digits=4), "\n", sep = "")
+  }
+  if(is.finite(object$default_total)) {
+    cat("Default (auto) total (sec): ", formatC(object$default_total, format="f", digits=4), "\n", sep = "")
+  }
+  if(is.finite(object$speedup_factor)) {
+    cat("\n")
+    if(object$speedup_factor > 1) {
+      cat("Speedup vs default: ", formatC(object$speedup_factor, format="f", digits=2), "x faster (saved ",
+          formatC(object$time_saved, format="f", digits=4), " sec)\n", sep = "")
+    } else if(object$speedup_factor < 1) {
+      cat("Result: tuned slower (", formatC(1/object$speedup_factor, format="f", digits=2),
+          "x), cost ", formatC(-object$time_saved, format="f", digits=4), " sec\n", sep = "")
+    } else {
+      cat("Result: tuned equal to default\n")
+    }
+  }
+    cat("\nParameters:\n")
+    tuned_params <- if(!is.null(object$tuned.fit)) object$tuned.fit else object$fit.opt
+    cat("  Tuned degree=", tuned_params$degree,
+      ", h.y=", formatC(tuned_params$h[1], format="f", digits=8),
+      ", h.x=", formatC(tuned_params$h[2], format="f", digits=8), "\n", sep = "")
+  if(!is.null(object$default.fit)) {
+    cat("  Default degree=", object$default.fit$degree,
+        ", h.y=", formatC(object$default.fit$h[1], format="f", digits=8),
+        ", h.x=", formatC(object$default.fit$h[2], format="f", digits=8), "\n", sep = "")
+    cat("  Params match: ", if(object$params_match) "yes" else "no", "\n", sep = "")
+  }
+  invisible(object)
+}
+
+
 
 
 ## plot.bkcde() is used to plot the results of the boundary kernel estimate of
