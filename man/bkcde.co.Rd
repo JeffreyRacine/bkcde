@@ -10,7 +10,7 @@ Core Allocation Benchmarking for bkcde
 \code{bkcde.co} is a helper function that benchmarks core allocation strategies for the \code{\link{bkcde}} function by sweeping over optimization, fitting, and proper cores parameters. It identifies the fastest core configuration and compares its performance against the default (\code{optim.cores="auto"}) configuration. The function returns an object containing detailed timing results, optimal core settings, and parameter comparisons.
 }
 \usage{
-bkcde.co(x, y,
+\method{bkcde}{co}(x, y,
          optim.degree.cores.min = 1,
          optim.degree.cores.max = parallel::detectCores(),
          optim.degree.cores.by  = 1,
