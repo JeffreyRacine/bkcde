@@ -13,17 +13,17 @@ suppressPackageStartupMessages({
 
 # Data generation
 set.seed(42)
-n <- 100
+n <- 1000
 
 # Core sweep parameters for optimization
 # Note: Going beyond detectCores() can help if tasks finish at different rates
 # (e.g., lower-degree polynomials finish faster, allowing idle cores to pick up work)
 optim.degree.cores.min <- 1
-optim.degree.cores.max <- 3 # detectCores()
+optim.degree.cores.max <- 1.5*detectCores()
 optim.degree.cores.by  <- 2
 
 optim.nmulti.cores.min <- 1
-optim.nmulti.cores.max <- 3 #detectCores()
+optim.nmulti.cores.max <- 1.5*detectCores()
 optim.nmulti.cores.by  <- 2
 
 optim.ksum.cores.min <- 1
@@ -32,8 +32,13 @@ optim.ksum.cores.by  <- 1
 
 # Core sweep parameters for fitting
 fitted.cores.min <- 1
-fitted.cores.max <- min(4, detectCores())  # Fitting often benefits less from parallelism
+fitted.cores.max <- min(6, detectCores())  # Fitting often benefits less from parallelism
 fitted.cores.by  <- 1
+
+# Core sweep parameters for proper (ensuring proper density)
+proper.cores.min <- 1
+proper.cores.max <- min(6, detectCores())  # Proper enforcement also benefits less from parallelism
+proper.cores.by  <- 1
 
 ## ============================================================================
 ## Data generation
@@ -200,9 +205,83 @@ if (nrow(best) == 1) {
   
   if (nrow(best_fitted) == 1) {
     cat("\nSuggested fitted.cores =", best_fitted$fitted.cores, "\n")
+    
+    # Now benchmark proper.cores with proper=TRUE
+    cat("\n=== Running proper.cores benchmark with proper=TRUE ===\n")
+    
+    proper_grid <- tibble(
+      proper.cores = seq(proper.cores.min, proper.cores.max, by = proper.cores.by)
+    )
+    
+    run_proper <- function(proper.cores) {
+      cat(sprintf("  Testing proper.cores=%d ...\n", proper.cores))
+      tryCatch({
+        fit <- bkcde(
+          x = x, y = y,
+          h = fit_opt$h,
+          degree = fit_opt$degree,
+          proper = TRUE,
+          fitted.cores = best_fitted$fitted.cores,
+          proper.cores = proper.cores
+        )
+        
+        tibble(
+          proper.cores = proper.cores,
+          elapsed_total = fit$secs.elapsed,
+          elapsed_proper = fit$secs.elapsed - fit$secs.estimate,  # Approximate proper time
+          error = NA_character_
+        )
+      }, error = function(e) {
+        tibble(
+          proper.cores = proper.cores,
+          elapsed_total = NA_real_,
+          elapsed_proper = NA_real_,
+          error = conditionMessage(e)
+        )
+      })
+    }
+    
+    proper_results <- pmap_dfr(proper_grid, run_proper)
+    
+    print(proper_results)
+    
+    # Pick best: lowest elapsed_total; in ties prefer fewest cores
+    best_proper <- proper_results %>%
+      filter(is.na(error) | error == "", !is.na(elapsed_total)) %>%
+      arrange(elapsed_total, proper.cores) %>%
+      slice_head(n = 1)
+    
+    cat("\nBest proper.cores (lowest total elapsed, fewest cores in ties):\n")
+    print(best_proper)
+    
+    if (nrow(best_proper) == 1) {
+      cat("\nSuggested proper.cores =", best_proper$proper.cores, "\n")
+      
+      # Final summary: all five parameters
+      cat("\n", strrep("=", 70), "\n", sep = "")
+      cat("FINAL RECOMMENDATIONS\n")
+      cat(strrep("=", 70), "\n", sep = "")
+      cat("\nOptimization (cv.only) parameters:\n")
+      cat("  optim.degree.cores =", best$optim.degree.cores, "\n")
+      cat("  optim.nmulti.cores =", best$optim.nmulti.cores, "\n")
+      cat("  optim.ksum.cores   =", best$optim.ksum.cores, "\n")
+      cat("\nFitting parameters:\n")
+      cat("  fitted.cores =", best_fitted$fitted.cores, "\n")
+      cat("  proper.cores =", best_proper$proper.cores, "\n")
+      cat("\nSuggested bkcde() call:\n")
+      cat("  f.yx <- bkcde(x=x, y=y, bwmethod='cv.ml',\n")
+      cat("               optim.cores='manual',\n")
+      cat("               optim.degree.cores=", best$optim.degree.cores, ",\n", sep = "")
+      cat("               optim.nmulti.cores=", best$optim.nmulti.cores, ",\n", sep = "")
+      cat("               optim.ksum.cores=", best$optim.ksum.cores, ",\n", sep = "")
+      cat("               fitted.cores=", best_fitted$fitted.cores, ",\n", sep = "")
+      cat("               proper=TRUE, proper.cores=", best_proper$proper.cores, ")\n", sep = "")
+      cat("\n", strrep("=", 70), "\n", sep = "")
+    }
+    
+    write.csv(fitted_results, "benchmark_fitted_results.csv", row.names = FALSE)
+    write.csv(proper_results, "benchmark_proper_results.csv", row.names = FALSE)
   }
-  
-  write.csv(fitted_results, "benchmark_fitted_results.csv", row.names = FALSE)
 }
 
 # Optional: simple heat map of optimization elapsed time by degree/nmulti, faceted by ksum
