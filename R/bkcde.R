@@ -1041,11 +1041,28 @@ summary.bkcde.co <- function(object, ...) {
     return(invisible(object))
   }
   cat("bkcde core optimization summary\n\n")
+  ## Report grids tested
+  cat("Optim degree cores tested: ", paste(sort(unique(object$optim.grid$optim.degree.cores)), collapse = " "), "\n", sep = "")
+  cat("Optim nmulti cores tested: ", paste(sort(unique(object$optim.grid$optim.nmulti.cores)), collapse = " "), "\n", sep = "")
+  cat("Optim ksum cores tested:   ", paste(sort(unique(object$optim.grid$optim.ksum.cores)), collapse = " "), "\n", sep = "")
+  cat("Fitted cores tested:       ", paste(sort(unique(object$fitted.grid$fitted.cores)), collapse = " "), "\n", sep = "")
+  cat("Proper cores tested:       ", paste(sort(unique(object$proper.grid$proper.cores)), collapse = " "), "\n\n", sep = "")
   cat("Best optimization cores: degree=", object$best.optim$optim.degree.cores,
       ", nmulti=", object$best.optim$optim.nmulti.cores,
       ", ksum=", object$best.optim$optim.ksum.cores, "\n", sep = "")
   cat("Best fitted.cores: ", object$best.fitted$fitted.cores, "\n", sep = "")
   cat("Best proper.cores: ", object$best.proper$proper.cores, "\n", sep = "")
+  if(!is.null(object$default.fit)) {
+    cat("Default (auto) optimization cores: degree=", object$default.fit$optim.degree.cores,
+        ", nmulti=", object$default.fit$optim.nmulti.cores,
+        ", ksum=", object$default.fit$optim.ksum.cores, "\n", sep = "")
+    if(!is.null(object$default.fit$fitted.cores)) {
+      cat("Default (auto) fitted.cores: ", object$default.fit$fitted.cores, "\n", sep = "")
+    }
+    if(!is.null(object$default.fit$proper.cores)) {
+      cat("Default (auto) proper.cores: ", object$default.fit$proper.cores, "\n", sep = "")
+    }
+  }
   cat("\n")
   if(is.finite(object$tuned_total)) {
     cat("Tuned total (sec): ", formatC(object$tuned_total, format="f", digits=4), "\n", sep = "")
