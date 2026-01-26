@@ -43,6 +43,9 @@ res <- bkcde.co(x, y,
                 display.warnings = FALSE)
 ```
 
+
+This simulation is based on $n = `r n`$ data points, with $x$ uniformly distributed in [0, 1] and $y$ generated from a sinusoidal function with added noise. 
+
 ```{r}
 #| label: microbench
 #| echo: false
@@ -82,7 +85,7 @@ median_speedup <- median_default / median_tuned
 ```
 
 ```{r}
-#| label: summary-table-final
+#| label: tbl-summary-table-final
 #| echo: false
 #| message: false
 #| warning: false
