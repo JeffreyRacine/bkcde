@@ -9,7 +9,7 @@ format:
 
 # Overview
 
-This document benchmarks the performance of the default and tuned core allocations in the `bkcde` package using simulated data. The tuning is performed with `bkcde.co`, and timing comparisons are made using the `microbenchmark` package. Both mean and median speedups are reported.
+This document benchmarks the performance of the default and tuned core allocations in the `bkcde` package using simulated data. The tuning is performed with `bkcdeco`, and timing comparisons are made using the `microbenchmark` package. Both mean and median speedups are reported.
 
 ```{r}
 #| label: setup
@@ -30,7 +30,7 @@ x <- runif(n, 0, 1)
 y <- rnorm(n, mean = 2 * sin(4 * pi * x), sd = 1 + abs(x))
 
 # Benchmark core allocations with a small grid
-res <- bkcde.co(x, y,
+res <- bkcdeco(x, y,
                 optim.degree.cores.min = 1,
                 optim.degree.cores.max = 6,
                 optim.nmulti.cores.min = 1,

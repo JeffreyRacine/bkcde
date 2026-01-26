@@ -1,38 +1,31 @@
-\name{bkcde.co}
-\alias{bkcde.co}
-\alias{summary.bkcde.co}
-\alias{print.bkcde.co}
+\name{bkcdeco}
+\alias{bkcdeco}
 
 \title{
 Core Allocation Benchmarking for bkcde
 }
 \description{
-\code{bkcde.co} is a helper function that benchmarks core allocation strategies for the \code{\link{bkcde}} function by sweeping over optimization, fitting, and proper cores parameters. It identifies the fastest core configuration and compares its performance against the default (\code{optim.cores="auto"}) configuration. The function returns an object containing detailed timing results, optimal core settings, and parameter comparisons.
+\code{bkcdeco} is a helper function that benchmarks core allocation strategies for the \code{\link{bkcde}} function by sweeping over optimization, fitting, and proper cores parameters. It identifies the fastest core configuration and compares its performance against the default (\code{optim.cores="auto"}) configuration. The function returns an object containing detailed timing results, optimal core settings, and parameter comparisons.
 }
-\usage{
-\method{bkcde}{co}(x, y,
-      optim.degree.cores.min = 1,
-      optim.degree.cores.max = parallel::detectCores(),
-      optim.degree.cores.by  = 1,
-      optim.nmulti.cores.min = 1,
-      optim.nmulti.cores.max = parallel::detectCores(),
-      optim.nmulti.cores.by  = 1,
-      optim.ksum.cores.min   = 1,
-      optim.ksum.cores.max   = 2,
-      optim.ksum.cores.by    = 1,
-      fitted.cores.min = 1,
-      fitted.cores.max = parallel::detectCores(),
-      fitted.cores.by  = 1,
-      proper.cores.min = 1,
-      proper.cores.max = parallel::detectCores(),
-      proper.cores.by  = 1,
-      progress = TRUE,
-      display.warnings = FALSE,
-      ...)
-
-\method{summary}{bkcde.co}(object, ...)
-
-\method{print}{bkcde.co}(x, ...)
+\usage{bkcdeco(x, y,
+        optim.degree.cores.min = 1,
+        optim.degree.cores.max = parallel::detectCores(),
+        optim.degree.cores.by  = 1,
+        optim.nmulti.cores.min = 1,
+        optim.nmulti.cores.max = parallel::detectCores(),
+        optim.nmulti.cores.by  = 1,
+        optim.ksum.cores.min   = 1,
+        optim.ksum.cores.max   = 2,
+        optim.ksum.cores.by    = 1,
+        fitted.cores.min = 1,
+        fitted.cores.max = parallel::detectCores(),
+        fitted.cores.by  = 1,
+        proper.cores.min = 1,
+        proper.cores.max = parallel::detectCores(),
+        proper.cores.by  = 1,
+        progress = TRUE,
+        display.warnings = FALSE,
+        ...)
 }
 
 \arguments{
@@ -96,12 +89,9 @@ Core Allocation Benchmarking for bkcde
   \item{\dots}{
   additional arguments passed to \code{\link{bkcde}} (e.g., \code{bwmethod}, \code{degree.max}, etc.).
 }
-  \item{object}{
-  an object of class \code{"bkcde.co"}.
-}
 }
 \details{
-\code{bkcde.co} performs a systematic grid search over core allocation parameters for the \code{\link{bkcde}} function. The benchmarking process consists of four stages:
+\code{bkcdeco} performs a systematic grid search over core allocation parameters for the \code{\link{bkcde}} function. The benchmarking process consists of four stages:
 
 \enumerate{
   \item \strong{Optimization sweep}: Tests all combinations of \code{optim.degree.cores}, \code{optim.nmulti.cores}, and \code{optim.ksum.cores} using \code{cv.only=TRUE} to identify the fastest optimization configuration.
@@ -120,7 +110,7 @@ Progress bars (when \code{progress=TRUE}) provide visibility into each stage of 
 The comparison between tuned and default configurations uses identical \code{...} arguments to ensure fair comparison. Both runs are complete end-to-end \code{bkcde} calls, capturing all overhead.
 }
 \value{
-An object of class \code{"bkcde.co"}, which is a list containing:
+An object of class \code{"bkcdeco"}, which is a list containing:
 
 \item{call}{the matched call}
 \item{optim.grid}{data frame of all optimization core combinations tested}
@@ -161,26 +151,19 @@ x <- runif(n, 0, 1)
 y <- rnorm(n, mean = 2 * sin(4 * pi * x), sd = 1 + abs(x))
 
 # Benchmark core allocations with a small grid
-res <- bkcde.co(x, y,
-                optim.degree.cores.min = 1,
-                optim.degree.cores.max = 2,
-                optim.nmulti.cores.min = 1,
-                optim.nmulti.cores.max = 2,
-                optim.ksum.cores.min = 1,
-                optim.ksum.cores.max = 2,
-                fitted.cores.max = 4,
-                proper.cores.max = 4,
-                progress = TRUE)
+res <- bkcdeco(x, y,
+              optim.degree.cores.min = 1,
+              optim.degree.cores.max = 2,
+              optim.nmulti.cores.min = 1,
+              optim.nmulti.cores.max = 2,
+              optim.ksum.cores.min = 1,
+              optim.ksum.cores.max = 2,
+              fitted.cores.max = 4,
+              proper.cores.max = 4,
+              progress = TRUE)
 
 # View summary
 summary(res)
-
-# Extract best core settings
-cat("Best optim.degree.cores:", res$best.optim$optim.degree.cores, "\n")
-cat("Best optim.nmulti.cores:", res$best.optim$optim.nmulti.cores, "\n")
-cat("Best optim.ksum.cores:", res$best.optim$optim.ksum.cores, "\n")
-cat("Best fitted.cores:", res$best.fitted$fitted.cores, "\n")
-cat("Best proper.cores:", res$best.proper$proper.cores, "\n")
 
 # Use tuned settings for production
 f.yx <- bkcde(x = x, y = y,

@@ -5,7 +5,7 @@ x <- runif(n, 0, 1)
 y <- rnorm(n, mean = 2 * sin(4 * pi * x), sd = 1 + abs(x))
 
 # Benchmark core allocations with a small grid
-res <- bkcde.co(x, y,
+res <- bkcdeco(x, y,
                 optim.degree.cores.min = 1,
                 optim.degree.cores.max = 6,
                 optim.nmulti.cores.min = 1,

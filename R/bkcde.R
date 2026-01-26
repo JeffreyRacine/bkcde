@@ -794,9 +794,9 @@ bkcde.default <- function(h=NULL,
 ## function calls.
 
 
-## bkcde.co(): core allocation benchmarking and recommendation helper
+## bkcdeco(): core allocation benchmarking and recommendation helper
 
-bkcde.co <- function(x, y,
+bkcdeco <- function(x, y,
                      optim.degree.cores.min = 1,
                      optim.degree.cores.max = parallel::detectCores(),
                      optim.degree.cores.by  = 1,
@@ -815,10 +815,10 @@ bkcde.co <- function(x, y,
                      progress = TRUE,
                      display.warnings = FALSE,
                      ...) {
-  if(!is.numeric(x)) stop("x must be numeric in bkcde.co()")
-  if(!is.numeric(y)) stop("y must be numeric in bkcde.co()")
-  if(length(x) != length(y)) stop("length of x must equal length of y in bkcde.co()")
-  if(!is.logical(display.warnings) || length(display.warnings) != 1) stop("display.warnings must be a single logical in bkcde.co()")
+  if(!is.numeric(x)) stop("x must be numeric in bkcdeco()")
+  if(!is.numeric(y)) stop("y must be numeric in bkcdeco()")
+  if(length(x) != length(y)) stop("length of x must equal length of y in bkcdeco()")
+  if(!is.logical(display.warnings) || length(display.warnings) != 1) stop("display.warnings must be a single logical in bkcdeco()")
   if(progress && !requireNamespace("progress", quietly = TRUE)) stop("progress package required when progress=TRUE")
   ## Build grids
   optim.grid <- expand.grid(
@@ -882,12 +882,12 @@ bkcde.co <- function(x, y,
     warning("No convergence==0 optimization runs; selecting fastest non-error run (may be non-converged)")
     fallback <- subset(optim.results, (is.na(error) | error == "") & !is.na(optim_elapsed))
     if(nrow(fallback) == 0) {
-      warning("No successful optimization runs in bkcde.co(); returning results table for inspection")
+      warning("No successful optimization runs in bkcdeco(); returning results table for inspection")
       ret <- list(call = match.call(),
                   optim.grid = optim.grid,
                   optim.results = optim.results,
                   error = "no-success")
-      class(ret) <- "bkcde.co"
+      class(ret) <- "bkcdeco"
       return(ret)
     }
     best.optim <- fallback[order(fallback$optim_elapsed), , drop = FALSE][1, , drop = FALSE]
@@ -1025,22 +1025,22 @@ bkcde.co <- function(x, y,
               speedup_factor = speedup_factor,
               time_saved = time_saved,
               params_match = params_match)
-  class(ret) <- "bkcde.co"
+  class(ret) <- "bkcdeco"
   return(ret)
 }
 
-print.bkcde.co <- function(x, ...) {
+print.bkcdeco <- function(x, ...) {
   summary(x, ...)
 }
 
-summary.bkcde.co <- function(object, ...) {
+summary.bkcdeco <- function(object, ...) {
   if(!is.null(object$error)) {
-    cat("bkcde core optimization summary\n\n")
+    cat("bkcdecore optimization summary\n\n")
     cat("No successful optimization runs. Inspect object$optim.results for details.\n")
     invisible(object)
     return(invisible(object))
   }
-  cat("bkcde core optimization summary\n\n")
+  cat("bkcdecore optimization summary\n\n")
   ## Report grids tested
   cat("Optim degree cores tested: ", paste(sort(unique(object$optim.grid$optim.degree.cores)), collapse = " "), "\n", sep = "")
   cat("Optim nmulti cores tested: ", paste(sort(unique(object$optim.grid$optim.nmulti.cores)), collapse = " "), "\n", sep = "")
@@ -1639,6 +1639,10 @@ predict.bkcde <- function(object, newdata, proper = NULL, ...) {
                proper=proper,
                degree=object$degree,
                ...)$f)
+}
+
+print.bkcde <- function(x, ...) {
+  summary(x, ...)
 }
 
 ## summary.bkcde() provides a summary of a bkcde object
