@@ -31,16 +31,16 @@ y <- rnorm(n, mean = 2 * sin(4 * pi * x), sd = 1 + abs(x))
 
 # Benchmark core allocations with a small grid
 res <- bkcdeco(x, y,
-                optim.degree.cores.min = 1,
-                optim.degree.cores.max = 6,
-                optim.nmulti.cores.min = 1,
-                optim.nmulti.cores.max = 6,
-                optim.ksum.cores.min = 1,
-                optim.ksum.cores.max = 2,
-                fitted.cores.max = 6,
-                proper.cores.max = 6,
-                progress = FALSE,
-                display.warnings = FALSE)
+               optim.degree.cores.min = 1,
+               optim.degree.cores.max = 6,
+               optim.nmulti.cores.min = 1,
+               optim.nmulti.cores.max = 6,
+               optim.ksum.cores.min = 1,
+               optim.ksum.cores.max = 2,
+               fitted.cores.max = 6,
+               proper.cores.max = 6,
+               progress = FALSE,
+               display.warnings = FALSE)
 ```
 
 
