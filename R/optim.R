@@ -1,17 +1,17 @@
 ## Optimization functions for bkcde package
 
-## log.likelihood() returns a likelihood function that supports constant,
+## cv_log_likelihood() returns a likelihood function that supports constant,
 ## smooth, and trim approaches for dealing with density estimates (delete-one)
 ## that may be improper and, in particular, negative.
 
-log.likelihood <- function(delete.one.values,
-                           cv.penalty.method=c("smooth","constant","trim","nonneg"),
-                           cv.penalty.cutoff=.Machine$double.xmin,
-                           verbose=FALSE,
-                           degree=degree,
-                           h=h) {
+cv_log_likelihood <- function(delete.one.values,
+                              cv.penalty.method=c("smooth","constant","trim","nonneg"),
+                              cv.penalty.cutoff=.Machine$double.xmin,
+                              verbose=FALSE,
+                              degree=degree,
+                              h=h) {
   cv.penalty.method <- match.arg(cv.penalty.method)
-  if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in log.likelihood()")
+  if(cv.penalty.cutoff <= 0) stop("cv.penalty.cutoff must be positive in cv_log_likelihood()")
   likelihood.vec <- numeric(length(delete.one.values))
   cutoff.val <- cv.penalty.cutoff
   log.cutoff <- log(cutoff.val)
@@ -19,7 +19,7 @@ log.likelihood <- function(delete.one.values,
   if(cv.penalty.method=="constant") {
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values <= cutoff.val] <- log.cutoff
-    if(verbose && any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in log.likelihood() [degree = ",
+    if(verbose && any(0 < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in constant cutoff zone in cv_log_likelihood() [degree = ",
                                                                                       degree,
                                                                                       ", ",
                                                                                       length(delete.one.values[0 < delete.one.values & delete.one.values < cutoff.val]),
@@ -33,7 +33,7 @@ log.likelihood <- function(delete.one.values,
     likelihood.vec[delete.one.values > cutoff.val] <- log(delete.one.values[delete.one.values > cutoff.val])
     likelihood.vec[delete.one.values < -cutoff.val] <- -log(abs(delete.one.values[delete.one.values < -cutoff.val]))+2*log.cutoff
     likelihood.vec[-cutoff.val < delete.one.values & delete.one.values < cutoff.val] <- log.cutoff
-    if(verbose && any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in log.likelihood() [degree = ",
+    if(verbose && any(-cutoff.val < delete.one.values & delete.one.values < cutoff.val)) warning("delete-one density lies in smooth cutoff zone in cv_log_likelihood() [degree = ",
                                                                                                 degree,
                                                                                                 ", ",
                                                                                                 length(delete.one.values[-cutoff.val < delete.one.values & delete.one.values < cutoff.val]),
@@ -57,9 +57,9 @@ log.likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
-## bkcde.optim.fn() is the combined unbinned and linear binned cross-validation objective function
+## bkcde_optim_fn() is the combined unbinned and linear binned cross-validation objective function
 
-bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
+bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            y.lb=NULL, y.ub=NULL, x.lb=NULL, x.ub=NULL,
                            poly.raw=FALSE, degree=NULL, n.integrate=NULL,
                            optim.ksum.cores=1, cv.penalty.method=NULL,
@@ -75,11 +75,11 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
                            y.lb.finite = TRUE) {
 
   # --- 1. Validation ---
-  if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde.optim.fn()")
-  if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde.optim.fn()")
-  if(!cv.binned && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde.optim.fn()")
-  if(cv.binned && is.null(binned.data)) stop("must provide binned.data in bkcde.optim.fn()")
-  if(is.null(degree)) stop("must provide degree in bkcde.optim.fn()")
+  if(y.lb >= y.ub) stop("y.lb must be less than y.ub in bkcde_optim_fn()")
+  if(x.lb >= x.ub) stop("x.lb must be less than x.ub in bkcde_optim_fn()")
+  if(!cv.binned && (is.null(x) || is.null(y))) stop("must provide x and y in bkcde_optim_fn()")
+  if(cv.binned && is.null(binned.data)) stop("must provide binned.data in bkcde_optim_fn()")
+  if(is.null(degree)) stop("must provide degree in bkcde_optim_fn()")
 
   n.obs <- if(!cv.binned) length(y) else binned.data$n.obs
   
@@ -157,7 +157,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           }
         },seq_along(y),mc.cores=optim.ksum.cores))
       }
-      val <- sum(log.likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
+      val <- sum(cv_log_likelihood(f.loo,cv.penalty.method,cv.penalty.cutoff,verbose,degree,h))
     } else {
       # cv.ls (Least Squares) - always uses integration
       if(is.null(y.seq)) {
@@ -177,7 +177,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         if(degree==0) {
            w2 <- w^2
            sum_w2 <- sum(w2)
-           f_full_seq <- colSums(Y.seq.mat * w2)/NZD_pos(sum_w2)
+           f_full_seq <- as.numeric(crossprod(w2, Y.seq.mat))/NZD_pos(sum_w2)
            int.f.sq <- sum(f_full_seq^2 * int.weights)
         } else {
            beta.hat <- .lm.fit(X*w,Y.seq.mat*w)$coefficients
@@ -227,6 +227,7 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     pnorm.y.seq.lb <- if(y.lb.finite) pnorm((y.lb - y.seq)/h[1]) else rep(0, length(y.seq))
     denom.y.seq <- h[1] * (pnorm.y.seq.ub - pnorm.y.seq.lb)
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
+    n.seq.cols <- ncol(Y.seq.mat)
     int.weights <- get.integral.weights(y.seq)
 
     results <- mcmapply(function(i) {
@@ -246,23 +247,23 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         }
       } else {
         target_y <- pdf.kernel.bk(y.act[i], y.act, h[1], y.lb, y.ub, denom=denom.y.act[i])
-        W_scaled <- W_vec * w.loo
-        
-        rhs_both <- cbind((Y.seq.mat * w.loo) * W_vec, (target_y * w.loo) * W_vec)
+        rhs_both <- matrix(0, nrow = length(target_y), ncol = n.seq.cols + 1L)
+        rhs_both[, 1:n.seq.cols] <- Y.seq.mat
+        rhs_both[, n.seq.cols + 1L] <- target_y
+        rhs_both <- rhs_both * (W_vec * w.loo)
         beta_both <- .lm.fit(X.act * W_vec, rhs_both)$coefficients
         
-        n.seq.cols <- ncol(Y.seq.mat)
         beta_seq <- beta_both[, 1:n.seq.cols, drop=FALSE]
         beta_loo <- beta_both[, n.seq.cols + 1]
         
-        f_seq <- if(degree==0) colMeans(Y.seq.mat * k.weights)/NZD_pos(mean(k.weights)) else X.act[i,] %*% beta_seq
+        f_seq <- if(degree==0) as.numeric(crossprod(k.weights, Y.seq.mat))/NZD_pos(sum(k.weights)) else X.act[i,] %*% beta_seq
         f_loo <- sum(X.act[i,] * beta_loo)
         return(c(sum(f_seq^2 * int.weights), f_loo))
       }
     }, seq_along(x.act), mc.cores = optim.ksum.cores, SIMPLIFY = FALSE)
 
     if (bwmethod == "cv.ml") {
-      val <- sum(w.act * log.likelihood(unlist(results), cv.penalty.method, cv.penalty.cutoff, verbose, degree, h))
+      val <- sum(w.act * cv_log_likelihood(unlist(results), cv.penalty.method, cv.penalty.cutoff, verbose, degree, h))
     } else {
       res.mat <- do.call(rbind, results)
       val <- -(sum(res.mat[,1] * w.act)/n.obs - 2 * sum(res.mat[,2] * w.act)/n.obs)
@@ -273,9 +274,9 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   return(val)
 }
 
-## bkcde.optim() manages the optimization process over multiple starts and degrees
+## bkcde_optim() manages the optimization process over multiple starts and degrees
 
-bkcde.optim <- function(x=x,
+bkcde_optim <- function(x=x,
                         y=y,
                         x.eval=x.eval,
                         y.eval=y.eval,
@@ -305,19 +306,19 @@ bkcde.optim <- function(x=x,
                         ...) {
   if(degree.min < 0 || degree.max >= length(y)) stop("degree.min must lie in [0,1,...,",
                                                     length(y)-1,
-                                                    "] (i.e., [0,1,dots, n-1]) in bkcde.optim()")
+                                                    "] (i.e., [0,1,dots, n-1]) in bkcde_optim()")
   if(degree.max < 0 || degree.max >= length(y)) stop("degree.max must lie in [0,1,...,",
                                                     length(y)-1,
-                                                    "] (i.e., [0,1,dots, n-1]) in bkcde.optim()")
-  if(degree.max < degree.min) stop("degree.max must be >= degree.min in bkcde.optim()")
-  if(missing(x)) stop("must provide x in bkcde.optim()")
-  if(missing(y)) stop("must provide y in bkcde.optim()")
-  if(missing(y.lb)) stop("must provide y.lb in bkcde.optim()")
-  if(missing(y.ub)) stop("must provide y.ub in bkcde.optim()")    
-  if(missing(x.lb)) stop("must provide x.lb in bkcde.optim()")
-  if(missing(x.ub)) stop("must provide x.ub in bkcde.optim()")
-  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde.optim()")
-  if(!is.numeric(n.binned) || length(n.binned) != 1 || n.binned < 2) stop("n.binned must be numeric and at least 2 in bkcde.optim()")
+                                                    "] (i.e., [0,1,dots, n-1]) in bkcde_optim()")
+  if(degree.max < degree.min) stop("degree.max must be >= degree.min in bkcde_optim()")
+  if(missing(x)) stop("must provide x in bkcde_optim()")
+  if(missing(y)) stop("must provide y in bkcde_optim()")
+  if(missing(y.lb)) stop("must provide y.lb in bkcde_optim()")
+  if(missing(y.ub)) stop("must provide y.ub in bkcde_optim()")    
+  if(missing(x.lb)) stop("must provide x.lb in bkcde_optim()")
+  if(missing(x.ub)) stop("must provide x.ub in bkcde_optim()")
+  if(!is.logical(poly.raw)) stop("poly.raw must be logical in bkcde_optim()")
+  if(!is.numeric(n.binned) || length(n.binned) != 1 || n.binned < 2) stop("n.binned must be numeric and at least 2 in bkcde_optim()")
 
   n.binned <- as.integer(n.binned)
   
@@ -335,7 +336,7 @@ bkcde.optim <- function(x=x,
   
   ## Pre-bin data once if using linear-binning
   if(cv.binned) {
-    binned.data <- bkcde.bin.data(x, y, x.lb, x.ub, y.lb, y.ub, n.binned)
+    binned.data <- bkcde_bin_data(x, y, x.lb, x.ub, y.lb, y.ub, n.binned)
   } else {
     binned.data <- NULL
   }
@@ -423,7 +424,7 @@ bkcde.optim <- function(x=x,
     
     ## Run optimization
     st <- system.time(optim.return <- optim(par=par.init[r_curr,],
-                               fn=bkcde.optim.fn,
+                               fn=bkcde_optim_fn,
                                x=x,
                                y=y,
                                x.eval=x.eval,

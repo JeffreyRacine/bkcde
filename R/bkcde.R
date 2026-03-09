@@ -303,7 +303,7 @@ bkcde.default <- function(h=NULL,
   ## optim.ksum.cores, optim.degree.cores, optim.nmulti.cores)
   if(is.null(h) & cv == "full") {
     if(progress) cat("\rNested optimization running (",degree.max-degree.min+1," models with ",nmulti," multistarts per model)...",sep="")
-      optim.out <- bkcde.optim(x=x,
+      optim.out <- bkcde_optim(x=x,
                                y=y,
                                x.eval=x.eval,
                                y.eval=y.eval,

@@ -63,7 +63,7 @@ bkcde(...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{h}{
-  a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the \code{bkcde.optim} function.
+  a bandwidth vector of length 2, where h[1] is the bandwidth of the kernel function for the response variable and h[2] is the bandwidth of the kernel function for the predictor variable. If h is NULL, the function will estimate the optimal bandwidths using the package's internal optimization routine.
 }
   \item{x}{
   a numeric vector of the predictor variable.
@@ -202,7 +202,7 @@ bkcde(...)
     a scalar (the value \code{f} in \code{extendrange(,f=...)}) indicating whether to expand the evaluation grid beyond the empirical support when either \code{y.lb}, \code{y.ub}, or both are infinite.
 }
   \item{\dots}{
-  additional arguments to be passed to the \code{bkcde.optim} function
+  additional arguments to be passed to the package's internal optimization routine
 }
 }
 \details{
