@@ -355,10 +355,16 @@ set.seed(42)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y)
+f.yx <- bkcde(h=c(0.15,0.10),
+              degree=0,
+              x=x,
+              y=y,
+              proper=TRUE,
+              fitted.cores=1,
+              proper.cores=1)
 par(mfrow=c(2,2),cex=.75)
-plot(f.yx,persp=FALSE,ci=TRUE,ci.preplot=TRUE)
-plot(f.yx,ci=TRUE,ci.preplot=TRUE,expand=1.75)
+plot(f.yx,persp=FALSE,fitted.cores=1,proper.cores=1)
+plot(f.yx,expand=1.75,fitted.cores=1,proper.cores=1)
 summary(f.yx)
 \dontrun{
 ## Example 2 - A nonlinear Gaussian conditional relationship with

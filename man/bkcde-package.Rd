@@ -2,18 +2,17 @@
 \alias{bkcde-package}
 \docType{package}
 \title{
-\packageTitle{bkcde}
+Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 }
 \description{
-\packageDescription{bkcde}
+Boundary-corrected polynomial adaptive kernel conditional density estimation
+for bounded or partially bounded responses.
 }
 \details{
 This package provides a variety of functions to support estimation of bounded response polynomial adaptive conditional kernel density estimates.
 }
 \author{
-\packageAuthor{bkcde}
-
-Maintainer: \packageMaintainer{bkcde}
+Jeffrey S. Racine
 }
 \references{
 ...
@@ -21,21 +20,22 @@ Maintainer: \packageMaintainer{bkcde}
 \keyword{package}
 
 %% Uncomment below to imitate parts of library(help = bkcde)
-\section{The \file{DESCRIPTION} File}{\packageDESCRIPTION{bkcde}}
-\section{Documentation Index}{\packageIndices{bkcde}}
-
 \seealso{
 \code{\link{bkcde}}, \code{\link{plot.bkcde}}, \code{\link{predict.bkcde}}
 }
 \examples{
 library(bkcde)
 set.seed(42)
-n <- 250
+n <- 100
 x <- runif(n,-.25,.25)
 s1 <- 1
 s2 <- 1.25
 y <- rbeta(n,s1+x,s2+x)
-f.yx <- bkcde(x=x, y=y)
+f.yx <- bkcde(h=c(0.15,0.10),
+              degree=0,
+              x=x,
+              y=y,
+              fitted.cores=1,
+              proper.cores=1)
 summary(f.yx)
-plot(f.yx,ci=TRUE,ci.method="Bonferroni")
 }

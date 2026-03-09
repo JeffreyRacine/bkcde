@@ -96,42 +96,24 @@ Defaults \code{n.sub} and \code{resamples} are based on simulation evidence for 
 }
 \examples{
 library(bkcde)
-## Generate a million observations from a beta distribution, estimate the density then plot
-## the results along with the true density function from which the data was drawn.
+## Small reproducible example
 set.seed(42)
-s1 <- s2 <- 1.25
-n <- 1e+06
-n.grid <- 25
-x <- runif(n,1,4)
-y <- rbeta(n,s1+x,s2+x)
-## Compute the sub-sampled bandwidth vector and polynomial degree then use them in 
-## the call to bkcde()
-scv.out <- sub.cv(x=x,y=y)
-f.yx <- bkcde(h=scv.out$h.median,degree=scv.out$degree,x=x,y=y,n.grid=n.grid)
-## Create a 3D plot of the estimate and the true density
-par(mfrow=c(1,2),cex=.8)
-options(scipen=9)
-plot(f.yx,
-     n.grid=n.grid,
-     theta=120,
-     phi=45,
-     expand=1.25,
-     main=paste("Estimate (n = ",n,")",sep=""))
-x.seq <- sort(unique(f.yx$x.eval))
-y.seq <- sort(unique(f.yx$y.eval))
-persp(x.seq,y.seq,
-      matrix(dbeta(f.yx$y.eval,s1+f.yx$x.eval,s2+f.yx$x.eval),n.grid,n.grid),
-      theta=120,
-      phi=45,
-      ticktype="detailed",
-      xlab="x",
-      ylab="y",
-      zlab="f(y|x)",
-      shade=0.25,
-      expand=1.25,
-      main=paste("True Density (n = ",n,")",sep=""))
-## summary() for the bkcde() results
-summary(f.yx)
+n <- 101
+x <- runif(n,-.25,.25)
+y <- rbeta(n,1+x,1.5+x)
+scv.out <- sub.cv(x=x,
+                  y=y,
+                  n.sub=100,
+                  resamples=2,
+                  degree.min=0,
+                  degree.max=0,
+                  nmulti=1,
+                  display.warnings=FALSE,
+                  optim.degree.cores=1,
+                  optim.nmulti.cores=1,
+                  optim.ksum.cores=1)
+scv.out$degree
+scv.out$h.median
 \dontrun{
 ## Example with a million observations from a bivariate normal distribution with 
 ## a nonlinear mean and heteroskedasticity, calling sub.cv() from within bkcde() 
@@ -146,7 +128,11 @@ f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",progress=TRUE)
 par(mfrow=c(1,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
-dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*sin(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
+dgp.mat <- matrix(dnorm(f.yx$y.eval,
+                        mean=2*sin(4*pi*f.yx$x.eval),
+                        sd=1+abs(f.yx$x.eval)),
+                  n.grid,
+                  n.grid)
 persp(y=y.seq,
       x=x.seq,
       z=dgp.mat,
@@ -182,7 +168,11 @@ f.yx <- bkcde(x=x,y=y,n.grid=n.grid,cv="sub",proper=TRUE,progress=TRUE)
 par(mfrow=c(2,2),cex=.75)
 x.seq <- sort(unique(f.yx$x.eval))
 y.seq <- sort(unique(f.yx$y.eval))
-dgp.mat <- matrix(dnorm(f.yx$y.eval,mean=2*sin(4*pi*f.yx$x.eval),sd=1+abs(f.yx$x.eval)),n.grid,n.grid)
+dgp.mat <- matrix(dnorm(f.yx$y.eval,
+                        mean=2*sin(4*pi*f.yx$x.eval),
+                        sd=1+abs(f.yx$x.eval)),
+                  n.grid,
+                  n.grid)
 persp(y=y.seq,
       x=x.seq,
       z=dgp.mat,

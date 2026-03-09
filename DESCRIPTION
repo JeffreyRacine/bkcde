@@ -1,11 +1,21 @@
 Package: bkcde
 Imports: MCPAN, parallel, pbmcapply, robustbase, stats
-Suggests: lpcde, progress
+Suggests: lpcde, np, pglm, progress, testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Type: Package
 Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
 Version: 1.47
-Date: 2026-01-25
-Author: Jeffrey S. Racine
-Maintainer: Jeffrey S. Racine <racinej@mcmaster.ca>
-Description: This package contains functions to estimate an unknown smooth conditional density function f(y|x) using nonparametric kernel methods when the response may be bounded in [a,b] but the bounds may be unknown to the practitioner. It uses data-driven methods to jointly determine bandwidths, the polynomial order, and can approximate unknown bounds freeing the user from having to select any of these in applied settings. If the bounds are known, naturally they should and can be used. A computationally efficient method is also provided allowing for likelihood cross-validated choice of the bandwidths and polynomial order for large data samples.
+Date: 2026-03-09
+Authors@R: c(
+    person(given = c("Jeffrey", "S."), family = "Racine",
+           role = c("aut", "cre"), email = "racinej@mcmaster.ca")
+ )
+Description: Boundary-corrected polynomial adaptive kernel conditional density
+    estimation for bounded or partially bounded responses. The package provides
+    likelihood and least-squares cross-validation, optional sub-sampled
+    bandwidth selection for large samples, automatic polynomial-order
+    selection, and methods for plotting, prediction, and summary.
 License: GPL (>= 3)
+Encoding: UTF-8
+URL: https://github.com/JeffreyRacine/bkcde
+BugReports: https://github.com/JeffreyRacine/bkcde/issues

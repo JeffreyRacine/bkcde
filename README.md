@@ -24,7 +24,7 @@ install_github('JeffreyRacine/bkcde')
 
 **Note:**
 - Windows users may need [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
-- macOS users may need [Xcode](https://apps.apple.com/us/app/xcode/id497799835) and command line tools (`xcode-select --install`)
+- macOS users may need [Xcode](https://apps.apple.com/us/app/xcode/id497799835?mt=12) and command line tools (`xcode-select --install`)
 - Parallelism uses forking, which is not available on Windows
 
 ## Main Functions
@@ -46,10 +46,19 @@ s1 <- 1
 s2 <- 1.25
 y <- rbeta(n, s1 + x, s2 + x)
 # Estimate conditional density
-f.yx <- bkcde(x = x, y = y)
+f.yx <- bkcde(
+  x = x,
+  y = y,
+  optim.cores = "manual",
+  optim.degree.cores = 1,
+  optim.nmulti.cores = 1,
+  optim.ksum.cores = 1,
+  fitted.cores = 1,
+  proper.cores = 1
+)
 summary(f.yx)
-# Plot with Bonferroni confidence intervals
-plot(f.yx, ci = TRUE, ci.method = "Bonferroni")
+# Plot the fitted object
+plot(f.yx)
 # Predict at new points
 predict(f.yx, data.frame(x = c(0, .1), y = c(.25, 0.5)))
 ```
@@ -62,7 +71,18 @@ set.seed(42)
 n <- 1e6
 x <- runif(n, 1, 4)
 y <- rbeta(n, 1.25 + x, 1.25 + x)
-f.yx <- bkcde(x = x, y = y, n.grid = 25, cv="sub")
+f.yx <- bkcde(
+  x = x,
+  y = y,
+  n.grid = 25,
+  cv = "sub",
+  optim.cores = "manual",
+  optim.degree.cores = 1,
+  optim.nmulti.cores = 1,
+  optim.ksum.cores = 1,
+  fitted.cores = 1,
+  proper.cores = 1
+)
 plot(f.yx, n.grid = 25, theta = 120, phi = 45, main = paste("Estimate (n =", n, ")"))
 ```
 
@@ -79,5 +99,4 @@ Extensive use of parallel processing; users can control core allocation for diff
 
 - For large data, use `cv="sub"` for efficiency.
 - See the package documentation and demos for advanced usage and simulation studies.
-
 

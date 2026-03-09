@@ -226,9 +226,16 @@ set.seed(42)
 n <- 100
 x <- runif(n,-.25,.25)
 y <- rbeta(n,1+x,1.5+x)
-f.yx <- bkcde(x=x, y=y)
+f.yx <- bkcde(h=c(0.15,0.10),
+              degree=0,
+              x=x,
+              y=y,
+              proper=TRUE,
+              fitted.cores=1,
+              proper.cores=1)
 par(mfrow=c(1,2))
-plot(f.yx,ci=TRUE,ci.method="all")
+plot(f.yx,persp=FALSE,fitted.cores=1,proper.cores=1)
+plot(f.yx,fitted.cores=1,proper.cores=1)
 \dontrun{
 ## Example 2 - large sample, manual bandwidths and polynomial order
 n <- 100000

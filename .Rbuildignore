@@ -1,1 +1,11 @@
-tests/*
+^AGENTS\.md$
+^build$
+^tests/benchmark_bckde_co\.R$
+^tests/benchmark_bkcde_co\.R$
+^tests/benchmark_bkcde_cores\.R$
+^tests/bin_grid_size_comparison\.R$
+^tests/binned_microbenchmark\.R$
+^tests/binned_subsampling_microbenchmark\.R$
+^tests/bkcde_co\.qmd$
+^tests/full_sub_bin_comparison\.R$
+^tests/sub_grid_size_comparison\.R$
