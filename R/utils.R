@@ -138,24 +138,40 @@ bkcde_bin_data <- function(x, y, x.lb, x.ub, y.lb, y.ub, n.binned) {
   ))
 }
 
+bkcde_mcmapply <- function(FUN, ..., mc.cores = 1, SIMPLIFY = TRUE, USE.NAMES = TRUE) {
+  if (as.integer(mc.cores) > 1L) {
+    mcmapply(FUN, ..., mc.cores = mc.cores, SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
+  } else {
+    mapply(FUN, ..., SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
+  }
+}
+
+bkcde_mclapply <- function(X, FUN, ..., mc.cores = 1, mc.preschedule = TRUE) {
+  if (as.integer(mc.cores) > 1L) {
+    mclapply(X, FUN, ..., mc.cores = mc.cores, mc.preschedule = mc.preschedule)
+  } else {
+    lapply(X, FUN, ...)
+  }
+}
+
 ## Allow for progress to be displayed while running in parallel, use pbmcapply()
 ## instead of mcmapply() and pbmclapply() instead of mclapply() to display a
 ## progress bar. The progress bar is only displayed if progress=TRUE in the
 ## function calls.
 
-mcmapply.progress <- function(...,progress=TRUE) {
-  if(progress) {
-    pbmcmapply(...)
+mcmapply.progress <- function(FUN, ..., mc.cores = 1, progress = TRUE, SIMPLIFY = TRUE, USE.NAMES = TRUE) {
+  if(progress && as.integer(mc.cores) > 1L) {
+    pbmcmapply(FUN, ..., mc.cores = mc.cores, SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
   } else {
-    mcmapply(...)
+    bkcde_mcmapply(FUN, ..., mc.cores = mc.cores, SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
   }
 }
 
-mclapply.progress <- function(...,progress=TRUE) {
-  if(progress) {
-    pbmclapply(...)
+mclapply.progress <- function(X, FUN, ..., mc.cores = 1, progress = TRUE, mc.preschedule = TRUE) {
+  if(progress && as.integer(mc.cores) > 1L) {
+    pbmclapply(X, FUN, ..., mc.cores = mc.cores)
   } else {
-    mclapply(...)
+    bkcde_mclapply(X, FUN, ..., mc.cores = mc.cores, mc.preschedule = mc.preschedule)
   }
 }
 

@@ -439,7 +439,7 @@ bkcde.default <- function(h=NULL,
       if(degree == 0) {
         ## For degree 0 don't invoke the overhead associated with .lm.fit(), just
         ## compute the estimate \hat f(y|x) as efficiently as possible
-        foo <- t(mcmapply(function(i){
+        foo <- t(bkcde_mcmapply(function(i){
           ## Here we exploit the fact that we can multiply columns of a matrix by
           ## the vector of kernel weights for x and avoid unnecessary computation
           pdf.kernel.bk.x<-pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
@@ -461,7 +461,7 @@ bkcde.default <- function(h=NULL,
         ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
         ## regression to estimate \hat f(y|x) rather than the intercept term from
         ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-        foo <- t(mcmapply(function(i){
+        foo <- t(bkcde_mcmapply(function(i){
           ## Here we exploit the fact that .lm.fit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
@@ -505,7 +505,7 @@ bkcde.default <- function(h=NULL,
       if(degree == 0) {
         ## For degree 0 don't invoke the overhead associated with .lm.fit(), just
         ## compute the estimate \hat f(y|x) as efficiently as possible.
-        output <- mclapply(1:n.grid,function(i) {
+        output <- bkcde_mclapply(1:n.grid,function(i) {
           ## Here we exploit the fact that we can multiply columns of a matrix by
           ## the vector of kernel weights for x and avoid unnecessary computation
           pdf.kernel.bk.x<-pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub);
@@ -535,7 +535,7 @@ bkcde.default <- function(h=NULL,
         ## For degree > 0 we use, e.g., lm(y~I(x^2)) and fitted values from the
         ## regression to estimate \hat f(y|x) rather than the intercept term from
         ## lm(y-I(x[i]-X)^2), which produce identical results for raw polynomials
-        output <- mclapply(1:n.grid,function(i) {
+        output <- bkcde_mclapply(1:n.grid,function(i) {
           ## Here we exploit the fact that .lm.fit() can work on multivariate Y
           ## objects, so we don't need to recompute the X weight kernel sums and
           ## can avoid unnecessary computation
