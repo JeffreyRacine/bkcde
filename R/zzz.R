@@ -1,5 +1,5 @@
 .onAttach <- function (lib, pkg) {
-	packageStartupMessage("package bkcde version 1.47")
+	packageStartupMessage("package bkcde version 1.50")
 }
 
 ## Declare globals used in data.frame operations to silence R CMD check NOTES

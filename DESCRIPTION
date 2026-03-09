@@ -4,7 +4,7 @@ Suggests: lpcde, np, pglm, progress, testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Type: Package
 Title: Boundary Corrected Polynomial Adaptive Kernel Conditional Density Estimation
-Version: 1.47
+Version: 1.50
 Date: 2026-03-09
 Authors@R: c(
     person(given = c("Jeffrey", "S."), family = "Racine",
