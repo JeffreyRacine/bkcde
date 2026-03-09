@@ -440,10 +440,13 @@ bkcde.default <- function(h=NULL,
         ## For degree 0 don't invoke the overhead associated with .lm.fit(), just
         ## compute the estimate \hat f(y|x) as efficiently as possible
         foo <- t(bkcde_mcmapply(function(i){
-          ## Here we exploit the fact that we can multiply columns of a matrix by
-          ## the vector of kernel weights for x and avoid unnecessary computation
-          pdf.kernel.bk.x<-pdf.kernel.bk(x.eval[i],x,h[2],x.lb,x.ub);
-          colMeans(sweep(cbind(pdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub),y,cdf.kernel.bk(y.eval[i],y,h[1],y.lb,y.ub)),1,pdf.kernel.bk.x,"*"))/NZD_pos(mean(pdf.kernel.bk.x))
+          ## Compute weighted moments directly to avoid repeated cbind/sweep
+          ## allocation in the degree-0 fitted route.
+          pdf.kernel.bk.x <- pdf.kernel.bk(x.eval[i], x, h[2], x.lb, x.ub)
+          sum.w <- NZD_pos(sum(pdf.kernel.bk.x))
+          c(sum(pdf.kernel.bk(y.eval[i], y, h[1], y.lb, y.ub) * pdf.kernel.bk.x) / sum.w,
+            sum(y * pdf.kernel.bk.x) / sum.w,
+            sum(cdf.kernel.bk(y.eval[i], y, h[1], y.lb, y.ub) * pdf.kernel.bk.x) / sum.w)
         },seq_along(y.eval),mc.cores=fitted.cores))
         f.yx <- foo[,1]
         E.yx <- foo[,2]
@@ -506,15 +509,13 @@ bkcde.default <- function(h=NULL,
         ## For degree 0 don't invoke the overhead associated with .lm.fit(), just
         ## compute the estimate \hat f(y|x) as efficiently as possible.
         output <- bkcde_mclapply(1:n.grid,function(i) {
-          ## Here we exploit the fact that we can multiply columns of a matrix by
-          ## the vector of kernel weights for x and avoid unnecessary computation
-          pdf.kernel.bk.x<-pdf.kernel.bk(x.eval.unique[i],x,h[2],x.lb,x.ub);
           ## Coefficient matrix in order are column 1 E.y.x, 2 - n.grid+1 f.yx,
           ## n.grid+2 - 2*n.grid+1 F.yx
-          foo <- colMeans(sweep(cbind(y,pdf.kernel.mat,cdf.kernel.mat),1,pdf.kernel.bk.x,"*"))/NZD_pos(mean(pdf.kernel.bk.x))
-          return(list(E.yx=foo[1],
-                      f.yx=foo[2:(n.grid+1)],
-                      F.yx=foo[(n.grid+2):(2*n.grid+1)]))
+          pdf.kernel.bk.x <- pdf.kernel.bk(x.eval.unique[i], x, h[2], x.lb, x.ub)
+          sum.w <- NZD_pos(sum(pdf.kernel.bk.x))
+          return(list(E.yx = sum(y * pdf.kernel.bk.x) / sum.w,
+                      f.yx = as.numeric(crossprod(pdf.kernel.bk.x, pdf.kernel.mat)) / sum.w,
+                      F.yx = as.numeric(crossprod(pdf.kernel.bk.x, cdf.kernel.mat)) / sum.w))
         },mc.cores=fitted.cores)
         f.yx <- sapply(output, function(x) x$f.yx)
         f.yx <- f.yx[order(x.eval)]
