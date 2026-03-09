@@ -283,7 +283,11 @@ bkcde.default <- function(h=NULL,
   ## Pre-compute y.seq for integration if required (computed once to avoid redundant computation)
   y.seq <- NULL
   if(proper || proper.cv) {
-    y.seq <- seq(y.lb, y.ub, length.out = n.integrate)
+    if(is.finite(y.lb) && is.finite(y.ub)) {
+      y.seq <- seq(y.lb, y.ub, length.out = n.integrate)
+    } else {
+      y.seq <- seq(extendrange(y, f = 2)[1], extendrange(y, f = 2)[2], length.out = n.integrate)
+    }
   }
   ## This ensures Monte Carlo simulations are not disrupted
   if(exists(".Random.seed", .GlobalEnv)) {
@@ -1729,4 +1733,3 @@ summary.bkcde <- function(object, ...) {
   cat("\n")
   invisible()
 }
-

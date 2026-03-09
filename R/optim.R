@@ -84,8 +84,12 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   n.obs <- if(!cv.binned) length(y) else binned.data$n.obs
   
   if(!cv.binned) {
-    denom.x <- h[2]*(if(!x.ub.finite) 1 else pnorm((x.ub-x)/h[2]) - (if(x.lb.finite) pnorm((x.lb-x)/h[2]) else 0))
-    denom.y <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y)/h[1]) else 0))
+    pnorm.x.ub <- if(x.ub.finite) pnorm((x.ub - x)/h[2]) else rep(1, n.obs)
+    pnorm.x.lb <- if(x.lb.finite) pnorm((x.lb - x)/h[2]) else rep(0, n.obs)
+    pnorm.y.ub <- if(y.ub.finite) pnorm((y.ub - y)/h[1]) else rep(1, n.obs)
+    pnorm.y.lb <- if(y.lb.finite) pnorm((y.lb - y)/h[1]) else rep(0, n.obs)
+    denom.x <- h[2] * (pnorm.x.ub - pnorm.x.lb)
+    denom.y <- h[1] * (pnorm.y.ub - pnorm.y.lb)
   }
 
   # --- 2. Non-Negativity Penalty ---
@@ -110,7 +114,9 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
           if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
           else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
         }
-        denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
+        pnorm.y.seq.ub <- if(y.ub.finite) pnorm((y.ub - y.seq)/h[1]) else rep(1, length(y.seq))
+        pnorm.y.seq.lb <- if(y.lb.finite) pnorm((y.lb - y.seq)/h[1]) else rep(0, length(y.seq))
+        denom.y.seq <- h[1] * (pnorm.y.seq.ub - pnorm.y.seq.lb)
         Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
         int.weights <- get.integral.weights(y.seq)
         
@@ -158,7 +164,9 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         if(is.finite(y.lb) && is.finite(y.ub)) y.seq <- seq(y.lb,y.ub,length=n.integrate)
         else y.seq <- seq(extendrange(y,f=2)[1],extendrange(y,f=2)[2],length=n.integrate)
       }
-      denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
+      pnorm.y.seq.ub <- if(y.ub.finite) pnorm((y.ub - y.seq)/h[1]) else rep(1, length(y.seq))
+      pnorm.y.seq.lb <- if(y.lb.finite) pnorm((y.lb - y.seq)/h[1]) else rep(0, length(y.seq))
+      denom.y.seq <- h[1] * (pnorm.y.seq.ub - pnorm.y.seq.lb)
       Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
       int.weights <- get.integral.weights(y.seq)
       
@@ -204,14 +212,20 @@ bkcde.optim.fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
        X.act <- if(degree > 0) cbind(1, poly(x.act, degree=degree, raw=poly.raw)) else matrix(1, length(x.act), 1)
     }
 
-    denom.x.act <- h[2] * (if(!x.ub.finite) 1 else pnorm((x.ub - x.act)/h[2]) - (if(x.lb.finite) pnorm((x.lb - x.act)/h[2]) else 0))
-    denom.y.act <- h[1] * (if(!y.ub.finite) 1 else pnorm((y.ub - y.act)/h[1]) - (if(y.lb.finite) pnorm((y.lb - y.act)/h[1]) else 0))
+    pnorm.x.act.ub <- if(x.ub.finite) pnorm((x.ub - x.act)/h[2]) else rep(1, length(x.act))
+    pnorm.x.act.lb <- if(x.lb.finite) pnorm((x.lb - x.act)/h[2]) else rep(0, length(x.act))
+    pnorm.y.act.ub <- if(y.ub.finite) pnorm((y.ub - y.act)/h[1]) else rep(1, length(y.act))
+    pnorm.y.act.lb <- if(y.lb.finite) pnorm((y.lb - y.act)/h[1]) else rep(0, length(y.act))
+    denom.x.act <- h[2] * (pnorm.x.act.ub - pnorm.x.act.lb)
+    denom.y.act <- h[1] * (pnorm.y.act.ub - pnorm.y.act.lb)
 
     if(is.null(y.seq)) {
       y.seq <- if(is.finite(y.lb) && is.finite(y.ub)) seq(y.lb,y.ub,length=n.integrate) else 
                seq(extendrange(y.act,f=2)[1],extendrange(y.act,f=2)[2],length=n.integrate)
     }
-    denom.y.seq <- h[1]*(if(!y.ub.finite) 1 else pnorm((y.ub-y.seq)/h[1]) - (if(y.lb.finite) pnorm((y.lb-y.seq)/h[1]) else 0))
+    pnorm.y.seq.ub <- if(y.ub.finite) pnorm((y.ub - y.seq)/h[1]) else rep(1, length(y.seq))
+    pnorm.y.seq.lb <- if(y.lb.finite) pnorm((y.lb - y.seq)/h[1]) else rep(0, length(y.seq))
+    denom.y.seq <- h[1] * (pnorm.y.seq.ub - pnorm.y.seq.lb)
     Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y.act, h[1], y.lb, y.ub, denom=denom.y.seq[i]), seq_along(y.seq))
     int.weights <- get.integral.weights(y.seq)
 
@@ -594,4 +608,3 @@ sub.cv <- function(x, y,
               sf.mat=sf.mat))
   
 }
-
