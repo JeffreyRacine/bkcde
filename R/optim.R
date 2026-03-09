@@ -57,6 +57,22 @@ cv_log_likelihood <- function(delete.one.values,
   return(likelihood.vec)
 }
 
+optim_mcmapply <- function(FUN, ..., mc.cores = 1, SIMPLIFY = TRUE, USE.NAMES = TRUE) {
+  if (as.integer(mc.cores) > 1L) {
+    mcmapply(FUN, ..., mc.cores = mc.cores, SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
+  } else {
+    mapply(FUN, ..., SIMPLIFY = SIMPLIFY, USE.NAMES = USE.NAMES)
+  }
+}
+
+optim_mclapply <- function(X, FUN, ..., mc.cores = 1, mc.preschedule = TRUE) {
+  if (as.integer(mc.cores) > 1L) {
+    mclapply(X, FUN, ..., mc.cores = mc.cores, mc.preschedule = mc.preschedule)
+  } else {
+    lapply(X, FUN, ...)
+  }
+}
+
 ## bkcde_optim_fn() is the combined unbinned and linear binned cross-validation objective function
 
 bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
@@ -95,7 +111,7 @@ bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
   # --- 2. Non-Negativity Penalty ---
   if(cv.penalty.method=="nonneg" && degree > 0 && !cv.binned) {
     if(is.null(X)) X <- cbind(1, poly(x,raw=poly.raw,degree=degree))
-    f_check_orig <- as.numeric(mcmapply(function(i){
+    f_check_orig <- as.numeric(optim_mcmapply(function(i){
       w <- NZD_pos(sqrt(pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])))
       beta.hat <- .lm.fit(X*w,pdf.kernel.bk(y[i],y,h[1],y.lb,y.ub, denom=denom.y[i])*w)$coefficients
       beta.hat%*%t(X[i,,drop=FALSE])
@@ -120,7 +136,7 @@ bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
         int.weights <- get.integral.weights(y.seq)
         
-        f.loo <- as.numeric(mcmapply(function(i){
+        f.loo <- as.numeric(optim_mcmapply(function(i){
           w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
           w <- NZD_pos(sqrt(w.vec))
           w[i] <- 0
@@ -141,7 +157,7 @@ bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
         },seq_along(y),mc.cores=optim.ksum.cores))
       } else {
         # Standard cv.ml (no integration)
-        f.loo <- as.numeric(mcmapply(function(i){
+        f.loo <- as.numeric(optim_mcmapply(function(i){
           w.vec <- pdf.kernel.bk(x[i],x,h[2],x.lb,x.ub, denom=denom.x[i])
           w <- NZD_pos(sqrt(w.vec))
           w[i] <- 0
@@ -170,7 +186,7 @@ bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
       Y.seq.mat <- mapply(function(i) pdf.kernel.bk(y.seq[i], y, h[1], y.lb, y.ub, denom=denom.y.seq[i]),seq_along(y.seq))
       int.weights <- get.integral.weights(y.seq)
       
-      foo <- mcmapply(function(j){
+      foo <- optim_mcmapply(function(j){
         w.vec <- pdf.kernel.bk(x[j],x,h[2],x.lb,x.ub, denom=denom.x[j])
         w <- NZD_pos(sqrt(w.vec))
         
@@ -230,7 +246,7 @@ bkcde_optim_fn <- function(h=NULL, x=NULL, y=NULL, x.eval=NULL, y.eval=NULL,
     n.seq.cols <- ncol(Y.seq.mat)
     int.weights <- get.integral.weights(y.seq)
 
-    results <- mcmapply(function(i) {
+    results <- optim_mcmapply(function(i) {
       k.weights <- pdf.kernel.bk(x.act[i], x.act, h[2], x.lb, x.ub, denom=denom.x.act[i])
       w.loo <- w.act; w.loo[i] <- pmax(1e-7, w.loo[i] - 1)
       W_vec <- sqrt(k.weights * w.loo)
@@ -408,7 +424,7 @@ bkcde_optim <- function(x=x,
                           num_tasks, n.degrees, nmulti, total_cores))
   
   ## Run single parallel loop over flat grid with dynamic load balancing
-  all_results <- mclapply(1:num_tasks, function(task_idx) {
+  all_results <- optim_mclapply(1:num_tasks, function(task_idx) {
     d_curr <- task_grid$degree[task_idx]
     r_curr <- task_grid$restart[task_idx]
     d_idx <- match(d_curr, degree.vec)
