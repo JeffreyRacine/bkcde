@@ -72,6 +72,39 @@ evaluate_objective <- function(args) {
   do.call(objective, args)
 }
 
+fit_cv_only_case <- function(data,
+                             bwmethod,
+                             proper.cv,
+                             degree,
+                             seed = 77,
+                             display.warnings = FALSE,
+                             n.integrate = 31) {
+  bkcde::bkcde(
+    x = data$x,
+    y = data$y,
+    x.lb = data$x.lb,
+    x.ub = data$x.ub,
+    y.lb = data$y.lb,
+    y.ub = data$y.ub,
+    bwmethod = bwmethod,
+    proper.cv = proper.cv,
+    cv.only = TRUE,
+    degree.min = degree,
+    degree.max = degree,
+    nmulti = 1,
+    n.integrate = n.integrate,
+    optim.cores = "manual",
+    optim.degree.cores = 1,
+    optim.nmulti.cores = 1,
+    optim.ksum.cores = 1,
+    fitted.cores = 1,
+    proper.cores = 1,
+    display.warnings = display.warnings,
+    progress = FALSE,
+    seed = seed
+  )
+}
+
 test_that("proper infinite-bound route remains finite", {
   set.seed(42)
   n <- 100
@@ -142,29 +175,14 @@ test_that("bkcde_optim_fn matches cv.only objective at fitted bandwidths", {
   )
 
   for (case in cases) {
-    fit <- bkcde::bkcde(
-      x = fixture$x,
-      y = fixture$y,
-      x.lb = fixture$x.lb,
-      x.ub = fixture$x.ub,
-      y.lb = fixture$y.lb,
-      y.ub = fixture$y.ub,
+    fit <- fit_cv_only_case(
+      data = fixture,
       bwmethod = case$bwmethod,
       proper.cv = case$proper.cv,
-      cv.only = TRUE,
-      degree.min = case$degree,
-      degree.max = case$degree,
-      nmulti = 1,
-      n.integrate = 31,
-      optim.cores = "manual",
-      optim.degree.cores = 1,
-      optim.nmulti.cores = 1,
-      optim.ksum.cores = 1,
-      fitted.cores = 1,
-      proper.cores = 1,
+      degree = case$degree,
+      seed = 77,
       display.warnings = FALSE,
-      progress = FALSE,
-      seed = 77
+      n.integrate = 31
     )
 
     objective_value <- evaluate_objective(
@@ -184,6 +202,37 @@ test_that("bkcde_optim_fn matches cv.only objective at fitted bandwidths", {
       tolerance = 1e-10,
       info = case$id
     )
+  }
+})
+
+test_that("cv.only optimization is reproducible under fixed seeds", {
+  fixture <- make_objective_fixture(seed = 202, n = 40)
+  cases <- list(
+    list(id = "cv_ml_proper_deg0", bwmethod = "cv.ml", proper.cv = TRUE, degree = 0L),
+    list(id = "cv_ml_proper_deg1", bwmethod = "cv.ml", proper.cv = TRUE, degree = 1L),
+    list(id = "cv_ls_deg1", bwmethod = "cv.ls", proper.cv = FALSE, degree = 1L)
+  )
+
+  for (case in cases) {
+    fit_a <- fit_cv_only_case(
+      data = fixture,
+      bwmethod = case$bwmethod,
+      proper.cv = case$proper.cv,
+      degree = case$degree,
+      seed = 77
+    )
+    fit_b <- fit_cv_only_case(
+      data = fixture,
+      bwmethod = case$bwmethod,
+      proper.cv = case$proper.cv,
+      degree = case$degree,
+      seed = 77
+    )
+
+    expect_identical(fit_a$degree, fit_b$degree, info = case$id)
+    expect_identical(fit_a$convergence, fit_b$convergence, info = case$id)
+    expect_equal(unname(fit_a$h), unname(fit_b$h), tolerance = 0, info = case$id)
+    expect_equal(unname(fit_a$value), unname(fit_b$value), tolerance = 0, info = case$id)
   }
 })
 
