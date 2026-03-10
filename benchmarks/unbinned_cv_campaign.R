@@ -208,7 +208,13 @@ build_objective_args <- function(scenario, dataset, n.integrate, h = NULL, poly.
   )
 }
 
-evaluate_objective_scenario <- function(scenario, dataset, n.integrate, n, h = NULL) {
+evaluate_objective_scenario <- function(scenario,
+                                        dataset,
+                                        n.integrate,
+                                        n,
+                                        h = NULL,
+                                        objective_reps = 1L,
+                                        warmup_reps = 1L) {
   objective <- get_ns_fun("bkcde_optim_fn")
   args <- build_objective_args(
     scenario = scenario,
@@ -216,8 +222,16 @@ evaluate_objective_scenario <- function(scenario, dataset, n.integrate, n, h = N
     n.integrate = n.integrate,
     h = h
   )
+  if (warmup_reps > 0L) {
+    for (rep_idx in seq_len(warmup_reps)) {
+      do.call(objective, args)
+    }
+  }
   elapsed <- system.time({
-    value <- do.call(objective, args)
+    value <- NULL
+    for (rep_idx in seq_len(objective_reps)) {
+      value <- do.call(objective, args)
+    }
   })[["elapsed"]]
   data.frame(
     scenario = scenario$id,
@@ -227,6 +241,7 @@ evaluate_objective_scenario <- function(scenario, dataset, n.integrate, n, h = N
     optim_ksum_cores = scenario$optim.ksum.cores,
     n = n,
     n_integrate = n.integrate,
+    objective_reps = objective_reps,
     nmulti = NA_integer_,
     elapsed_wall = as.numeric(elapsed),
     secs_optim_elapsed = NA_real_,
@@ -347,7 +362,7 @@ run_profile <- function(repo, out_dir, scenario_id, n, n.integrate, nmulti) {
   write.csv(result, result_path, row.names = FALSE)
 }
 
-run_objective_profile <- function(repo, out_dir, scenario_id, n, n.integrate) {
+run_objective_profile <- function(repo, out_dir, scenario_id, n, n.integrate, objective_reps, warmup_reps) {
   lib_dir <- file.path(out_dir, "lib")
   install_log <- file.path(out_dir, "install.log")
   install_repo(repo = repo, lib = lib_dir, log_path = install_log)
@@ -372,7 +387,9 @@ run_objective_profile <- function(repo, out_dir, scenario_id, n, n.integrate) {
     scenario = scenario,
     dataset = dataset,
     n.integrate = n.integrate,
-    n = n
+    n = n,
+    objective_reps = objective_reps,
+    warmup_reps = warmup_reps
   )
   Rprof(NULL)
 
@@ -385,6 +402,8 @@ run_objective_profile <- function(repo, out_dir, scenario_id, n, n.integrate) {
       sprintf("scenario=%s", scenario_id),
       sprintf("n=%d", n),
       sprintf("n_integrate=%d", n.integrate),
+      sprintf("objective_reps=%d", objective_reps),
+      sprintf("warmup_reps=%d", warmup_reps),
       "mode=objective",
       "",
       "[by.self]",
@@ -451,7 +470,15 @@ run_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integrate, nmul
   write_lines(lines, file.path(out_dir, "run_meta.txt"))
 }
 
-run_objective_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integrate, selected = NULL) {
+run_objective_benchmarks <- function(repo,
+                                     out_dir,
+                                     times,
+                                     seed_mode,
+                                     n,
+                                     n.integrate,
+                                     selected = NULL,
+                                     objective_reps = 1L,
+                                     warmup_reps = 1L) {
   lib_dir <- file.path(out_dir, "lib")
   install_log <- file.path(out_dir, "install.log")
   install_repo(repo = repo, lib = lib_dir, log_path = install_log)
@@ -469,7 +496,9 @@ run_objective_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integ
         scenario = scenario,
         dataset = dataset,
         n.integrate = n.integrate,
-        n = n
+        n = n,
+        objective_reps = objective_reps,
+        warmup_reps = warmup_reps
       )
       row$replicate <- rep_idx
       row$seed_mode <- seed_mode
@@ -484,7 +513,7 @@ run_objective_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integ
   results <- results[, c(
     "scenario", "replicate", "seed_mode", "data_seed", "optim_seed",
     "bwmethod", "proper_cv", "degree_target", "optim_ksum_cores",
-    "n", "n_integrate", "nmulti", "elapsed_wall", "secs_optim_elapsed",
+    "n", "n_integrate", "objective_reps", "nmulti", "elapsed_wall", "secs_optim_elapsed",
     "value", "degree", "h_y", "h_x", "convergence"
   )]
   write.csv(results, file.path(out_dir, "results.csv"), row.names = FALSE)
@@ -495,6 +524,8 @@ run_objective_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integ
     sprintf("seed_mode=%s", seed_mode),
     sprintf("n=%d", n),
     sprintf("n_integrate=%d", n.integrate),
+    sprintf("objective_reps=%d", objective_reps),
+    sprintf("warmup_reps=%d", warmup_reps),
     sprintf("cases=%d", length(scenarios)),
     "mode=objective"
   )
@@ -517,7 +548,14 @@ run_single_fit <- function(lib_dir, out_csv, scenario_id, data_seed, optim_seed,
   write.csv(result, out_csv, row.names = FALSE)
 }
 
-run_single_objective <- function(lib_dir, out_csv, scenario_id, data_seed, n, n.integrate) {
+run_single_objective <- function(lib_dir,
+                                 out_csv,
+                                 scenario_id,
+                                 data_seed,
+                                 n,
+                                 n.integrate,
+                                 objective_reps = 1L,
+                                 warmup_reps = 1L) {
   .libPaths(c(lib_dir, .libPaths()))
   suppressPackageStartupMessages(library(bkcde))
   scenario <- get_scenarios(scenario_id)[[1L]]
@@ -526,7 +564,9 @@ run_single_objective <- function(lib_dir, out_csv, scenario_id, data_seed, n, n.
     scenario = scenario,
     dataset = dataset,
     n.integrate = n.integrate,
-    n = n
+    n = n,
+    objective_reps = objective_reps,
+    warmup_reps = warmup_reps
   )
   write.csv(result, out_csv, row.names = FALSE)
 }
@@ -632,7 +672,9 @@ run_objective_interleaved_compare <- function(baseline_repo,
                                               seed_mode,
                                               n,
                                               n.integrate,
-                                              selected = NULL) {
+                                              selected = NULL,
+                                              objective_reps = 1L,
+                                              warmup_reps = 1L) {
   baseline_lib <- ensure_dir(file.path(out_dir, "lib-baseline"))
   candidate_lib <- ensure_dir(file.path(out_dir, "lib-candidate"))
   install_repo(baseline_repo, baseline_lib, file.path(out_dir, "install-baseline.log"))
@@ -669,7 +711,9 @@ run_objective_interleaved_compare <- function(baseline_repo,
             sprintf("--scenario=%s", scenario$id),
             sprintf("--data-seed=%d", data_seed),
             sprintf("--n=%d", n),
-            sprintf("--n-integrate=%d", n.integrate)
+            sprintf("--n-integrate=%d", n.integrate),
+            sprintf("--objective-reps=%d", objective_reps),
+            sprintf("--warmup-reps=%d", warmup_reps)
           )
         )
         row <- read.csv(row_path, stringsAsFactors = FALSE)
@@ -692,7 +736,7 @@ run_objective_interleaved_compare <- function(baseline_repo,
   rows <- rows[, c(
     "variant", "scenario", "replicate", "seed_mode", "data_seed", "optim_seed", "order_slot",
     "bwmethod", "proper_cv", "degree_target", "optim_ksum_cores",
-    "n", "n_integrate", "nmulti", "elapsed_wall", "secs_optim_elapsed",
+    "n", "n_integrate", "objective_reps", "nmulti", "elapsed_wall", "secs_optim_elapsed",
     "value", "degree", "h_y", "h_x", "convergence"
   )]
   write.csv(rows, file.path(out_dir, "interleaved_rows.csv"), row.names = FALSE)
@@ -883,7 +927,9 @@ main <- function() {
       out_dir = out_dir,
       scenario_id = opts$scenario %||% "cv_ml_proper_deg1_c1",
       n = as_int(opts$n, 180L),
-      n.integrate = as_int(opts$n_integrate, 41L)
+      n.integrate = as_int(opts$n_integrate, 41L),
+      objective_reps = as_int(opts$objective_reps, 25L),
+      warmup_reps = as_int(opts$warmup_reps, 2L)
     )
     return(invisible(NULL))
   }
@@ -912,7 +958,9 @@ main <- function() {
       seed_mode = opts$seed_mode %||% "fixed",
       n = as_int(opts$n, 180L),
       n.integrate = as_int(opts$n_integrate, 41L),
-      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]]
+      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]],
+      objective_reps = as_int(opts$objective_reps, 10L),
+      warmup_reps = as_int(opts$warmup_reps, 1L)
     )
     return(invisible(NULL))
   }
@@ -938,7 +986,9 @@ main <- function() {
       scenario_id = require_arg(opts, "scenario"),
       data_seed = as_int(require_arg(opts, "data_seed")),
       n = as_int(opts$n, 180L),
-      n.integrate = as_int(opts$n_integrate, 41L)
+      n.integrate = as_int(opts$n_integrate, 41L),
+      objective_reps = as_int(opts$objective_reps, 1L),
+      warmup_reps = as_int(opts$warmup_reps, 1L)
     )
     return(invisible(NULL))
   }
@@ -969,7 +1019,9 @@ main <- function() {
       seed_mode = opts$seed_mode %||% "fixed",
       n = as_int(opts$n, 180L),
       n.integrate = as_int(opts$n_integrate, 41L),
-      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]]
+      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]],
+      objective_reps = as_int(opts$objective_reps, 10L),
+      warmup_reps = as_int(opts$warmup_reps, 1L)
     )
     return(invisible(NULL))
   }
