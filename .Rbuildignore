@@ -9,3 +9,4 @@
 ^tests/bkcde_co\.qmd$
 ^tests/full_sub_bin_comparison\.R$
 ^tests/sub_grid_size_comparison\.R$
+^benchmarks$
