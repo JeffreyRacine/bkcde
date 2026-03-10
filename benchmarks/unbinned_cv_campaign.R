@@ -158,6 +158,87 @@ get_scenarios <- function(selected = NULL) {
   scenarios[keep]
 }
 
+get_ns_fun <- function(name) {
+  get(name, envir = asNamespace("bkcde"), inherits = FALSE)
+}
+
+build_objective_args <- function(scenario, dataset, n.integrate, h = NULL, poly.raw = FALSE) {
+  x <- dataset$x
+  y <- dataset$y
+  n <- length(y)
+  essdee <- get_ns_fun("EssDee")
+  if (is.null(h)) {
+    h <- essdee(cbind(y, x)) * n^(-1 / 6)
+  }
+  y.seq <- if (isTRUE(scenario$proper.cv) || identical(scenario$bwmethod, "cv.ls")) {
+    seq(dataset$y.lb, dataset$y.ub, length.out = n.integrate)
+  } else {
+    NULL
+  }
+  X <- if (scenario$degree > 0L) {
+    cbind(1, poly(x, raw = poly.raw, degree = scenario$degree))
+  } else {
+    matrix(1, nrow = n, ncol = 1)
+  }
+  list(
+    h = h,
+    x = x,
+    y = y,
+    y.lb = dataset$y.lb,
+    y.ub = dataset$y.ub,
+    x.lb = dataset$x.lb,
+    x.ub = dataset$x.ub,
+    poly.raw = poly.raw,
+    degree = scenario$degree,
+    n.integrate = n.integrate,
+    optim.ksum.cores = scenario$optim.ksum.cores,
+    cv.penalty.method = "smooth",
+    cv.penalty.cutoff = .Machine$double.xmin,
+    verbose = FALSE,
+    bwmethod = scenario$bwmethod,
+    proper.cv = scenario$proper.cv,
+    X = X,
+    y.seq = y.seq,
+    cv.binned = FALSE,
+    n.binned = 100L,
+    x.ub.finite = TRUE,
+    x.lb.finite = TRUE,
+    y.ub.finite = TRUE,
+    y.lb.finite = TRUE
+  )
+}
+
+evaluate_objective_scenario <- function(scenario, dataset, n.integrate, n, h = NULL) {
+  objective <- get_ns_fun("bkcde_optim_fn")
+  args <- build_objective_args(
+    scenario = scenario,
+    dataset = dataset,
+    n.integrate = n.integrate,
+    h = h
+  )
+  elapsed <- system.time({
+    value <- do.call(objective, args)
+  })[["elapsed"]]
+  data.frame(
+    scenario = scenario$id,
+    bwmethod = scenario$bwmethod,
+    proper_cv = scenario$proper.cv,
+    degree_target = scenario$degree,
+    optim_ksum_cores = scenario$optim.ksum.cores,
+    n = n,
+    n_integrate = n.integrate,
+    nmulti = NA_integer_,
+    elapsed_wall = as.numeric(elapsed),
+    secs_optim_elapsed = NA_real_,
+    value = as.numeric(value),
+    degree = scenario$degree,
+    h_y = as.numeric(args$h[1]),
+    h_x = as.numeric(args$h[2]),
+    convergence = NA_integer_,
+    stringsAsFactors = FALSE
+  )
+}
+
 fit_scenario <- function(scenario, dataset, optim_seed, n.integrate, nmulti, n) {
   set.seed(optim_seed)
   elapsed <- system.time({
@@ -319,6 +400,56 @@ run_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integrate, nmul
   write_lines(lines, file.path(out_dir, "run_meta.txt"))
 }
 
+run_objective_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integrate, selected = NULL) {
+  lib_dir <- file.path(out_dir, "lib")
+  install_log <- file.path(out_dir, "install.log")
+  install_repo(repo = repo, lib = lib_dir, log_path = install_log)
+  .libPaths(c(lib_dir, .libPaths()))
+  suppressPackageStartupMessages(library(bkcde))
+
+  scenarios <- get_scenarios(selected)
+  results <- vector("list", length(scenarios) * times)
+  idx <- 1L
+  for (scenario in scenarios) {
+    for (rep_idx in seq_len(times)) {
+      data_seed <- if (identical(seed_mode, "vary")) 7000L + rep_idx else 7000L
+      dataset <- make_dataset(seed = data_seed, n = n)
+      row <- evaluate_objective_scenario(
+        scenario = scenario,
+        dataset = dataset,
+        n.integrate = n.integrate,
+        n = n
+      )
+      row$replicate <- rep_idx
+      row$seed_mode <- seed_mode
+      row$data_seed <- data_seed
+      row$optim_seed <- NA_integer_
+      results[[idx]] <- row
+      idx <- idx + 1L
+    }
+  }
+
+  results <- do.call(rbind, results)
+  results <- results[, c(
+    "scenario", "replicate", "seed_mode", "data_seed", "optim_seed",
+    "bwmethod", "proper_cv", "degree_target", "optim_ksum_cores",
+    "n", "n_integrate", "nmulti", "elapsed_wall", "secs_optim_elapsed",
+    "value", "degree", "h_y", "h_x", "convergence"
+  )]
+  write.csv(results, file.path(out_dir, "results.csv"), row.names = FALSE)
+
+  lines <- c(
+    sprintf("repo=%s", normalizePath(repo, winslash = "/", mustWork = TRUE)),
+    sprintf("times=%d", times),
+    sprintf("seed_mode=%s", seed_mode),
+    sprintf("n=%d", n),
+    sprintf("n_integrate=%d", n.integrate),
+    sprintf("cases=%d", length(scenarios)),
+    "mode=objective"
+  )
+  write_lines(lines, file.path(out_dir, "run_meta.txt"))
+}
+
 run_single_fit <- function(lib_dir, out_csv, scenario_id, data_seed, optim_seed, n, n.integrate, nmulti) {
   .libPaths(c(lib_dir, .libPaths()))
   suppressPackageStartupMessages(library(bkcde))
@@ -330,6 +461,20 @@ run_single_fit <- function(lib_dir, out_csv, scenario_id, data_seed, optim_seed,
     optim_seed = optim_seed,
     n.integrate = n.integrate,
     nmulti = nmulti,
+    n = n
+  )
+  write.csv(result, out_csv, row.names = FALSE)
+}
+
+run_single_objective <- function(lib_dir, out_csv, scenario_id, data_seed, n, n.integrate) {
+  .libPaths(c(lib_dir, .libPaths()))
+  suppressPackageStartupMessages(library(bkcde))
+  scenario <- get_scenarios(scenario_id)[[1L]]
+  dataset <- make_dataset(seed = data_seed, n = n)
+  result <- evaluate_objective_scenario(
+    scenario = scenario,
+    dataset = dataset,
+    n.integrate = n.integrate,
     n = n
   )
   write.csv(result, out_csv, row.names = FALSE)
@@ -404,6 +549,84 @@ run_interleaved_compare <- function(baseline_repo,
         row$seed_mode <- seed_mode
         row$data_seed <- data_seed
         row$optim_seed <- optim_seed
+        row$order_slot <- match(tag, order_tag)
+        row_cache[[tag]] <- row
+      }
+
+      rows[[idx]] <- row_cache[["baseline"]]
+      rows[[idx + 1L]] <- row_cache[["candidate"]]
+      idx <- idx + 2L
+    }
+  }
+
+  rows <- do.call(rbind, rows)
+  rows <- rows[, c(
+    "variant", "scenario", "replicate", "seed_mode", "data_seed", "optim_seed", "order_slot",
+    "bwmethod", "proper_cv", "degree_target", "optim_ksum_cores",
+    "n", "n_integrate", "nmulti", "elapsed_wall", "secs_optim_elapsed",
+    "value", "degree", "h_y", "h_x", "convergence"
+  )]
+  write.csv(rows, file.path(out_dir, "interleaved_rows.csv"), row.names = FALSE)
+
+  baseline <- rows[rows$variant == "baseline", , drop = FALSE]
+  candidate <- rows[rows$variant == "candidate", , drop = FALSE]
+  write.csv(baseline, file.path(out_dir, "baseline_results.csv"), row.names = FALSE)
+  write.csv(candidate, file.path(out_dir, "candidate_results.csv"), row.names = FALSE)
+}
+
+run_objective_interleaved_compare <- function(baseline_repo,
+                                              candidate_repo,
+                                              out_dir,
+                                              times,
+                                              seed_mode,
+                                              n,
+                                              n.integrate,
+                                              selected = NULL) {
+  baseline_lib <- ensure_dir(file.path(out_dir, "lib-baseline"))
+  candidate_lib <- ensure_dir(file.path(out_dir, "lib-candidate"))
+  install_repo(baseline_repo, baseline_lib, file.path(out_dir, "install-baseline.log"))
+  install_repo(candidate_repo, candidate_lib, file.path(out_dir, "install-candidate.log"))
+
+  scenarios <- get_scenarios(selected)
+  this_script <- normalizePath(sys.frame(1)$ofile %||% commandArgs(trailingOnly = FALSE)[grep("^--file=", commandArgs(trailingOnly = FALSE))],
+                               winslash = "/",
+                               mustWork = FALSE)
+  if (!length(this_script) || identical(this_script, "")) {
+    stop("Unable to resolve script path for interleaved compare mode", call. = FALSE)
+  }
+  this_script <- sub("^--file=", "", this_script[1L])
+
+  rows <- vector("list", length(scenarios) * times * 2L)
+  idx <- 1L
+  for (scenario in scenarios) {
+    for (rep_idx in seq_len(times)) {
+      data_seed <- if (identical(seed_mode, "vary")) 7000L + rep_idx else 7000L
+      order_tag <- if ((rep_idx %% 2L) == 1L) c("baseline", "candidate") else c("candidate", "baseline")
+      row_cache <- list()
+
+      for (tag in order_tag) {
+        lib_dir <- if (identical(tag, "baseline")) baseline_lib else candidate_lib
+        row_path <- file.path(out_dir, sprintf("%s_%s_rep%03d.csv", scenario$id, tag, rep_idx))
+        run_system_stdout(
+          file.path(R.home("bin"), "Rscript"),
+          c(
+            "--no-save",
+            this_script,
+            "--mode=single-objective",
+            sprintf("--lib-dir=%s", lib_dir),
+            sprintf("--out-csv=%s", row_path),
+            sprintf("--scenario=%s", scenario$id),
+            sprintf("--data-seed=%d", data_seed),
+            sprintf("--n=%d", n),
+            sprintf("--n-integrate=%d", n.integrate)
+          )
+        )
+        row <- read.csv(row_path, stringsAsFactors = FALSE)
+        row$variant <- tag
+        row$replicate <- rep_idx
+        row$seed_mode <- seed_mode
+        row$data_seed <- data_seed
+        row$optim_seed <- NA_integer_
         row$order_slot <- match(tag, order_tag)
         row_cache[[tag]] <- row
       }
@@ -617,6 +840,20 @@ main <- function() {
     return(invisible(NULL))
   }
 
+  if (identical(mode, "objective-run")) {
+    out_dir <- ensure_dir(require_arg(opts, "out_dir"))
+    run_objective_benchmarks(
+      repo = require_arg(opts, "repo"),
+      out_dir = out_dir,
+      times = as_int(opts$times, 5L),
+      seed_mode = opts$seed_mode %||% "fixed",
+      n = as_int(opts$n, 180L),
+      n.integrate = as_int(opts$n_integrate, 41L),
+      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]]
+    )
+    return(invisible(NULL))
+  }
+
   if (identical(mode, "single-fit")) {
     run_single_fit(
       lib_dir = require_arg(opts, "lib_dir"),
@@ -627,6 +864,18 @@ main <- function() {
       n = as_int(opts$n, 180L),
       n.integrate = as_int(opts$n_integrate, 41L),
       nmulti = as_int(opts$nmulti, 2L)
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(mode, "single-objective")) {
+    run_single_objective(
+      lib_dir = require_arg(opts, "lib_dir"),
+      out_csv = require_arg(opts, "out_csv"),
+      scenario_id = require_arg(opts, "scenario"),
+      data_seed = as_int(require_arg(opts, "data_seed")),
+      n = as_int(opts$n, 180L),
+      n.integrate = as_int(opts$n_integrate, 41L)
     )
     return(invisible(NULL))
   }
@@ -642,6 +891,21 @@ main <- function() {
       n = as_int(opts$n, 180L),
       n.integrate = as_int(opts$n_integrate, 41L),
       nmulti = as_int(opts$nmulti, 2L),
+      selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]]
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(mode, "objective-interleaved-compare")) {
+    out_dir <- ensure_dir(require_arg(opts, "out_dir"))
+    run_objective_interleaved_compare(
+      baseline_repo = require_arg(opts, "baseline_repo"),
+      candidate_repo = require_arg(opts, "candidate_repo"),
+      out_dir = out_dir,
+      times = as_int(opts$times, 5L),
+      seed_mode = opts$seed_mode %||% "fixed",
+      n = as_int(opts$n, 180L),
+      n.integrate = as_int(opts$n_integrate, 41L),
       selected = if (is.null(opts$scenarios)) NULL else strsplit(opts$scenarios, ",", fixed = TRUE)[[1L]]
     )
     return(invisible(NULL))
