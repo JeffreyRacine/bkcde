@@ -189,50 +189,72 @@ test_that("bkcde_optim_fn matches cv.only objective at fitted bandwidths", {
 
 test_that("bkcde_optim_fn oracle values remain fixed on canonical fixtures", {
   fixture <- make_objective_fixture(seed = 101, n = 36)
+  essdee <- get("EssDee", envir = asNamespace("bkcde"), inherits = FALSE)
+  h_base <- essdee(cbind(fixture$y, fixture$x)) * length(fixture$y)^(-1 / 6)
+  h_grid <- list(
+    base = h_base,
+    wide = c(h_base[1] * 1.2, h_base[2] * 0.9),
+    narrow = c(h_base[1] * 0.85, h_base[2] * 1.1)
+  )
   oracle_cases <- list(
     cv_ml_plain_deg0 = list(
       bwmethod = "cv.ml",
       proper.cv = FALSE,
       degree = 0L,
-      expected = 20.24223990107549
+      expected = c(base = 20.24223990107549)
     ),
     cv_ml_proper_deg0 = list(
       bwmethod = "cv.ml",
       proper.cv = TRUE,
       degree = 0L,
-      expected = 19.38437099701448
+      expected = c(
+        base = 19.38437099701448,
+        wide = 18.68822573662079,
+        narrow = 19.48642802886487
+      )
     ),
     cv_ml_proper_deg1 = list(
       bwmethod = "cv.ml",
       proper.cv = TRUE,
       degree = 1L,
-      expected = 21.2981516098956
+      expected = c(
+        base = 21.2981516098956,
+        wide = 19.91599248690708,
+        narrow = 22.05002066554315
+      )
     ),
     cv_ls_deg1 = list(
       bwmethod = "cv.ls",
       proper.cv = FALSE,
       degree = 1L,
-      expected = 2.183656494478436
+      expected = c(
+        base = 2.183656494478436,
+        wide = 2.102847027123084,
+        narrow = 2.222340320417622
+      )
     )
   )
 
   for (case_id in names(oracle_cases)) {
     case <- oracle_cases[[case_id]]
-    objective_value <- evaluate_objective(
-      build_objective_args(
-        data = fixture,
-        bwmethod = case$bwmethod,
-        proper.cv = case$proper.cv,
-        degree = case$degree,
-        n.integrate = 31
+    for (grid_id in names(case$expected)) {
+      objective_value <- evaluate_objective(
+        build_objective_args(
+          data = fixture,
+          bwmethod = case$bwmethod,
+          proper.cv = case$proper.cv,
+          degree = case$degree,
+          h = h_grid[[grid_id]],
+          n.integrate = 31
+        )
       )
-    )
 
-    expect_equal(
-      unname(objective_value),
-      case$expected,
-      tolerance = 1e-10,
-      info = case_id
-    )
+      expect_equal(
+        unname(objective_value),
+        unname(case$expected[[grid_id]]),
+        tolerance = 1e-10,
+        info = sprintf("%s:%s", case_id, grid_id)
+      )
+    }
   }
 })

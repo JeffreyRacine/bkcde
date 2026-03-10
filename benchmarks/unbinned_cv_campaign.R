@@ -347,6 +347,57 @@ run_profile <- function(repo, out_dir, scenario_id, n, n.integrate, nmulti) {
   write.csv(result, result_path, row.names = FALSE)
 }
 
+run_objective_profile <- function(repo, out_dir, scenario_id, n, n.integrate) {
+  lib_dir <- file.path(out_dir, "lib")
+  install_log <- file.path(out_dir, "install.log")
+  install_repo(repo = repo, lib = lib_dir, log_path = install_log)
+  .libPaths(c(lib_dir, .libPaths()))
+  suppressPackageStartupMessages(library(bkcde))
+
+  scenarios <- get_scenarios(scenario_id)
+  scenario <- Filter(function(x) identical(x$id, scenario_id), scenarios)
+  if (length(scenario) != 1L) {
+    stop(sprintf("Unknown scenario id for objective profiling: %s", scenario_id), call. = FALSE)
+  }
+  scenario <- scenario[[1L]]
+
+  dataset <- make_dataset(seed = 4101L, n = n)
+  profile_path <- file.path(out_dir, "Rprof.out")
+  summary_path <- file.path(out_dir, "profile_summary.txt")
+  result_path <- file.path(out_dir, "profile_result.csv")
+
+  Rprof(profile_path, interval = 0.001)
+  on.exit(Rprof(NULL), add = TRUE)
+  result <- evaluate_objective_scenario(
+    scenario = scenario,
+    dataset = dataset,
+    n.integrate = n.integrate,
+    n = n
+  )
+  Rprof(NULL)
+
+  prof <- summaryRprof(profile_path)
+  top_self <- capture.output(print(head(prof$by.self, 20)))
+  top_total <- capture.output(print(head(prof$by.total, 20)))
+  write_lines(
+    c(
+      sprintf("repo=%s", normalizePath(repo, winslash = "/", mustWork = TRUE)),
+      sprintf("scenario=%s", scenario_id),
+      sprintf("n=%d", n),
+      sprintf("n_integrate=%d", n.integrate),
+      "mode=objective",
+      "",
+      "[by.self]",
+      top_self,
+      "",
+      "[by.total]",
+      top_total
+    ),
+    summary_path
+  )
+  write.csv(result, result_path, row.names = FALSE)
+}
+
 run_benchmarks <- function(repo, out_dir, times, seed_mode, n, n.integrate, nmulti, selected = NULL) {
   lib_dir <- file.path(out_dir, "lib")
   install_log <- file.path(out_dir, "install.log")
@@ -821,6 +872,18 @@ main <- function() {
       n = as_int(opts$n, 180L),
       n.integrate = as_int(opts$n_integrate, 41L),
       nmulti = as_int(opts$nmulti, 2L)
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(mode, "objective-profile")) {
+    out_dir <- ensure_dir(require_arg(opts, "out_dir"))
+    run_objective_profile(
+      repo = require_arg(opts, "repo"),
+      out_dir = out_dir,
+      scenario_id = opts$scenario %||% "cv_ml_proper_deg1_c1",
+      n = as_int(opts$n, 180L),
+      n.integrate = as_int(opts$n_integrate, 41L)
     )
     return(invisible(NULL))
   }
